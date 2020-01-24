@@ -50,3 +50,101 @@ elif "클릭" in an_email.text:
 
 특별히 데이터 하나를 **샘플(Sample)** 혹은 **데이터 포인트(Data point)** 라고 하며 열을 **특성(Feature)**라고 한다. 컴퓨터 비전적으로 Classification 같은 문제들은 데이터 포인트에 레이블이 포함되어 있는 경우가 많아 지도 학습이라고 볼 수 있다. 그런데 예를 들어, 사람 얼굴의 생김새를 특성으로 하여 특성을 바탕으로 그룹을 지어본다고 한다면 비지도 학습이라고 볼 수 있겠다. 이렇게 만들어진 그룹으로 성격, 취향 등을 유추해 볼 수 있지 않을까 싶다.
 
+
+
+##### 1.1.2 문제와 데이터 이해하기
+
+
+
+머신러닝 프로세스에서 가장 중요한 과정 중에 하나는 "데이터를 이해하는 것"과 "데이터과 문제와 어떤 연관이 있는 지 파악하기"라고 한다. 무턱대고 아무 알고리즘이나 선택하는 것은 머신러닝의 특성상 시간 낭비를 할 확률을 높게 만든다. 실제로 본격적으로 머신러닝 모델을 구축하기에 앞서 다음과 같은 질문들에 대한 답을 해보는 것은 문제 해결에 큰 도움을 줄 것이다. 
+
+
+
+- 질문에 대한 답을 정확히 이해했는지
+- 획득한 데이터가 원하는 답을 줄 수 있는지
+- 획득한 데이터의 특성은 무엇이 있으며 어떤 특성이 문제 해결에 도움이 될 것인지
+- 머닝러닝 애플리케이션의 성과는 어떻게 측정할 것인지
+
+
+
+### 1.2 왜 파이썬인가?
+
+
+
+데이터 과학을 위한 표준 프로그래밍 언어로서 MATLAB, R 등의 여러가지 프로그래밍 언어가 있지만 그 가운데서도 파이썬은 단연 돋보이는 위치를 확립해 나가고 있다. 여기에는 여러가지 이유가 있다. 
+
+
+
+- 스크립팅 언어식 인터페이스와 대화형 언어식 인터페이스를 제공한다.
+- 데이터 과학에 도움이 되는 여러가지 라이브러리들을 제공한다.(데이터 적재, 시각화 , 통계 등)
+- GUI나 웹 서비스도 만들 수 있다.
+- 커뮤니티 활성화가 잘 되어 있어 도움을 받기 쉽다.
+
+
+
+### 1.3 scikit-learn
+
+
+
+scikit-learn 라이브러리는 오픈 소스이기 때문에 누구나 쉽고 자유롭게 사용하거나 이를 활용한 부속물들을 배포할 수 있고 소스 코드를 보고 동작하는 원리를 확인 하기 쉽다.  알고리즘을 설명한 문서(http://scikit-learn.org/stable/documentation)을 제공하고 사용자 가이드(http://scikit-learn.org/stable/user_guide.html)와 API 문서(http://scikit-learn.org/stable/modules/classes.html)을 제공하고 있기 때문에 개발 과정에서 필요한 지식을 손쉽게 습득할 수 있다.
+
+
+
+##### 1.3.1 scikit-learn 설치
+
+
+
+scikit-learn은 **Numpy**와 **SciPy**의 두 파이썬 패키지를 사용한다. 그래프를 그리고 싶다면 **Matplotlib**을 설치하면 되고 대화식 환경에서 개발하고 싶다면 **IPython**과 **Jupyter notebook**을 설치하는 것을 권장한다. 다음은 scikit-learn을 사용하는 환경을 구축하는데 권장되는 파이썬 배포판들이다.
+
+
+
+- **Anaconda (https://www.continuum.io/anaconda-overview)**
+- **Enthought Canopy (https://www.enthought.com/products/canopy/)**
+- **Python (x,y) (http://python-xy.github.io/)**
+
+
+
+배포판을 설치했다면 다음과 같이 필요한 라이브러리들을 설치 할 수 있다.
+
+
+
+`$ pip install numpy scipy matplotlib ipython scikit-learn pandas pillow`
+
+`$conda install -c anaconda numpy scipy matplotlib ipython scikit-learn pandas pillow`
+
+
+
+### 1.4 필수 라이브러리와 도구들
+
+
+
+Jupyter notebook(https://jupyter.org/), Numpy(https://numpy.org/), Scipy(https://www.scipy.org/), Matplotlib(https://matplotlib.org/), Pandas(https://pandas.pydata.org/), Mglearn(https://github.com/amueller/mglearn)을 참조.
+
+
+
+### 1.5 파이썬 2 vs. 파이썬 3
+
+
+
+과거에 파이썬3가 나오기 전에 파이썬2가 많이 사용되었기 때문에 호환성 때문에 파이썬2를 사용하거나 파이썬2로 작성된 코드가 아직 많이 존재한다. 그러나 더이상 파이썬2의 개선사항이 존재하지 않고 파이썬3에는 변경사항이 많기 때문에 파이썬 2의 코드가 실행되지 않을 수 있다. 따라서 파이썬을 새로 배우는 경우, 파이썬 3를 익히는 것이 바람직하고 파이썬2에서 파이썬3로의 이관을 빠르게 진행하는 것을 추천한다. 다만 six 패키지(https://pypi.python.org/pypi/six)를 이용하면 파이썬2와 파이썬3 모두에서 동작하는 코드를 작성하는 것은 어렵지 않다.
+
+
+
+### 1.6 사용하는 패키지 버전 확인
+
+
+
+다음과 같은 명령어로 사용하고 있는 환경 혹은 패키지들의 버전을 확인할 수 있다.
+
+
+
+`import sys; sys.version #Python 버전`
+
+`import numpy as np; np.__version__ #Numpy 버전`
+
+
+
+
+
+
+
