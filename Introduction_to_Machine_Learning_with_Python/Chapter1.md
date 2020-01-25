@@ -36,6 +36,8 @@ elif "클릭" in an_email.text:
 
 ##### 1.1.1 머신러닝으로 풀 수 있는 문제
 
+
+
 머신러닝이라고 함은 크게 두 가지 범주로 나눌 수 있다. 하나는 모델에게 입력과 그에 따른 출력 데이터를 제공하여, 모델로 하여금 데이터에 대한 출력을 가장 잘 산출해낼 수 있는 방법을 찾게 한다. 그렇게 되면 답을 모르는 새로운 입력이 들어 왔을 때, 모델 스스로 그 입력에 걸맞은 출력을 찾아낼 것이다. 이런 학습 방식을 **지도학습(Supervised learning)** 이라고 한다. 반대로 모델 스스로가 입력으로부터 의미있는 출력을 찾아내는 학습 방식을 **비지도학습(Unsupervised learning)** 이라고 한다. 지도 학습과 비지도 학습 모두 컴퓨터가 인식할 수 있는 형태로 데이터를 준비하는 것이 필요하다. 
 
 
@@ -144,7 +146,141 @@ Jupyter notebook(https://jupyter.org/), Numpy(https://numpy.org/), Scipy(https:/
 
 
 
+### 1.7 첫 번째 애플리케이션: 붓꽃의 품종 종류
 
+
+
+앞에서 언급한 내용을 짚어가면서 첫번째 모델을 만들어보면 다음과 같다. 
+
+
+
+1.  setosa, versicolor, virginica 세 종의 붓꽃의 측정 데이터가 있다. 측정 데이터는 꽃잎과 꽃받침의 폭과 길이를 센티미터 단위로 측정했다. 
+2.  붗꽃의 측정 데이터로 새로 채집한 붗꽃이 어떤 품종인지 구분하려고 한다. 
+3.  측정 데이터에는 어떤 품종인지에 대한 정보가 포함되어 있기 때문에 지도학습에 속한다.
+4.  여러가지 선택 사항 중 하나를 선택하는 문제를 **분류(Classification)** 라고 한다. 여기서 선택사항들을 **클래스(Class)** 라고 한다. 데이터 포인트 하나가 가지는 출력을 **레이블(Label)** 이라고 한다. 이 문제는 setosa, versicolor, virginica의 세가지 클래스를 포함하고 있고, 각 측정 데이터의 포인트는 setosa 혹은 versicolor 혹은 virginica의 레이블을 포함하고 있다. 
+
+
+
+##### 1.7.1 데이터 적재
+
+
+
+사용하려는 데이터는 다음과 같이 로드할 수 있다. 
+
+```python
+from sklearn.datasets import load_iris 
+iris = load_iris()
+```
+
+
+
+```python 
+In: iris.keys()
+
+Out: dict_keys(['target_names', 'feature_names', 'DESCR', 'data', 'target'])
+```
+
+
+
+DESCR에는 데이터 셋에 대한 설명이, target_names에는 클래스가 feature_names에는 각 특성에 대한 설명이 들어 있다. 실제 데이터는 target과 data에 들어 있다. 
+
+
+
+```python 
+In: iris['data']
+    
+Out: <class 'numpy.ndarray'>
+```
+
+
+
+```python 
+In: iris['data'].shape
+    
+Out: (150, 4)
+```
+
+
+
+```python 
+In: iris['target']
+    
+Out: <class 'numpy.ndarray'
+```
+
+
+
+```python 
+In: iris['target'].shape
+    
+Out: (150,)
+```
+
+
+
+데이터 포인트의 갯수는 150개이고, feature_names 필드에서 확인해보면 각 데이터 포인트는 sepal length (cm), sepal width (cm), petal length (cm), petal width (cm)의 네가지 특성을 가지고 있다. 클래스는 세가지이므로 0부터 2까지의 정수로 이루어져 있다. 본격적으로 머신러닝 모델을 구축하기 전에 데이터에 대한 특성을 정확하게 파악하기 위해서 DESCR 필드를 활용해서 데이터에 대한 설명을 읽어보는 것이 도움이 될 것이다.
+
+
+
+##### 1.7.2 성과 측정: 훈련 데이터와 테스트 데이터
+
+
+
+머신러닝 모델을 구축할 때에는 훈련을 할 때 쓰는 데이터와 구축된 모델을 측정할 때 쓰는 데이터로 나누어야 한다. 모든 데이터로 모델을 훈련시키고 성능을 측정하면 모델이 데이터의 특성을 일반화 할 수 있는 방법을 찾는 것이 아니라 훈련 데이터 자체의 특성을 외우게 되는 불상사가 일어날 수 있다. 즉, 새로 획득한 데이터에 대해서는 잘 작동하지 않을 수 있다. 머신러닝 모델을 구축하고 훈련시킬때 쓰는 데이터를 **훈련 데이터(Training set)** 이라고 하고 만들어진 모델의 성능을 측정할 때 쓰는 데이터를 **테스트 데이터(Test set)** 혹은 **홀드 아웃 데이터(Hold-out set)** 이라고 한다. 보통 훈련 데이터와 테스트 데이터는 8:2 혹은 7:3의 비율로 나눈다. scikit-learn에서는 다음과 같이 데이터를 나눈다.
+
+
+
+```python 
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(iris['data'], iris['target'], 															random_state = 0)
+```
+
+
+
+scikit-learn에서는 기본적으로 75:25의 비율로 데이터를 나눈다. 이 비율은 test_size 파라미터로 바꿀수 있다. 데이터를 나눌 때, 섞지 않은 상태로 나누면 테스트 데이터의 대부분이 한 레이블을 가지게 된다(데이터 포인트가 레이블 별로 정렬되어 있기 때문에). 따라서 데이터를 나누기 전에 각 레이블이 되도록 골고루 섞일 수 있도록 해야 한다. random_state 매개변수를 전달하면 함수를 여러번 실행해도 같은 결과가 나올 수 있도록 유사 난수 생성을 할 수 있다. 
+
+
+
+```python 
+In: X_train.shape, y_train.shape
+Out: (112, 4), (112,)
+```
+
+
+
+```python 
+In: X_test.shape, y_test.shape
+Out: (38, 4), (38,)
+```
+
+
+
+##### 1.7.3 가장 먼저 할 일: 데이터 살펴보기
+
+
+
+본격적으로 모델을 만들기 전에 
+
+
+
+1.  머신러닝 없이도 풀 수 없는 문제인가.
+2. 데이터에 필요한 정보가 누락되어 있는지.
+3. 데이터에 비정상적인 값이나 특이한 값들이 들어 있는지.
+
+
+
+시각화는 데이터를 조사하는 좋은 방법인데 **산점도(scatter plot)**, **산점도 행렬(scatter matrix)** 등이 있다. 이런 시각화 과정을 통해서 잘 보이지 않는 데이터 간의 특성을 발견할 수 도 있다.
+
+
+
+```python 
+iris_dataframe = pd.DataFrame(X_train, columns=iris.feature_names)
+pd.plotting.scatter_matrix(iris_dataframe, c=y_train, figsize=(10, 10), marker='o', hist_kwds={'bins': 20}, s=60, alpha=.8, cmap=mglearn.cm3)
+```
+
+
+
+![Scatter matrix](1_7_3.JPG)
 
 
 
