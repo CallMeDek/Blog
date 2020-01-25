@@ -232,7 +232,7 @@ Out: (150,)
 
 ```python 
 from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(iris['data'], iris['target'], 															random_state = 0)
+X_train, X_test, y_train, y_test = train_test_split(iris['data'], iris['target'], random_state = 0) 
 ```
 
 
@@ -283,4 +283,78 @@ pd.plotting.scatter_matrix(iris_dataframe, c=y_train, figsize=(10, 10), marker='
 ![Scatter matrix](1_7_3.JPG)
 
 
+
+##### 1.7.4 첫 번째 머신러닝 모델: k-최근접 이웃 알고리즘
+
+
+
+여기서는 비교적 이해하기 쉬운 ***k* -최근접 이웃(*k* - Nearest Neighbors)** 로 분류기를 사용한다. k-최근접 이웃 알고리즘에서는 대상 데이터 포인트에게서 가장 가까운 k개의 이웃 데이터 포인트를 찾고, 이웃 데이터 포인트의 레이블의 빈도수가 가장 큰 레이블을 대상 데이터 포인트의 레이블로 정한다. scikit-learn의 모든 머신러닝 모델은 Estimator라는 파이썬 클래스로 각각 구현되어 있다. k-NN은 neighbors 모듈 아래 KNeighborsClassifier 클래스에 구현되어 있다. 모델의 파라미터 중 k의 값을 지정하는 n_neighbors는 필수로 지정해야 한다. 
+
+
+
+```python 
+from sklearn.neighbors import KNeighborsClassifier
+knn = KNeighborsClassifier(n_neighbors=1)
+```
+
+
+
+knn의 fit 메소드는 입력으로 받은 훈련 데이터로 훈련을 진행한다. 
+
+
+
+```python 
+In: knn.fit(X_train, y_train)
+Out: KNeighborsClassifier(algorithm='auto', leaf_size=30, metric='minkowski', 
+                         metric_params=None, n_jobs=1, n_neighbors=1, p=2, 
+                         weights='uniform')
+```
+
+
+
+##### 1.7.5 예측하기
+
+
+
+예측에는 분류기의 predict 메소드를 사용한다.
+
+
+
+```python 
+In: X_new = np.array([[5, 2.9, 1, 0.2]])
+    prediction = knn.predict(X_new)
+    print(prediction)
+    print(iris['target_names'][prediction])
+    
+Out: [0]
+     ['setosa']
+```
+
+
+
+##### 1.7.6 모델 평가하기
+
+
+
+만든 모델을 평가하기 위해 모델의 훈련 과정에서 쓰지 않았던 테스트 데이터를 사용한다. 간단한 평가 지표로, 얼마나 많은 붓꽃 품종이 맞았는지 **정확도(Accuracy)** 를 확인할 수 있다.
+
+
+
+```python 
+In: y_pred = knn.predict(X_test)
+    print(np.mean(y_pred === y_test))
+    
+Out: 0.97
+```
+
+
+
+특별히 분류기의 score 메소드로도 테스트 데이터에 대한 정확도를 계산할 수 있다.
+
+
+
+```python 
+In: knn.score(X_test, y_test)
+Out: 0.97
+```
 
