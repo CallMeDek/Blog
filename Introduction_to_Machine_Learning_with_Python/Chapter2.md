@@ -58,7 +58,7 @@
 
 - scikit-learn의 위스콘신 유방암 데이터 셋
 
-       ```python 
+```python 
 In: 
 from sklearn.datasets import load_breast_cancer
 
@@ -68,7 +68,7 @@ print(f"Data shape: {cancer.data.shape}")
 target_number = {n: v for n, v in zip(cancer.target_names, np.bincount(cancer.target))}
 print(f"The number of samples per class:\n{target_number}")
 print(f"Features' name:\n{cancer.feature_names}")
-       ```
+```
 
 ```python 
 Out:
