@@ -280,7 +280,7 @@ pd.plotting.scatter_matrix(iris_dataframe, c=y_train, figsize=(10, 10), marker='
 
 
 
-![Scatter matrix](1_7_3.JPG)
+![Scatter matrix](./Figure/1_7_3.jpg)
 
 
 
