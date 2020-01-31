@@ -366,3 +366,77 @@ x[0] ~ x[p]는 데이터 포인트의 특성을 나타내고 w[0] ~ w[p]와 b는
 
 KNeighborsRegressor와 비교했을 때, 데이터의 상세 정보를 모두 잃어 버린 것처럼 보일 수 있으나 어떤 데이터든지 그 추세를 구하고 싶다면 훌륭한 선택이 될 수 있다.
 
+
+
+##### 선형 회귀(최소제곱법)
+
+**선형 회귀(Linear regression)** 혹은 **최소 제곱법(Ordinary least squares)** 은 예측 값과 타겟 y 값 사이의 **평균제곱오차(Mean squared error)** 을 최소화 하는 모델 파라미터 w와 절편 b를 찾는다. 모델 생성 시의 설정해야하는 매개변수가 없는게 장점이지만 복델의 복잡도를 제어할 방법이 없다는 것이 단점이다. 
+
+
+
+![](./Figure/2_3_3_2.png)
+
+
+
+```python 
+In:
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+
+X, y = mglearn.datasets.make_wave(n_samples=60)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+
+lr = LinearRegression().fit(X_train, y_train)
+
+print(f"lr.coef_: {lr.coef_}")
+print(f"lr.intercept_: {lr.intercept_}")
+```
+
+```python 
+Out:
+lr.coef_: [0.39390555]
+lr.intercept_: -0.031804343026759746
+```
+
+기울기 파라미터(w)는 **가중치(weight)** 혹은 **계수(coefficient)** 라고 하며 LinearRegression 객체의 coef_ 속성에 저장되어 있다. 편향 파라미터(b)는 **절편(intercept)** 이라고 하며 intercept_ 속성에 저장되어 있다(속성 뒤에 _는 scikit-learn에서 학습에 의해서 유도되는 특성이다.)
+
+
+
+학습한 모델의 훈련 세트와 테스트 세트의 성능은 다음과 같다.
+
+``````python
+In:
+print(f"Train set score: {lr.score(X_train, y_train):.2f}")
+print(f"Test set score: {lr.score(X_test, y_test):.2f}")
+``````
+
+```python 
+Out:
+Train set score: 0.67
+Test set score: 0.66
+```
+
+R^2 값이 두 세트 모두에서 그리 좋지 않기 때문에 과소적합이 발생했음을 알 수 있다. 일반적으로 저차원 데이터셋에서는 과대적합을 걱정할 필요가 없지만 고차원 데이터셋에서는 모델의 복잡도가 증가하여 과대적합할 가능성이 높아진다.
+
+
+
+다음은 보스턴 주택가격 데이터셋으로 테스트 하는 코드이다. 이 확장된 보스턴 주택가격 세트에는 샘플이 506개가 있고 특성이 인위적으로 합성된 것을 합쳐서 105개가 있다. 
+
+```python 
+In:
+X, y = mglearn.datasets.load_extended_boston()
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+lr = LinearRegression().fit(X_train, y_train)
+
+print(f"Train set score: {lr.score(X_train, y_train):.2f}")
+print(f"Test set score: {lr.score(X_test, y_test):.2f}")
+```
+
+```python 
+Out:
+Train set score: 0.95
+Test set score: 0.61
+```
+
+위에서 보는 것처럼 특성이 많을수록 원래의 선형회귀 모델은 쉽게 과대적합 함을 알 수 있다.
