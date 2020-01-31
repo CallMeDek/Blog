@@ -440,3 +440,179 @@ Test set score: 0.61
 ```
 
 위에서 보는 것처럼 특성이 많을수록 원래의 선형회귀 모델은 쉽게 과대적합 함을 알 수 있다.
+
+
+
+##### 릿지 회귀
+
+**릿지(Ridge)** 회귀도 선형 모델이므로 최소적합법에서 사용한 것과 같은 예측 함수를 사용한다. 기본 선형 모델과의 차이점은 가중치의 절댓값을 가능한 작게(w의 모든 원소가 0에 가깝게) 만들어 모든 특성이 출력에 주는 영향을 최소한으로 만든다는 것이다(기울기를 작게). 이런 제약을 **규제(Regularization)** 이라고 한다. 규제는 과대적합이 일어나지 않도록 모델을 제한하는 것이 목적이다. 릿지 회귀에서 사용하는 규제 방식을 L2 규제라고 한다.
+
+![](./Figure/2_3_3_3.png)
+
+
+
+```python 
+In:
+from sklearn.linear_model import Ridge
+
+ridge = Ridge().fit(X_train, y_train)
+print(f"Train set score: {ridge.score(X_train, y_train):.2f}")
+print(f"Test set score: {ridge.score(X_test, y_test):.2f}")
+```
+
+```python 
+Out:
+Train set score: 0.89
+Test set score: 0.75
+```
+
+결과는 LinearRegression보다 훈련 데이터의 성능은 나빠졌지만 테스트 데이터에서의 성능은 좋아졌다. 즉, 과대 적합이 어느정도 해소되었음을 확인할 수 있다. 
+
+
+
+Ridge에서 alpha 매개변수로 규제를 어느정도로 할 지 정할 수 있다. alpha의 값이 높으면 더 강하게 규제(가중치 w 값들이 좀 더 0에 가까워짐)하고 반대로 alpha 값이 낮으면 비교적 약하게 규제(가중치 w 값들이 0에서 멀어짐)한다. 기본 값은 1.0이다.
+
+```python 
+In:
+ridge10 = Ridge(alpha=10).fit(X_train, y_train)
+print(f"Train set score: {ridge10.score(X_train, y_train):.2f}")
+print(f"Test set score: {ridge10.score(X_test, y_test):.2f}")
+```
+
+```python 
+Out:
+Train set score: 0.79
+Test set score: 0.64
+```
+
+```python 
+In: 
+ridge01 = Ridge(alpha=.1).fit(X_train, y_train)
+print(f"Train set score: {ridge01.score(X_train, y_train):.2f}")
+print(f"Test set score: {ridge01.score(X_test, y_test):.2f}")
+```
+
+```python 
+Out:
+Train set score: 0.93
+Test set score: 0.77
+```
+
+
+
+alpha 값에 따라 모델의 coef_ 속성, 즉 가중치들이 어떻게 달라지는 보면 다음과 같다.
+
+```python 
+plt.plot(ridge10.coef_, "^", label="Ridge alpha=10")
+plt.plot(ridge.coef_, "^", label="Ridge alpha=1")
+plt.plot(ridge01.coef_, "^", label="Ridge alpha=0.1")
+
+plt.plot(lr.coef_, 'o', label="LinearRegression")
+plt.xlabel("Feature index")
+plt.ylabel("Feature value")
+plt.hlines(0, 0, len(lr.coef_))
+plt.ylim(-25, 25)
+plt.legend(loc='best')
+```
+
+![](C:\Users\LAB\Desktop\2_3_3_4.JPG)
+
+그림을 보면 alpha 값이 작을수록 전체적으로 0에 가깝게 분포하는 것을 확인할 수 있다.
+
+
+
+다음은 alph를 1로 적용해서 LinearRegression과 Ridge의 데이터셋의 크기에 따른 모델의 성능 변화를 나타낸 **학습 곡선(Learning curve)** 이다. 
+
+![](./Figure/2_3_3_5.JPG)
+
+점선은 훈련데이터이고 실선은 테스트 데이터에서의 성능이다. 전체적으로 훈련데이터에서의 성능이 테스트 데이터에서의 성능보다 낫고 데이터가 적을 때, LinearRegression의 성능이 매우 좋지 않다가 데이터가 많을 때, Ridge의 성능을 따라 잡는 것을 확인 할 수 있다. 여기서 알 수 있는 사실은 다음과 같다.
+
+- 데이터가 많을 때는 규제의 영향력이 약해진다.
+- 데이터가 많아질수록 과대적합하기 어려워진다.
+
+
+
+##### 라쏘
+
+릿지 회귀에서와 같이 **라쏘(Lasso)** 에서도 계수를 0에 가깝게 만든다. 하지만 방식이 다르며 L1규제라고 부른다. 
+
+![](./Figure/2_3_3_6.JPG)
+
+L1 규제의 결과로 라쏘에서는 어떤 계수가 0이 될수도 있다. 즉 모델에서 완전히 제외되는 특성이 생긴다는 뜻이다. 
+
+
+
+```python 
+In:
+from sklearn.linear_model import Lasso
+
+lasso = Lasso().fit(X_train, y_train)
+print(f"Train set score: {lasso.score(X_train, y_train):.2f}")
+print(f"Test set score: {lasso.score(X_test, y_test):.2f}")
+print(f"The number of features used : {np.sum(lasso.coef_ != 0)}")
+```
+
+```python 
+Out:
+Train set score: 0.29
+Test set score: 0.21
+The number of features used : 4
+```
+
+alpha가 기본값인 1일 때는 과소적합이 발생했으며 105개의 보스턴 데이터의 특성 중에서 4개만 사용된것을 확인 할 수 있다.
+
+
+
+라쏘에서 alpha 값을 조정하기 위해서는 max_iter(반복 실행하는 최대 횟수)의 숫자를 늘려야 한다. Lasso는 L1, L2 규제를 함꼐 쓰는 **엘라스틱넷(Elastic-Net)** 방식에서 L2 규제가 빠진 것이다. 이는 한 특성씩 좌표축을 따라 최적화하는 좌표 하강법(Cordinate descent)방식을 사용하며 학습 과정이 반복적으로 진행되면서 최적의 값을 찾아 가게 된다. alpha 값을 줄이면 가장 낮은 오차를 찾아가는 이 반복 횟수가 늘어나게 된다. 
+
+```python 
+In:
+lasso001 = Lasso(alpha=0.01, max_iter=100000).fit(X_train, y_train)
+print(lasso001.n_iter_)
+print(f"Train set score: {lasso001.score(X_train, y_train):.2f}")
+print(f"Test set score: {lasso001.score(X_test, y_test):.2f}")
+print(f"The number of features used : {np.sum(lasso001.coef_ != 0)}")
+```
+
+```python 
+Out:
+1886
+Train set score: 0.90
+Test set score: 0.77
+The number of features used : 33
+```
+
+```python 
+In:
+lasso00001 = Lasso(alpha=0.0001, max_iter=100000).fit(X_train, y_train)
+print(lasso00001.n_iter_)
+print(f"Train set score: {lasso00001.score(X_train, y_train):.2f}")
+print(f"Test set score: {lasso00001.score(X_test, y_test):.2f}")
+print(f"The number of features used : {np.sum(lasso00001.coef_ != 0)}")
+```
+
+```python 
+Out:
+41420
+Train set score: 0.95
+Test set score: 0.64
+The number of features used : 96
+```
+
+```python 
+plt.plot(lasso.coef_, "s", label="Lasso alpha=1")
+plt.plot(lasso001.coef_, "^", label="Lasso alpha=0.01")
+plt.plot(lasso00001.coef_, "v", label="Lasso alpha=0.0001")
+
+plt.plot(ridge01.coef_, 'o', label="Ridge alpha=0.1")
+plt.xlabel("Feature index")
+plt.ylabel("Feature value")
+plt.ylim(-25, 25)
+plt.legend(loc='best')
+```
+
+![](./Figure/2_3_3_7.JPG)
+
+alpha가 0.01때까지 대부분의 특성이 0이 되는 분포를 얻게 되고 0.0001이 되면 대부분이 0이 아닌 큰 값을 가져 규제 받지 않는 모델이 됨을 확인할 수 있다. alpha=0.1인 Ridge 모델은 alpha=0.01인 라쏘 모델과 성능이 비슷하나 Ridge에서는 어떤 계수도 0이 되지 않는다. 
+
+Lasso과 Ridge의 페널티를 결합한 ElasticNet도 있으나 L1 규제와 L2규제를 위한 매개변수를 조정해야 한다. l1_ratio매개변수를 0~1 사이의 값을 지정하여 L1규제의 비율을 정하면 L2 규제의 비율은 1-l1_ration가 되는 방식이다.
