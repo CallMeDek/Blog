@@ -616,3 +616,206 @@ plt.legend(loc='best')
 alpha가 0.01때까지 대부분의 특성이 0이 되는 분포를 얻게 되고 0.0001이 되면 대부분이 0이 아닌 큰 값을 가져 규제 받지 않는 모델이 됨을 확인할 수 있다. alpha=0.1인 Ridge 모델은 alpha=0.01인 라쏘 모델과 성능이 비슷하나 Ridge에서는 어떤 계수도 0이 되지 않는다. 
 
 Lasso과 Ridge의 페널티를 결합한 ElasticNet도 있으나 L1 규제와 L2규제를 위한 매개변수를 조정해야 한다. l1_ratio매개변수를 0~1 사이의 값을 지정하여 L1규제의 비율을 정하면 L2 규제의 비율은 1-l1_ration가 되는 방식이다.
+
+
+
+##### 분류용 선형 모델
+
+선형 모델의 이진 분류에서 예측을 위한 방정식은 다음과 같다.
+
+y_hat = w[0]x[0]+w[1]x[1]+...+w[p]*x[p]+b > 0
+
+언뜻 보기에 선형 회귀와 비슷하나 특성들의 가중치 합을 그냥 이용하는 대신 임계치 0과 비교한다. 0보다 작으면 클래스를 -1로, 크면 +1로 예측한다. 
+
+회귀용 선형 모델에서는 출력 y_hat이 특성의 선형 함수였다면, 분류형 선형 모델에서는 결정 경계가 입력의 선형 함수이다. 
+
+가장 널리 알려진 두 개의 선형 분류 알고리즘은 다음과 같다.
+
+- linear_model.LogisticRegression에 구현된 **로지스틱 회귀(Logistic regression)** 
+- svm.LinearSVC(Support vector classifier)에 구현된 **서포트 벡터 머신(Support Vector Machine)** 
+
+```python 
+In:
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC
+
+X, y = mglearn.datasets.make_forge()
+fig, axes = plt.subplots(1, 2, figsize=(10, 3))
+for model, ax in zip([LinearSVC(), LogisticRegression()], axes):
+  clf = model.fit(X, y)
+  mglearn.plots.plot_2d_separator(clf, X, fill=False, eps=.5, ax=ax, alpha=.7)
+  mglearn.discrete_scatter(X[:, 0], X[:, 1], y, ax=ax)
+  ax.set_title(f"{clf.__class__.__name__}")
+  ax.set_xlabel("Feature 0")
+  ax.set_ylabel("Feature 1")
+axes[0].legend()
+```
+
+![](./Figure/2_3_3_8.JPG)
+
+두 모델은 회귀에서 본 Ridge와 마찬가지로 L2 규제를 사용한다.
+
+
+
+LogisticRegression과 LinearSVC에서 규제의 강도를 결정하는 매개변수는 C이다. C의 값이 높아지면 규제가 감소하여 과대적합이 일어날 확률이 늘어나고 C값을 낮추면 계수 백터(w)의 값을 0으로 가깝게 만들어 과대적합이 일어날 확률을 줄인다.
+
+![](./Figure/2_3_3_9.JPG)
+
+
+
+유방암 데이터로 LogisticRegression 모델을 구축한 결과는 다음과 같다.
+
+```python 
+In:
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+
+cancer = load_breast_cancer()
+X_train, X_test, y_train, y_test = train_test_split(cancer.data, cancer.target, stratify=cancer.target, random_state=42)
+logreg = LogisticRegression(solver='liblinear').fit(X_train, y_train)
+print(f"{logreg.score(X_train, y_train):.3f}")
+print(f"{logreg.score(X_test, y_test):.3f}")
+```
+
+```python 
+Out:
+0.953
+0.958
+```
+
+```python 
+In:
+logreg100 = LogisticRegression(C=100, solver='liblinear').fit(X_train, y_train)
+print(f"{logreg100.score(X_train, y_train):.3f}")
+print(f"{logreg100.score(X_test, y_test):.3f}")
+```
+
+```python 
+Out:
+0.967
+0.965
+```
+
+```python 
+In:
+logreg001 = LogisticRegression(C=.01, solver='liblinear').fit(X_train, y_train)
+print(f"{logreg001.score(X_train, y_train):.3f}")
+print(f"{logreg001.score(X_test, y_test):.3f}")
+```
+
+```python 
+Out:
+0.934
+0.930
+```
+
+```python 
+plt.plot(logreg.coef_.T, "o", label="C=1")
+plt.plot(logreg100.coef_.T, "^", label="C=100")
+plt.plot(logreg001.coef_.T, "v", label="C=0.001")
+plt.xticks(range(cancer.data.shape[1]), cancer.feature_names, rotation=90)
+plt.hlines(0, 0, cancer.data.shape[1])
+plt.ylim(-5, 5)
+plt.xlabel("Features")
+plt.ylabel("Coefficients value")
+plt.legend()
+```
+
+![](./Figure/2_3_3_10.JPG)
+
+
+
+다음은 일부 특성만 사용하게 되는 L1규제를 사용했을때의 분류 정확도와 계수 그래프이다.
+
+```python 
+In:
+for C, marker in zip([0.001, 1, 100], ['o', '^', 'v']):
+  lr_l1 = LogisticRegression(C=C, penalty='l1', solver='liblinear').fit(X_train , y_train)
+  print(f"C={C:.3f}, Train set acc: {lr_l1.score(X_train ,y_train):.2f}")
+  print(f"C={C:.3f}, Test set acc: {lr_l1.score(X_test ,y_test):.2f}")
+  plt.plot(lr_l1.coef_.T, marker, label=f"C={C:.3f}")
+
+plt.xticks(range(cancer.data.shape[1]), cancer.feature_names, rotation=90)
+plt.hlines(0, 0, cancer.data.shape[1])
+plt.xlabel("Featuers")
+plt.ylabel("Coefficients value")
+
+plt.ylim(-5, 5)
+plt.legend(loc="best")
+```
+
+![](./Figure/2_3_3_11.JPG)
+
+회귀에서와 같이 모델들 간의 주요 차이는 규제에서 모든 특성을 이용할지 일부 특성만을 이용할지 결정하는 penalty 매개변수이다.
+
+
+
+##### 다중 클래스 분류용 선형 모델
+
+로지스틱 회귀를 제외하고 많은 선형 분류 모델은 기본적으로 다중 클래스 분류를 지원하지 않는다. 
+
+이진 분류 알고리즘을 다중 분류 알고리즘으로 확장하기 위한 보편적인 기법은 **일대다(one_vs._rest)** 방법이다. 일대다 방식은 각 클래스를 다른 모든 클래스와 구분하도록 이진 분류 모델을 학습시켜서 결국 클래스의 수만큼 이진 분류 모델이 만들어지게 한다. 예측을 할 때는 모든 이진 분류기가 작동하여 그 중 가장 높은 점수를 내는 분류기의 클래스를 예측 값으로 한다.
+
+클래스별 이진 분류기를 만들면 각 클래스가 계수 백터(w)와 절편(b)를 하나씪 갖게 되는데, 다음 공식의 결과값이 가장 높은 클래스가 해당 데이터 포인트의 클래스 레이블로 할당된다.
+
+​                                                       w[0]x[0]+w[1]x[1]+...+w[p]*x[p]+b
+
+다중 클래스 로지스틱 회귀를 위한 공식은 다음과 같으며 마찬가지로 클래스마다 하나의 계수 벡터와 절편을 만들고 예측 방법도 비슷하다.
+
+![](./Figure/2_3_3_12.png)
+
+(i번째 데이터 포인트 Xi의 출력 Yi가 K-1이 될 확률은 K개의 클래스에 대한 각 계수 W를 데이터 포인트에 곱하여 지수함수를 적용한 합으로 클래스 K-1에 대한 값을 나누어 계산한다. )
+
+
+
+```python 
+from sklearn.datasets import make_blobs
+
+X, y = make_blobs(random_state=42)
+mglearn.discrete_scatter(X[:, 0], X[:, 1], y)
+plt.xlabel('Feature 0')
+plt.ylabel('Feature 1')
+plt.legend(['Class 0', 'Class 1', 'Class 2'])
+```
+
+![](C:\Users\LAB\Desktop\2_3_3_13.JPG)
+
+```python 
+In:
+linear_svm = LinearSVC().fit(X, y)
+print("The shape of coefficient array: ", linear_svm.coef_.shape)
+print("The shape of biase array: ", linear_svm.intercept_.shape)
+```
+
+```python 
+Out:
+The shape of coefficient array:  (3, 2)
+The shape of biase array:  (3,)
+```
+
+```python 
+mglearn.discrete_scatter(X[:, 0], X[:, 1], y)
+line = np.linspace(-15, 15)
+for coef, intercept, color in zip(linear_svm.coef_, linear_svm.intercept_, mglearn.cm3.colors):
+  plt.plot(line, -(line * coef[0] + intercept) / coef[1], c = color)
+plt.ylim(-10, 15)
+plt.xlim(-10, 8)
+plt.xlabel('Feature 0')
+plt.ylabel('Feature 1')
+plt.legend(['Class 0', 'Class 1', 'Class 2', 'Class 0 boundary', 'Class 1 boundary', 'Class 2 boundary'], loc=(1.01, 0.3))
+```
+
+![](./Figure/2_3_3_14.JPG)
+
+```python 
+mglearn.plots.plot_2d_classification(linear_svm, X, fill=True, alpha=.7)
+mglearn.discrete_scatter(X[:, 0], X[:, 1], y)
+line = np.linspace(-15, 15)
+for coef, intercept, color in zip(linear_svm.coef_, linear_svm.intercept_, mglearn.cm3.colors):
+  plt.plot(line, -(line * coef[0] + intercept) / coef[1], c=color)
+plt.legend(['Class 0', 'Class 1', 'Class 2', 'Class 0 boundary', 'Class 1 boundary', 'Class 2 boundary'], loc=(1.01, 0.3))
+plt.xlabel('Feature 0')
+plt.ylabel('Feature 1')
+```
+
+![](./Figure/2_3_3_15.JPG)
