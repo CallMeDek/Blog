@@ -1066,3 +1066,103 @@ plt.legend()
 결정트리는 비교적 작은 트리 일때 모델을 쉽게 시각화 할 수 있다. 또 데이터의 스케일에 구애받지 않으므로 특성의 정규화나 표준화 같은 전처리 과정이 필요 없다. 특히 특성의 스케일이 서로 다르거나 이진 특성과 연속 특성이 혼합되어 있을때도 잘 작동한다.
 
 단일 결정 트리의 단점은 사전 가지치기에도 불구하고 과대적합하는 경향이 있어 일반화 성능이 좋지 않다는 점이다.
+
+
+
+##### 랜덤 포레스트
+
+랜덤 포레스트는 단일 결정 트리의 묶음이다. 잘 작동하되 서로 다른 방향으로 과대적합된 트리를 많이 만들고 그 결과를 평균내면 과대적합 효과를 줄일 수 있다. 이런 전략을 구현하려면 각각의 타깃 예측을 잘하며 다른 트리와는 구별되는 트리를 많이 만들어야 하는데 이를 위해서 데이터 포인트를 무작위로 선택하는 방법과 분할 테스트에서 특성을 무작위로 선택하는 방법을 사용해서 트리를 만든다.
+
+
+
+##### 랜덤 포레스트 구축
+
+랜덤 포레스트 모델을 만드려면 생성할 트리의 개수를 정해야한다(RandomForestRegressor, RandomForestClassifier의 n_estimators 매개변수). 트리들은 완전히 독립적으로 만들어져야 하므로 알고리즘이 각 트리가 고유하게 만들어 질 수 있도록 무작위한 선택을 한다. 트리를 만들기 위해서 먼저 **부트스트랩 샘플(Bootstrap sample)** 을 생성한다. 즉, n_smaples개의 데이터에서 무작위로 데이터를 n_samples 횟수만큼 반복 추출한다. 이 데이터셋은 원래 데이터셋과 크기가 같지만 어떤 데이터는 누락될 수도 있고 어떤 데이터는 중복되어 들어 있을 수 있다. 특성 부분에서는 알고리즘이 각 노드에서 후보 특성을 무작위로 선택한 후 이 후보들 중에서 최선의 질문을 찾는다. 몇 개의 특성을 고를지는 max_features 매개변수로 조정할 수 있다.  정리하면 부트스트랩 샘플링은 1. 트리가 조금씩 다른 데이터 셋을 사용하여 만들어지도록 하고 2. 트리의 각 분기가 각기 다른 특성 부분집합을 사용하도록 한다.
+
+이 방식에서 핵심 매개변수는 max_features인데, max_features 값을 크게 하면 트리들이 매우 비슷해지고 가장 두드러진 특성을 이용해 데이터에 잘 맞춰질 것이다. 반대로 max_features 값을 낮추면 트리들이 많이 달라지고 각 트리는 데이터에 맞추기 위해 깊이가 깊어지게 된다.
+
+예측을 진행할때는 모델에 있는 모든 트리의 예측을 만들고 회귀의 경우에는 이 예측들을 평균으로 하여 예측을 하고 분류는 각 트리들이 예측한 확률을 평균내어 가장 높은 확률을 가진 클래스를 예측 값으로 한다.
+
+
+
+##### 랜덤 포레스트 분석
+
+```python 
+In:
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import make_moons
+
+X, y = make_moons(n_samples=100, noise=0.25, random_state=3)
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=42)
+forest = RandomForestClassifier(n_estimators=5, random_state=2)
+forest.fit(X_train, y_train)
+```
+
+```python 
+Out:
+RandomForestClassifier(bootstrap=True, ccp_alpha=0.0, class_weight=None,
+                       criterion='gini', max_depth=None, max_features='auto',
+                       max_leaf_nodes=None, max_samples=None,
+                       min_impurity_decrease=0.0, min_impurity_split=None,
+                       min_samples_leaf=1, min_samples_split=2,
+                       min_weight_fraction_leaf=0.0, n_estimators=5,
+                       n_jobs=None, oob_score=False, random_state=2, verbose=0,
+                       warm_start=False)    
+```
+
+랜덤 포레스트 안에서 만들어진 트리는 estimator_ 속성에 저장된다.
+
+```python 
+fig, axes = plt.subplots(2, 3, figsize=(20, 10))
+for i, (ax, tree) in enumerate(zip(axes.ravel(), forest.estimators_)):
+  ax.set_title(f"트리 {i}")
+  mglearn.plots.plot_tree_partition(X, y, tree, ax=ax)
+
+mglearn.plots.plot_2d_separator(forest, X, fill=True, ax=axes[-1, -1], alpha=.4)
+axes[-1, -1].set_title("랜덤 포레스트")
+mglearn.discrete_scatter(X[:, 0], X[:, 1], y)
+```
+
+![](./Figure/2_3_6_1.JPG)
+
+```python 
+In:
+X_train, X_test, y_train, y_test = train_test_split(cancer.data, cancer.target, random_state=0)
+forest = RandomForestClassifier(n_estimators=100, random_state=0)
+forest.fit(X_train, y_train)
+
+print(f"훈련 데이터 정확도: {forest.score(X_train, y_train):.3f}")
+print(f"테스트 데이터 정확도: {forest.score(X_test, y_test):.3f}")
+```
+
+```python 
+Out:
+훈련 데이터 정확도: 1.000
+테스트 데이터 정확도: 0.972
+```
+
+랜덤 포레스트도 특성 중요도를 제공하는데 각 트리의 특성 중요도를 취합하여 계산한 것이다. 
+
+```python 
+plot_feature_importances_cancer(forest)
+```
+
+![](./Figure/2_3_6_2.JPG)
+
+
+
+##### 장단점과 매개변수
+
+랜덤 포레스트는 성능이 매우 뛰어나고 매개변수 튜닝을 많이 하지 않아도 잘 작동하며 데이터의 스케일을 맞출 필요도 없으므로 널리 사용되는 머신러닝 알고리즘이다.
+
+n_jobs 매개변수를 통해 멀티 코어로 병렬 처리가 가능하다(1은 기본, -1은 컴퓨터의 모든 코어).
+
+random_state마다 다른 결과를 만들어 낸다.
+
+텍스트 데이터와 같이 매우 차원이 높고 희소한 데이터에는 잘 작동하지 않는다. 이런 모델은 선형 모델이 더 적합하다. 매우 큰 데이터셋에도 잘 작동하긴하나 선형 모델보다 많은 메모리를 사용하며 훈련과 예측이 느리다.
+
+n_estimators는 클수록 좋으나 더 많은 메모리와 긴 훈련시간을 요구한다. 따라서 가용한 시간과 메모리 만큼 트리를 많이 만드는 것이 좋다. 단일 결정 트리와 같은 사전가지치기 옵션도 제공한다.
+
+max_features는 트리가 얼마나 무작위가 될지를 결정하며 작을 수록 과대적합을 줄여준다. 기본 값은
+
+회귀의 경우 sqrt(n_features)이고 분류는 n_features이다.
