@@ -1166,3 +1166,101 @@ n_estimators는 클수록 좋으나 더 많은 메모리와 긴 훈련시간을 
 max_features는 트리가 얼마나 무작위가 될지를 결정하며 작을 수록 과대적합을 줄여준다. 기본 값은
 
 회귀의 경우 sqrt(n_features)이고 분류는 n_features이다.
+
+
+
+##### 그래디언트 부스팅 회귀 트리
+
+GradientBoostingClassifier와 GradientBoostingRegressorsms는 모두 DecisionTreeRegressor를 사용하여 구현되어 있다. 랜덤포레스트와는 달리 이전 트리의 오차를 보완하는 방식으로 순차적으로 트리를 만든다.  랜덤포레스트에서와 같은 무작위성이 없는 대신 강력한 사전 가지치기가 사용된다. 보통 하나에서 다섯 정도의 깊지 않은 트리(**약한 학습기(weak learner)** )를 사용하므로 메모리를 적게 사용하고 예측도 빠르다. 각가의 트리는 데이터 일부에 대해서만 예측을 잘 수행하는데 이런 트리가 많이 추가될수록 성능이 좋아진다. 오차를 보완하여 새로운 트리를 보정할 때 손실함수를 정의하고 경사 하강법을 사용하게 된다. 사전 가지치기나 트리 개수외에 중요한 매개변수로는 오차를 얼마나 강하게 보정할지를 제어하는 learning_rate가 있다. 학습률이 크면 트리 보정을 강하게 해서 복잡한 모델을 만든다. 
+
+```python 
+In:
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+
+cancer = load_breast_cancer()
+X_train, X_test, y_train, y_test = train_test_split(cancer.data, cancer.target, random_state=0)
+gbrt = GradientBoostingClassifier(random_state=0)
+gbrt.fit(X_train, y_train)
+
+print(f"훈련 세트 정확도: {gbrt.score(X_train, y_train):.3f}")
+print(f"테스트 세트 정확도: {gbrt.score(X_test, y_test):.3f}")
+```
+
+```python 
+Out:
+훈련 세트 정확도: 1.000
+테스트 세트 정확도: 0.965
+```
+
+
+
+훈련세트가 1.0의 정확도를 가지므로 과대 적합됨을 추측할 수 있다. 이를 개선하기 위해서 트리의 최대 깊이를 줄여 사전 가지치기를 하거나 학습률을 낮출 수 있다. 
+
+```python 
+In:
+gbrt = GradientBoostingClassifier(random_state=0, max_depth=1)
+gbrt.fit(X_train, y_train)
+
+print(f"훈련 세트 정확도: {gbrt.score(X_train, y_train):.3f}")
+print(f"테스트 세트 정확도: {gbrt.score(X_test, y_test):.3f}")
+```
+
+```python 
+Out:
+훈련 세트 정확도: 0.991
+테스트 세트 정확도: 0.972
+```
+
+```python 
+In:
+gbrt = GradientBoostingClassifier(random_state=0, learning_rate=.01)
+gbrt.fit(X_train, y_train)
+
+print(f"훈련 세트 정확도: {gbrt.score(X_train, y_train):.3f}")
+print(f"테스트 세트 정확도: {gbrt.score(X_test, y_test):.3f}")
+```
+
+```python 
+Out:
+훈련 세트 정확도: 0.988
+테스트 세트 정확도: 0.965
+```
+
+
+
+다음은 그래디언트 부스팅 회귀 모델의 특성 중요도를 시각화 한 것이다.
+
+```python 
+def plot_feature_importances_cancer(model):
+  n_features = cancer.data.shape[1]
+  plt.barh(range(n_features), model.feature_importances_, align='center')
+  plt.yticks(np.arange(n_features), cancer.feature_names)
+  plt.xlabel("특성 중요도")
+  plt.ylabel("특성")
+  plt.ylim(-1, n_features)
+
+gbrt = GradientBoostingClassifier(random_state=0, max_depth=1)
+gbrt.fit(X_train, y_train)
+
+plot_feature_importances_cancer(gbrt)
+```
+
+![](./Figure/2_3_6_3.JPG)
+
+
+
+대규모 머신러닝 문제에 그래디언트 부스팅을 적용하려면 xgboost 패키지를 고려해보자.
+
+[xgboost]: https://xgboost.readthedocs.io/en/latest/
+
+
+
+##### 장단점과 매개변수
+
+그래디언트 부스팅 결정 트리의 가장 큰 단점은 매개변수를 잘 조정해야한다는 것과 훈련 시간이 길다는 것이다. 그러나 트리 기반 모델의 특성 상 특성의 스케일을 조정하지 않아도 되고 이진 특성이나 연속적인 특성에 상관 없이 잘 동작한다. 희소한 고차원 데이터에는 잘 동작 하지 않는다.
+
+보통 learning_rate를 낮추면 비슷한 복잡도의 모델을 만들기 위해서 더 많은 트리를 추가해야 한다. 랜덤 포레스트와는 달리 n_estimators를 크게 하면 모델이 복잡해지고 과대적합할 가능성이 커지므로 가능한 시간과 메모리 한도에서 n_estimators를 맞추고 learning_rate를 찾는 것이 좋다.
+
+그 밖에 max_depth, max_leaf_nodes 등의 사전 가지치기 매개변수를 조정하는 것이 필요하고 max_depth를 작게 설정하여 트리의 깊이가 5보다 깊어지지 않게 하는 것이 필요하다. 
