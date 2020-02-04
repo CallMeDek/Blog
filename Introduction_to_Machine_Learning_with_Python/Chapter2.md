@@ -1264,3 +1264,114 @@ plot_feature_importances_cancer(gbrt)
 보통 learning_rate를 낮추면 비슷한 복잡도의 모델을 만들기 위해서 더 많은 트리를 추가해야 한다. 랜덤 포레스트와는 달리 n_estimators를 크게 하면 모델이 복잡해지고 과대적합할 가능성이 커지므로 가능한 시간과 메모리 한도에서 n_estimators를 맞추고 learning_rate를 찾는 것이 좋다.
 
 그 밖에 max_depth, max_leaf_nodes 등의 사전 가지치기 매개변수를 조정하는 것이 필요하고 max_depth를 작게 설정하여 트리의 깊이가 5보다 깊어지지 않게 하는 것이 필요하다. 
+
+
+
+##### 2.3.7 커널 서포트 벡터 머신
+
+**커널 서포트 벡터 머신(Kernelized support vector machines)** 의 수학적 정의는 다음을 참조.
+
+[The Elements of Statistical Learning 12장]: https://web.stanford.edu/~hastie/ElemStatLearn//
+
+
+
+##### 선형 모델과 비선형 특성
+
+직선과 초평면은 유연하지 못하여 저차원 데이터 세트에서는 선형 모델이 제한적이다.  선형 모델을 유연하게 만드는 한 가지 방법은 특성끼리 곱하거나 거듭제곱하는 방식으로 새로운 특성을 추가 하는 것이다.
+
+
+
+``````python
+from sklearn.datasets import make_blobs
+
+X, y = make_blobs(centers=4, random_state=8)
+y = y % 2
+
+mglearn.discrete_scatter(X[:, 0], X[:, 1], y)
+plt.xlabel("특성 0")
+plt.ylabel("특성 1")
+``````
+
+![](./Figure/2_3_7_1.JPG)
+
+```python 
+from sklearn.svm import LinearSVC
+
+linear_svm = LinearSVC().fit(X, y)
+mglearn.plots.plot_2d_separator(linear_svm, X)
+mglearn.discrete_scatter(X[:, 0], X[:, 1], y)
+plt.xlabel("특성 0")
+plt.ylabel("특성 1")
+```
+
+![](./Figure/2_3_7_2.JPG)
+
+분류를 위한 선형 모델은 직선으로만 데이터를 나눌 수 있기 때문에 위와 같은 데이터 세트에는 잘 맞지 않는다.  앞에서 언급한대로 두 번째 특성을 제곱한 특성1 ** 2를 새로운 특성으로 추가하면 이 데이터는 특성이 3개이므로 3차원 데이터 포인트로 표현될 수 있다. 
+
+```python 
+from mpl_toolkits.mplot3d import Axes3D, axes3d
+
+X_new = np.hstack([X, X[:, 1:] ** 2])
+
+figure = plt.figure()
+ax = Axes3D(figure, elev=-152, azim=-26)
+mask = y == 0
+ax.scatter(X_new[mask, 0], X_new[mask, 1], X_new[mask, 2], c='b', cmap=mglearn.cm2, s=60, edgecolor='k')
+ax.scatter(X_new[~mask, 0], X_new[~mask, 1], X_new[~mask, 2], c='r', marker='^', cmap=mglearn.cm2, s=60, edgecolor='k')
+ax.set_xlabel("특성0")
+ax.set_ylabel("특성1")
+ax.set_zlabel("특성1 ** 2")
+```
+
+![](./Figure/2_3_7_3.JPG)
+
+
+
+새로운 데이터세트에서는 선형 모델과 3차원 공간의 평면을 사용해 두 클래스를 구분할 수 있게 된다.
+
+```python 
+linear_svm_3d = LinearSVC().fit(X_new, y)
+coef, intercept = linear_svm_3d.coef_.ravel(), linear_svm_3d.intercept_
+
+figure = plt.figure()
+ax = Axes3D(figure, elev=-152, azim=-26)
+xx = np.linspace(X_new[:, 0].min() - 2, X_new[:, 0].max() + 2, 50)
+yy = np.linspace(X_new[:, 1].min() - 2, X_new[:, 1].max() + 2, 50)
+
+XX, YY = np.meshgrid(xx, yy)
+ZZ = (coef[0]*XX + coef[1]*YY +intercept) / -coef[2]
+ax.plot_surface(XX, YY, ZZ, rstride=8, cstride=8, alpha=.3)
+ax.scatter(X_new[mask, 0], X_new[mask, 1], X_new[mask, 2], c='b', cmap=mglearn.cm2, s=60, edgecolor='k')
+ax.scatter(X_new[~mask, 0], X_new[~mask, 1], X_new[~mask, 2], c='r', marker='^', cmap=mglearn.cm2, s=60, edgecolor='k')
+ax.set_xlabel("특성0")
+ax.set_ylabel("특성1")
+ax.set_zlabel("특성1 ** 2")
+```
+
+![](./Figure/2_3_7_4.JPG)
+
+
+
+이를 원래 특성으로 투영해보면 선형 SVM 모델은 더 이상 선형이 아니게 된다. 
+
+```python 
+ZZ = YY ** 2
+dec = linear_svm_3d.decision_function(np.c_[XX.ravel(), YY.ravel(), ZZ.ravel()])
+plt.contourf(XX, YY, dec.reshape(XX.shape), levels = [dec.min(), 0, dec.max()], cmap=mglearn.cm2, alpha=.5)
+mglearn.discrete_scatter(X[:, 0], X[:, 1], y)
+plt.xlabel("특성 0")
+plt.ylabel("특성 1")
+```
+
+![](./Figure/2_3_7_5.JPG)
+
+
+
+##### 커널 기법
+
+수학적 기교를 사용하여 앞에서와 같은 새로운 특성을 많이 만들지 않고도 고차원에서 분류기를 학습 시킬 수 있는 방법이 있는데 이를 **커널 기법(Kernel trick)** 이라고 한다. 실제로 데이터를 확장하지 않고도 확장된 특성에 대한 데이터 포인트들의 거리(스칼라 곱)를 계산한다.
+
+서포트 벡터 머신에서 데이터를 고차원 공간에 매핑하는데 주로 사용되는 방법은 두 가지이다. 
+
+- 다항식 커널 - 원래 특성의 가능한 조합을 지정된 차수까지 모두 계산
+- RBF(Radial basis function) or 가우시안(Gaussian) 커널 - 지수 함수의 테일러 전개를 이용하여 무한한 다항식 차원으로 매핑하는 것으로 모든 차수의 모든 다항식을 고려한다. 특성의 중요도는 고차항이 될수록 줄어든다.
