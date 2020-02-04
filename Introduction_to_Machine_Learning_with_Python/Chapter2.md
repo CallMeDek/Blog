@@ -1251,9 +1251,9 @@ plot_feature_importances_cancer(gbrt)
 
 
 
-대규모 머신러닝 문제에 그래디언트 부스팅을 적용하려면 xgboost 패키지를 고려해보자.
+대규모 머신러닝 문제에 그래디언트 부스팅을 적용하려면 [xgboost](https://xgboost.readthedocs.io/en/latest/)
+ 패키지를 고려해보자.
 
-[xgboost]: https://xgboost.readthedocs.io/en/latest/
 
 
 
@@ -1271,7 +1271,7 @@ plot_feature_importances_cancer(gbrt)
 
 **커널 서포트 벡터 머신(Kernelized support vector machines)** 의 수학적 정의는 다음을 참조.
 
-[The Elements of Statistical Learning 12장]: https://web.stanford.edu/~hastie/ElemStatLearn//
+[The Elements of Statistical Learning 12장](https://web.stanford.edu/~hastie/ElemStatLearn//)
 
 
 
