@@ -497,4 +497,4 @@ plt.xlabel("첫 번째 주성분")
 plt.ylabel("두 번째 주성분")
 ```
 
-![](C:\Users\LAB\Desktop\3_4_1_10.JPG)
+![](./Figure/3_4_1_10.JPG)
