@@ -218,3 +218,283 @@ Out:
 SVM 테스트 정확도: 0.37
 ```
 
+
+
+### 3.4 차원 축소, 특성 추출, 매니폴드 학습
+
+비지도 학습을 이용해 데이터를 변환 시키는 가장 일반적인 이유는 시각화, 압축, 정보가 더 잘 드러나는 표현을 찾기 위함이다.
+
+
+
+##### 3.4.1 주성분 분석(PCA)
+
+**주성분 분석(PCA, Principal component analysis)** 는 특성들이 통계적으로 상관관계가 없도록 데이터 셋을 회전 시키는 기술이다. 회전한 뒤에는 종종 새로운 특성 중 중요한 일부만 선택되기도 한다.
+
+![](./Figure/3_4_1_1.JPG)
+
+첫번째 그래프를 보면 주 성분 분석이 성분 1이라고 하는 분산이 가장 큰 방향을 찾은 것을 볼 수 있다. 이 방향(혹은 벡터)이 데이터에서 가장 많은 정보를 담고 있는 방향이다. 즉, 특성들간의 상관 관계가 가장 큰 방향이다. 그 다음으로 첫 번째 방향과 직각인 방향 중에서 가장 많은 정보를 담고 있는 성분 2를 찾아낸다. 고차원에서는 무수히 많은 직각 방향이 존재할 수 있다. 여기서 방향(화살표의 머리와 꼬리)은 중요하지 않다. 이런 과정을 거쳐 찾은 성분을 **주성분(Principal component)** 이라고 한다. 일반적으로는 원본 특성의 갯수만큼 주성분이 있다. 오른쪽 상단의 그래프와 같이 주성분 1과 2를 각각 x축과 y축에 나란하도록 회전하면 두 축은 상관이 없기 때문에 데이터의 상관관계 행렬(Correlation matrix)의 대각선 방향을 제외하고는 모두 0이 된다. 하단의 그래프들과 같이 중요하다고 생각되는 성분만을 남기고 원래 방향으로 회전하는 기술은 데이터에서 노이즈를 제거하거나 주성분에서 유지되는 정보를 시각화하는데 종종 사용한다. 
+
+
+
+##### PCA를 적용해 유방암 데이터셋 시각화하기
+
+유방암 데이터셋은 특성을 30개나 가지고 있어서 산점도 행렬로 그리기 힘들다. 이를 양성과 음성 두 클래스에 대해 각 특성의 히스토그램으로 표현하면 다음과 같다.
+
+```python 
+from sklearn.datasets import load_breast_cancer
+
+cancer = load_breast_cancer()
+fig, axes = plt.subplots(5, 6, figsize=(20, 10))
+malignant = cancer.data[cancer.target == 0]
+benign = cancer.data[cancer.target == 1]
+
+ax = axes.ravel()
+
+for i in range(30):
+  _, bins = np.histogram(cancer.data[:, i], bins=50)
+  ax[i].hist(malignant[:, i], bins=bins, color=mglearn.cm3(0), alpha=.5)
+  ax[i].hist(benign[:, i], bins=bins, color=mglearn.cm3(2), alpha=.5)
+  ax[i].set_title(cancer.feature_names[i])
+  ax[i].set_yticks(())
+
+ax[0].set_xlabel("특성 크기")
+ax[0].set_ylabel("빈도")
+ax[0].legend(["악성", "양성"], loc='best')
+fig.tight_layout()
+```
+
+![](./Figure/3_4_1_2.JPG)
+
+히스토그램을 보면 어떤 특성이 양성과 음성간의 뚜렷한 차이가 있는지는 확인 할 수 있지만 특성들 간의 상호작용이나 상호작용과 클래스와 연관점은 전혀 알 수 없다. PCA를 사용하면 주요 상호작용을 찾아낼 수 있다. 
+
+
+
+PCA를 적용하기 전에 특성의 스케일을 조정해야한다.
+
+```python 
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler()
+scaler.fit(cancer.data)
+X_scaled = scaler.transform(cancer.data)
+```
+
+
+
+PCA에서는 특잇값 분해(SVD, Singular value decomposition) 방식을 사용해 주성분을 찾는다. fit 메소드에서는 Scipy의 linalg.svd 함수를 이용해 U, s, V 배열을 구한다. transform 메소드에서는 입력 데이터와 주성분 V 행렬의 전치 행렬을 곱하여 변환된 데이터를 구한다. fit_transform에서는 U와 s를 사용해 변환된 데이터를 계산하여 고차원 데이터에서 몇개의 주성분만 고를 경우 성능이 좀 더 좋을 수 있다.
+
+```python 
+In:
+from sklearn.decomposition import PCA
+
+pca= PCA(n_components=2)
+pca.fit(X_scaled)
+
+X_pca = pca.transform(X_scaled)
+print(f"원본 데이터 형태: {str(X_scaled.shape)}")
+print(f"축소된 데이터 형태: {str(X_pca.shape)}")
+```
+
+```python 
+Out:
+원본 데이터 형태: (569, 30)
+축소된 데이터 형태: (569, 2)
+```
+
+```python 
+plt.figure(figsize=(8, 8))
+mglearn.discrete_scatter(X_pca[:, 0], X_pca[:, 1], cancer.target)
+plt.legend(["악성", "양성"], loc='best')
+plt.gca().set_aspect("equal")
+plt.xlabel("첫 번째 주성분")
+plt.ylabel("두 번째 주성분")
+```
+
+![](./Figure/3_4_1_3.JPG)
+
+PCA는 비지도 학습이므로 회전 축을 찾을 때 어떤 클래스 정보도 사용하지 않는다. 단순히 데이터 있는 상관관계만을 고려한다.
+
+
+
+PCA의 단점은 그래프의 두 축을 해석하기가 쉽지 않다는 점이다. 주성분은 원본 데이터에 있는 어떤 방향에 대응하는 여러 특성이 조하뵌 형태이다. 이런 조합은 보통 매우 복잡하다.
+
+```python 
+In:
+print(f"PCA 주성분 형태: {pca.components_.shape}")
+```
+
+```python 
+Out:
+PCA 주성분 형태: (2, 30)
+```
+
+```python 
+In:
+print(f"PCA 주성분:\n{pca.components_}")
+```
+
+```python 
+Out:
+PCA 주성분:
+[[ 0.21890244  0.10372458  0.22753729  0.22099499  0.14258969  0.23928535
+   0.25840048  0.26085376  0.13816696  0.06436335  0.20597878  0.01742803
+   0.21132592  0.20286964  0.01453145  0.17039345  0.15358979  0.1834174
+   0.04249842  0.10256832  0.22799663  0.10446933  0.23663968  0.22487053
+   0.12795256  0.21009588  0.22876753  0.25088597  0.12290456  0.13178394]
+ [-0.23385713 -0.05970609 -0.21518136 -0.23107671  0.18611302  0.15189161
+   0.06016536 -0.0347675   0.19034877  0.36657547 -0.10555215  0.08997968
+  -0.08945723 -0.15229263  0.20443045  0.2327159   0.19720728  0.13032156
+   0.183848    0.28009203 -0.21986638 -0.0454673  -0.19987843 -0.21935186
+   0.17230435  0.14359317  0.09796411 -0.00825724  0.14188335 .27533947]]
+```
+
+각 행은 주성분 하나씩을 나타내고, 중요도에 따라 정렬되어 있다(맨 처음 주성분이 가장 위). 열은 원본 데이터의 특성에 대응하는 값이다. 앞에서 언급한대로 부호는 크게 중요하지 않다.
+
+```python 
+plt.matshow(pca.components_, cmap="viridis")
+plt.yticks([0, 1], ["첫 번째 주성분", "두 번째 주성분"])
+plt.colorbar()
+plt.xticks(range(len(cancer.feature_names)), cancer.feature_names, rotation=60, ha='left')
+plt.xlabel("특성")
+plt.ylabel("주성분")
+```
+
+![](./Figure/3_4_1_4.JPG)
+
+
+
+##### 고유얼굴(eigenface) 특성 추출
+
+```python 
+from sklearn.datasets import fetch_lfw_people
+
+people = fetch_lfw_people(min_faces_per_person=20, resize=.7)
+image_shape = people.images[0].shape
+fig, axes= plt.subplots(2, 5, figsize=(15, 8), subplot_kw={'xticks': (), 'yticks': ()})
+
+for target, image, ax in zip(people.target, people.images, axes.ravel()):
+  ax.imshow(image)
+  ax.set_title(people.target_names[target])
+```
+
+![](./Figure/3_4_1_5.JPG)
+
+```python 
+In:
+print(f"people.images.shape: {people.images.shape}")
+print(f"클래스 개수: {len(people.target_names)}")
+```
+
+```python 
+Out:
+people.images.shape: (3023, 87, 65)
+클래스 개수: 62
+```
+
+```python 
+In:
+counts = np.bincount(people.target)
+for i, (count, name) in enumerate(zip(counts, people.target_names)):
+  print(f"{name:25} {count:3}", end = '    ')
+  if(i + 1) % 3 == 0:
+    print()
+```
+
+![](./Figure/3_4_1_6.JPG)
+
+```python 
+#데이터 편중을 없애기 위해서 사람마다 50개의 이미지만 사용
+mask = np.zeros(people.target.shape, dtype=np.bool)
+for target in np.unique(people.target):
+  mask[np.where(people.target == target)[0][:50]] = 1
+
+X_people = people.data[mask]
+y_people = people.target[mask]
+
+X_people /= 255.
+```
+
+```python 
+In:
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(X_people, y_people, stratify=y_people, random_state=0)
+knn = KNeighborsClassifier(n_neighbors=1)
+knn.fit(X_train, y_train)
+print(f"1-최근접 이웃의 테스트 세트 점수: {knn.score(X_test, y_test):.2f}")
+```
+
+```python 
+Out:
+1-최근접 이웃의 테스트 세트 점수: 0.23
+```
+
+
+
+얼굴의 유사도를 측정하기 위해 원본 픽셀 공간에서 거리를 계산하는 것은 나쁜 방법이다. 이미지의 각 픽셀 값을 다른 이미지에서 동일한 위치에 있는 픽셀 값과 비교하는 방식은 사람이 얼굴 이미지를 인식하는 것과 많이 다르고 얼굴의 특징을 잡아 내기 어렵다. 예를 들어 픽셀을 비교할 때 얼굴 위치가 한 픽셀만 오른쪽으로 이동해도 큰 차이가 난다. 여기에 주성분 분석을 통해 데이터를 주성분으로 변환하여 거리를 계산할 수 있다. PCA의 **화이트닝(Whitening)** 옵션은 주성분의 스케일이 같아지도록 조정한다. 이것은 화이트닝 옵션 없이 주성분으로 변환한 뒤에 StandardScaler를 적용하는 것과 같다(PCA로 변환된 데이터의 표준편차는 linalg.svd 함수에서 반환한 특잇값 배열 s를 샘플 개수의 제곱근으로 나누어 구할 수 있다. PCA 변환은 데이터의 평균을 0으로 만들어 주므로 화이트닝 옵션에서 이 표준편차를 나누어 적용하는 것은 곧 StandardScaler 적용 한 것과 같다).
+
+![](./Figure/3_4_1_7.JPG)
+
+```python 
+In:
+pca = PCA(n_components=100, whiten=True, random_state=0).fit(X_train)
+X_train_pca = pca.transform(X_train)
+X_test_pca = pca.transform(X_test)
+
+print(f"X_train_pca.shape: {X_train_pca.shape}")
+```
+
+```python 
+Out:
+X_train_pca.shape: (1547, 100)
+```
+
+```python 
+In:
+knn = KNeighborsClassifier(n_neighbors=1)
+knn.fit(X_train_pca, y_train)
+print(f"테스트 세트 정확도: {knn.score(X_test_pca, y_test):.2f}")
+```
+
+```python 
+Out:
+테스트 세트 정확도: 0.31
+```
+
+```python 
+In:
+print(f"pca.components_.shape: {pca.components_.shape}")
+```
+
+```python 
+Out:
+pca.components_.shape: (100, 5655)
+```
+
+```python 
+fig, axes = plt.subplots(3, 5, figsize=(15, 12), subplot_kw={'xticks': (), 'yticks': ()})
+for i, (component, ax) in enumerate(zip(pca.components_, axes.ravel())):
+  ax.imshow(component.reshape(image_shape), cmap='viridis')
+  ax.set_title(f"주성분 {i+1}")
+```
+
+![](./Figure/3_4_1_8.JPG)
+
+시각화한 주성분들은 완전히 이해할 수는 없지만 몇몇 주성분이 잡아낸 얼굴 이미지의 특징을 짐작할 수는 있다. 예를 들어 첫 번째 주성분은 얼굴과 배경의 명암 차이를 기록한 것으로 보이고 두 번째 주성분은 오른쪽과 왼쪽 조명의 차이를 담고 있는 것 같아 보인다.
+
+
+
+주성분의 갯수에 따라 이미지가 어떻게 변하는지 확인이 가능하다.
+
+![](./Figure/3_4_1_9.JPG)
+
+
+
+```python 
+mglearn.discrete_scatter(X_train_pca[:, 0], X_train_pca[:, 1], y_train)
+plt.xlabel("첫 번째 주성분")
+plt.ylabel("두 번째 주성분")
+```
+
+![](C:\Users\LAB\Desktop\3_4_1_10.JPG)
