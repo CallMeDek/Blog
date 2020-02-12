@@ -640,4 +640,73 @@ for model, name, ax in zip(models, names, axes):
 
 패턴 추출에 관해서는 독립 성분 분석(ICA), 요인 분석(FA), 희소 코딩(Sparse coding)-딕셔너리(Dictionary 학습)에 관해 설명하고 있는 다음 페이지를 참고.
 
-[Scikit-learn 분해 메서드]https://scikit-learn.org/stable/modules/decomposition.html
+[Scikit-learn 분해 메서드](https://scikit-learn.org/stable/modules/decomposition.html)
+
+
+
+##### 3.4.3 t-SNE를 이용한 매니폴드 학습
+
+**t-SNE(t-Distributed Stochastic Neighbor Embedding)** 알고리즘은 **매니폴드 학습(Manifold learning)** 알고리즘이라고 하는 시각화 알고리즘의 한 종류이다. 시각화가 목적이기 때문에 3개 이상의 특성을 뽑는 경우는 없다. 매니폴드 학습 알고리즘은 훈련 데이터를 새로운 표현으로 변환 시키지만 새로운 데이터(테스트 데이터)에는 적용할 수 없고 훈련했던 데이터만 변환 할 수 있다. 그래서 탐색적 데이터 분석에 유용하지만 지도 학습의 전처리용으로는 사용하지 않는다. t-SNE는 데이터 포인트 사이의 거리를 가장 잘 보존하는 2차원 표현을 찾는다. 각 데이터 포인트를 2차원에 무작위로 표현한 뒤 원본 특성 공간에 가까운 포인트는 가깝게, 멀리 떨어진 포인트는 멀어지게 만든다. 멀리 떨어진 포인트와 거리를 보존하는 것보다 가까이 있는 포인트에 더 많은 비중을 두는데, 이는 이웃 데이터 포인트에 대한 정보를 보존하려고 하는 것이다.
+
+(scikit-learn의 t-SNE 구현은 쿨백-라이블러 발산(Kullback-Leibler divergence) 목적 함수를 최적하기 위해 모멘텀을 적용한 배치 경사 하강법을 사용한다.  TSNE의 method 매개변수의 기본 값은 'barnes_hut'로 그래디언트 계산의 복잡도를 O(N^2)에서 O(NlogN))으로 낮춰주는 반스-헛(Barnes-Hut) 방법이다. 'exact' 옵션은 정확한 계산을 하지만 느리므로 대량의 데이터에는 적합하지 않다.)
+
+```python 
+from sklearn.datasets import load_digits
+
+digits = load_digits()
+fig, axes = plt.subplots(2, 5, figsize=(10, 5), subplot_kw={'xticks': (), 'yticks': ()})
+for ax, img in zip(axes.ravel(), digits.images):
+  ax.imshow(img)
+```
+
+![](./Figure/3_4_3_1.JPG)
+
+
+
+PCA를 사용한 데이터 변환의 시각화
+
+```python 
+from sklearn.decomposition import PCA
+
+pca = PCA(n_components=2)
+pca.fit(digits.data)
+digits_pca = pca.transform(digits.data)
+digits_pca = pca.transform(digits.data)
+colors = ["#476A2A", "#7851B8", "#BD3430", "#4A2D4E", "#875525",
+          "#A83683", "#4E655E", "#853541", "#3A3120","#535D8E"]
+plt.figure(figsize=(10, 10))
+plt.xlim(digits_pca[:, 0].min(), digits_pca[:, 0].max())
+plt.ylim(digits_pca[:, 1].min(), digits_pca[:, 1].max())
+for i in range(len(digits.data)):
+  plt.text(digits_pca[i, 0], digits_pca[i, 1], str(digits.target[i]), 
+           color=colors[digits.target[i]], fontdict={'weight': 'bold', 'size': 9})
+plt.xlabel("첫 번째 주성분")
+plt.ylabel("두 번째 주성분")
+```
+
+![](./Figure/3_4_3_2.JPG)
+
+
+
+t-SNE를 사용한 데이터 변환의 시각화
+
+```python 
+from sklearn.manifold import TSNE
+
+tsne = TSNE(random_state=42)
+digits_tsne = tsne.fit_transform(digits.data)
+colors = ["#476A2A", "#7851B8", "#BD3430", "#4A2D4E", "#875525",
+          "#A83683", "#4E655E", "#853541", "#3A3120","#535D8E"]
+plt.figure(figsize=(10, 10))
+plt.xlim(digits_tsne[:, 0].min(), digits_tsne[:, 0].max())
+plt.ylim(digits_tsne[:, 1].min(), digits_tsne[:, 1].max())
+for i in range(len(digits.data)):
+  plt.text(digits_tsne[i, 0], digits_tsne[i, 1], str(digits.target[i]), 
+           color=colors[digits.target[i]], fontdict={'weight': 'bold', 'size': 9})
+plt.xlabel("t-SNE 특성 0")
+plt.ylabel("t-SNE 특성 1")
+```
+
+![](./Figure/3_4_3_3.JPG)
+
+t-SNE의 매개변수 조정을 고려해 볼만한 매개변수로 perplexity와 early_exaggeration이 있다. perplexity의 값이 크면 더 많은 이웃을 포함하며 작은 그룹이 무시된다. 보통 데이터셋이 클 경우 perplexity 값도 커져야 한다. TSNE 모델은 초기 과정(early exaggeration) 단계와 최적화 단계를 가지는데 early_exaggeration 매개변수는 초기 과장 단계에서 원본 공간의 클러스터들이 얼마나 멀게 2차원에 나타낼지르 정한다. early_exaggeration의 값이 클수록 간격이 커진다.
