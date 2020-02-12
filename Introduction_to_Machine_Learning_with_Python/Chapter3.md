@@ -499,3 +499,145 @@ plt.ylabel("두 번째 주성분")
 ```
 
 ![](./Figure/3_4_1_10.JPG)
+
+
+
+##### 3.4.2 비음수 행렬 분해(NMF)
+
+**NMF(Non-negative matrix factorization)** 는 PCA와 비슷하게 유용한 특성을 뽑아낼 수 있고 차원 축소에도 사용할 수 있다.  PCA와 다른 점은, PCA의 경우, 데이터의 분산이 가장 크고 수직인 성분을 찾았다면 NMF에서는 음수가 아닌 성분과 계수 값을 찾는다. 즉, 주성분과 계수가 0보다 크거나 같다.
+
+이 알고리즘은 오디오 트랙에서 특정 소리를 추출하는 것과 같은 음수가 아닌 특성을 가진 데이터에만 적용 가능하다.
+
+
+
+##### 인위적 데이터에 NMF 적용하기
+
+PCA를 사용할때와는 달리 NMF로 데이터를 다루려면 주어진 데이터가 양수인지 확인해야 한다. 즉 원점(0, 0)에서 데이터로 가는 방향을 추출한 것으로 음수 미포함 성분을 이해할 수 있다.
+
+![](./Figure/3_4_2_1.JPG)
+
+왼쪽 그래프는 성분이 둘인 NMF로, 데이터셋의 모든 포인트를 양수로 이뤄진 두 개의 성분으로 표현 가능하다. 데이터를 완벽하게 재구성할 수 있을만큼 성분이 아주 많다면(특성 개수만큼 많다면) 알고리즘은 데이터의 각 특성의 끝에 위치한 포인트를 가리키는 방향을 선택할 것이다.
+
+(Scikit-learn에서 NMF 알고리즘은 입력 데이터 X, 변환 데이터 W, 성분 H가 X = WH를 만족하는 W, H 행렬을 구하기 위해 행렬의 L2 Norm인 프로베니우스 Norm(Frobenius norm)의 제곱으로 만든 목적 함수  ![](C:\Users\LAB\Desktop\3_4_2_2.JPG) 을 좌표 하강법으로 최소화 한다. 구해진 성분 H는 NMF 객체의 component_ 속성에 저장된다.)
+
+오른쪽 그래프와 같이 하나의 성분만 사용한다면 NMF는 데이터를 가장 잘 표현할 수 있는 평균으로 향하는 성분을 만든다. PCA와는 달리, 성분 개수를 줄이면 특정 방향이 단순히 제거되는 것이 아니라 전체 성분이 완전히 바뀐다. NMF에서의 성분은 순서가 없고 모든 성분을 동등하게 취급한다.
+
+NMF는 난수 생성 초깃 값에 따라 결과가 달라진다. 간단한 예에서는 영향을 주지 않지만 복잡한 데이터에서는 큰 차이를 만들 수 있다.
+
+(NMF에서 기본 초기화 방식은 데이터 평균을 성분의 개수로 나눈 후 제곱근을 구하고, 그런 다음 정규 분포의 난수를 발생시켜 앞에서 구한 제곱근을 곱하여 H와 W 행렬을 만든다. 이는 데이터 평균값을 각 성분과 두 개의 행렬에 나누어 놓는 효과를 발생시킨다.)
+
+
+
+##### 얼굴 이미지에 NMF 적용하기
+
+다음은 NMF를 사용해 데이터를 재구성했을 때 성분의 개수에 따른 이미지의 모습이다.
+
+![](./Figure/3_4_2_3.JPG)
+
+PCA가 재구성 측면에서 최선의 방향을 찾는다면 NMF는 데이터를 인코딩하거나 재구성하는 용도로 사용하기 보다는 데이터에 있는 패턴을 찾는데 활용한다.
+
+
+
+```python 
+from sklearn.decomposition import NMF
+
+nmf = NMF(n_components=15, random_state=0)
+nmf.fit(X_train)
+X_train_nmf = nmf.transform(X_train)
+X_test_nmf = nmf.transform(X_test)
+fig, axes = plt.subplots(3, 5, figsize=(15, 12), subplot_kw={'xticks': (), 'yticks': ()})
+for i, (component, ax) in enumerate(zip(nmf.components_, axes.ravel())):
+  ax.imshow(component.reshape(image_shape))
+  ax.set_title(f"성분 {i}")
+```
+
+![](./Figure/3_4_2_4.JPG)
+
+
+
+위에서 성분3이 오른쪽으로 조금 돌아간 얼굴로 보인 것을 확인할 수 있다. 실제 확인해보면 다음과 같다.
+
+```python 
+compn = 3
+inds = np.argsort(X_train_nmf[:, compn])[::-1]
+fig, axes = plt.subplots(2, 5, figsize=(15, 8), subplot_kw={'xticks': (), 'yticks': ()})
+for i, (ind, ax) in enumerate(zip(inds, axes.ravel())):
+  ax.imshow(X_train[ind].reshape(image_shape))
+```
+
+![](./Figure/3_4_2_5.JPG)
+
+
+
+```python 
+compn = 7
+inds = np.argsort(X_train_nmf[:, compn])[::-1]
+fig, axes = plt.subplots(2, 5, figsize=(15, 8), subplot_kw={'xticks': (), 'yticks': ()})
+for i, (ind, ax) in enumerate(zip(inds, axes.ravel())):
+  ax.imshow(X_train[ind].reshape(image_shape))
+```
+
+![](./Figure/3_4_2_6.JPG)
+
+
+
+다음은 임의의 합성 신호들을 NMF와 PCA로 복원한 예이다.
+
+```python 
+S = mglearn.datasets.make_signals()
+plt.figure(figsize=(6, 1))
+plt.plot(S, '-')
+plt.xlabel("시간")
+plt.ylabel("신호")
+```
+
+![](./Figure/3_4_2_7.JPG)
+
+```python 
+In:
+A = np.random.RandomState(0).uniform(size=(100, 3))
+X = np.dot(S, A.T)
+print(f"측정 데이터 형태: {X.shape}")
+```
+
+```python 
+Out:
+측정 데이터 형태: (2000, 100)
+```
+
+```python 
+In:
+nmf = NMF(n_components=3, random_state=42)
+S_ = nmf.fit_transform(X)
+print(f"복원한 신호 데이터 형태 {S_.shape}")
+```
+
+```python 
+Out:
+복원한 신호 데이터 형태 (2000, 3)
+```
+
+```python 
+from sklearn.decomposition import PCA
+
+pca = PCA(n_components=3)
+H = pca.fit_transform(X)
+```
+
+```python 
+models = [X, S, S_, H]
+names = ['측정 신호 (처음 3개)', '원본 신호', 'NMF로 복원한 신호', 'PCA로 복원한 신호']
+fig, axes = plt.subplots(4, figsize=(8, 4), gridspec_kw={'hspace': .5}, subplot_kw={'xticks': (), 'yticks': ()})
+
+for model, name, ax in zip(models, names, axes):
+  ax.set_title(name)
+  ax.plot(model[:, :3], '-')
+```
+
+![](./Figure/3_4_2_8.JPG)
+
+
+
+패턴 추출에 관해서는 독립 성분 분석(ICA), 요인 분석(FA), 희소 코딩(Sparse coding)-딕셔너리(Dictionary 학습)에 관해 설명하고 있는 다음 페이지를 참고.
+
+[Scikit-learn 분해 메서드]https://scikit-learn.org/stable/modules/decomposition.html
