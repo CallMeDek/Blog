@@ -865,3 +865,179 @@ plt.ylabel("Feature 1")
 ```
 
 ![](./Figure/3_5_1_7.JPG)
+
+
+
+##### 벡터 양자화 또는 분해 메서드로서의 k-평균
+
+k-평균은 클러스터 중심으로 각 데이터를 표현한다. 이를 각 데이터 포인트가 클러스터 중심, 즉 하나의 성분으로 표현된다고 볼 수 있다. k-평균을 이렇게 각 포인트가 하나의 성분으로 분해되는 관점으로 보는 것을 **벡터 양자화(Vector quantization)** 이라고 한다. 
+
+```python 
+from sklearn.model_selection import train_test_split
+from sklearn.decomposition import NMF, PCA
+from sklearn.cluster import KMeans
+
+X_train, X_test, y_train, y_test = train_test_split(X_people, y_people, stratify=y_people, random_state=0)
+nmf = NMF(n_components=100, random_state=0)
+nmf.fit(X_train)
+pca = PCA(n_components=100, random_state=0)
+pca.fit(X_train)
+kmeans = KMeans(n_clusters=100, random_state=0)
+kmeans.fit(X_train)
+X_reconstructed_pca = pca.inverse_transform(pca.transform(X_test))
+X_reconstructed_kmenas = kmeans.cluster_centers_[kmeans.predict(X_test)]
+X_reconstructed_nmf = np.dot(nmf.transform(X_test), nmf.components_)
+fig, axes = plt.subplots(3, 5, figsize=(8, 8), subplot_kw={'xticks': (), 'yticks': ()})
+fig.suptitle("추출한 성분")
+for ax, comp_kmeans, comp_pca, comp_nmf in zip(axes.T, kmeans.cluster_centers_, pca.components_, nmf.components_):
+  ax[0].imshow(comp_kmeans.reshape(image_shape))
+  ax[1].imshow(comp_pca.reshape(image_shape), cmap='viridis')
+  ax[2].imshow(comp_nmf.reshape(image_shape))
+
+axes[0, 0].set_ylabel('kmeans')
+axes[1, 0].set_ylabel('pca')
+axes[2, 0].set_ylabel("nmf")
+
+fig, axes = plt.subplots(4, 5, figsize=(8, 8), subplot_kw={'xticks': (), 'yticks': ()})
+fig.suptitle("재구성")
+for ax, orig, rec_kmeans, rec_pca, rec_nmf in zip(axes.T, X_test, X_reconstructed_kmenas, X_reconstructed_pca,
+                                                  X_reconstructed_nmf):
+  ax[0].imshow(orig.reshape(image_shape))
+  ax[1].imshow(rec_kmeans.reshape(image_shape))
+  ax[2].imshow(rec_pca.reshape(image_shape))
+  ax[3].imshow(rec_nmf.reshape(image_shape))
+
+axes[0, 0].set_ylabel("원본")
+axes[1, 0].set_ylabel("kmeans")
+axes[2, 0].set_ylabel("pca")
+axes[3, 0].set_ylabel("nmf")
+```
+
+![](./Figure/3_5_1_8.JPG)
+
+
+
+k-평균을 사용한 벡터 양자화는 입력 데이터의 차원보다 더 많은 클러스터를 사용해 데이터 인코딩을 할 수 있다. 입력 데이터가 2차원 일때, PCA와 NMF를 사용해 1차원으로 축소하면 데이터의 구조가 완전히 파괴된다. 이때 k-평균은 데이터를 보다 잘 표현 할 수 있다.
+
+```python 
+In:
+X, y = make_moons(n_samples=200, noise=.05, random_state=0)
+
+kmeans = KMeans(n_clusters=10, random_state=0)
+kmeans.fit(X)
+y_pred = kmeans.predict(X)
+
+plt.scatter(X[:, 0], X[:, 1], c=y_pred, s=60, cmap='Paired', edgecolors='black')
+plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], s=60, marker='^', c=range(kmeans.n_clusters), linewidths=2, cmap='Paired', edgecolors='black')
+plt.xlabel("특성 0")
+plt.ylabel("특성 1")
+print(f"클러스터 레이블:\n{y_pred}")
+```
+
+```python 
+Out:
+클러스터 레이블:
+[4 7 6 9 7 7 4 1 4 1 8 3 7 1 0 4 2 3 2 0 5 1 2 1 8 6 7 5 6 2 4 8 1 6 4 5 3
+ 4 0 6 3 8 2 6 7 8 4 0 6 1 0 3 5 9 1 4 2 1 2 8 3 9 7 4 1 9 8 7 8 9 3 9 3 6
+ 1 9 6 4 2 3 5 8 3 5 6 8 4 8 3 5 2 4 5 0 5 7 7 3 9 6 1 5 8 4 9 6 9 8 7 2 0
+ 8 8 9 4 1 2 5 3 4 4 0 6 8 6 0 4 6 1 5 4 0 9 3 1 7 1 9 5 4 6 6 2 8 8 4 6 1
+ 2 6 3 7 4 2 3 8 1 3 2 2 6 1 2 7 3 7 2 3 7 1 2 9 0 0 6 1 5 0 0 2 7 0 5 7 5
+ 2 8 3 9 0 9 2 4 4 6 0 5 6 2 7]
+```
+
+![](./Figure/3_5_1_9.JPG)
+
+각 데이터로부터 클러스터의 중심까지의 거리는 다음과 같이 구할 수 있다(transform 메소드의 리턴값,  # of samples * # of clusters).
+
+```python 
+In:
+distance_features = kmeans.transform(X)
+print(f"클러스터 거리 데이터의 형태 : {distance_features.shape}")
+print(f"클러스터 거리:\n{distance_features}")
+```
+
+```python 
+Out:
+클러스터 거리 데이터의 형태 : (200, 10)
+클러스터 거리:
+[[1.54731274 1.03376805 0.52485524 ... 1.14060718 1.12484411 1.80791793]
+ [2.56907679 0.50806038 1.72923085 ... 0.149581   2.27569325 2.66814112]
+ [0.80949799 1.35912551 0.7503402  ... 1.76451208 0.71910707 0.95077955]
+ ...
+ [1.12985081 1.04864197 0.91717872 ... 1.50934512 1.04915948 1.17816482]
+ [0.90881164 1.77871545 0.33200664 ... 1.98349977 0.34346911 1.32756232]
+ [2.51141196 0.55940949 1.62142259 ... 0.04819401 2.189235   2.63792601]]
+```
+
+k-평균은 대용량 데이터셋에도 잘 작동하지만 scikit-learn은 아주 큰 대규모 데이터셋을 처리할 수 있는 MiniBatchMeans(알고리즘이 반복 될 때 전체 데이터에서 일부를 무작위로 선택해(미니 배치) 클러스터의 중심을 계산한다. batch_size 매개변수로 지정)도 제공한다.
+
+k-평균의 단점은 무작위 초기화를 사용하여 알고리즘의 출력이 난수 초깃값에 따라 달라진다는 점이다. 서로 다른 난수 초깃 값으로 N번(기본 10번) 반복하여 최선의 결과(클러스터의 분산의 합이 작은 것)를 도출해낸다(KMeans의 n_init 매개변수는 알고리즘 전체를 다른 난수 초깃값을 사용해 반복하는 횟수를 지정한다. MiniBatchKMeans의 n_init 매개변수는 최선의 초기 클러스터 중심을 찾는 데 사용하는 반복 횟수를 지정한다). k-평균의 다른 단점은 클러스터의 모양을 가정하고 있어서 활용 범위가 비교적 제한적이고 찾으려하는 클러스터의 개수를 지정해야 한다는 점이다.
+
+
+
+##### 3.5.2 병합 군집
+
+**병합 군집(Agglomerative clustering)** 은 시작할 때 각 포인트를 하나의 클러스터로 지정하고, 어떤 종료 조건을 만족할 때까지 가장 비슷한 두 클러스터를 합쳐 나간다. scikit-learn에서 사용하는 조욜 조건은 클러스터 개수로, 지정된 개수의 클러스터가 남을 때까지 비슷한 클러스터를 합친다. linkage 옵션에서 가장 비슷한 클러스터를 측정하는 방법을 지정하면 이 측정은 항상 두 클러스터 사이에서 이뤄진다. 
+
+- ward - 기본값. 모든 클러스터 내의 분산을 가장 작게 증가시키는 두 클러스터를 합침.  대체로 비슷한 크기의 클러스터 생성
+- average - 클러스터 포인트 사이의 평균 거리가 가장 짧은 두 클러스터를 합침.
+- complete - 최대 연결. 클러스터 포인트 사이의 최대 거리가 가장 짧은 두 클러스터를 합침.
+
+대체로 ward 옵션을 사용하나, 클러스터에 속한 포인트 수가 많이 다를 땐(한 클러스터 다른 것보다 매우 클 때 등) average나 complete가 더 나을 수 있다.
+
+![](./Figure/3_5_2_1.JPG)
+
+
+
+알고리즘의 특성 상 병합 군집은 새로운 데이터 포인트에 대해서는 예측이 불가하다. 그러므로 병합 군집에는 predict 메소드가 없다. 대신 훈련 세트로 모델을 만들고 클러스터 소속 정보를 얻기 위해 fit_predict 메소드를 사용한다.
+
+```python 
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.datasets import make_blobs
+
+X, y = make_blobs(random_state=1)
+
+agg = AgglomerativeClustering(n_clusters=3)
+assignment = agg.fit_predict(X)
+
+mglearn.discrete_scatter(X[:, 0], X[:, 1], assignment)
+plt.legend(["클러스터 0", "클러스터 1", "클러스터 2"], loc='best')
+plt.xlabel("특성 0")
+plt.ylabel('특성 1')
+```
+
+![](./Figure/3_5_2_2.JPG)
+
+
+
+##### 계층적 군집과 덴드로그램
+
+병합 군집은 **계층적 군집(Hierarchical clustering)** 을 만든다. 군집이 반복하여 진행되면 모든 포인트는 하나의 포인트를 가진 클러스터에서 시작하여 마지막 클러스터까지 이동한다. 각 중간 단계는 데이터에 대한 (각기 다른 개수의) 클러스터를 생성한다. 
+
+![](./Figure/3_5_2_3.JPG)
+
+
+
+**덴드로그램(Dendrogram)** 은 다차원 데이터셋의 계층 군집을 시각화 할 수 있다. 
+
+```python 
+from scipy.cluster.hierarchy import dendrogram, ward
+
+X, y = make_blobs(random_state=0, n_samples=12)
+linkage_array = ward(X)
+dendrogram(linkage_array)
+
+ax = plt.gca()
+bounds = ax.get_xbound()
+ax.plot(bounds, [7.25, 7.25], '--', c='k')
+ax.plot(bounds, [4, 4], '--', c='k')
+
+ax.text(bounds[1], 7.25, ' 두 개 클러스터', va='center', fontdict={'size': 15})
+ax.text(bounds[1], 4, ' 세 개 클러스터', va='center', fontdict={'size': 15})
+plt.xlabel("샘플 번호")
+plt.ylabel("클러스터 거리")
+```
+
+![](./Figure/3_5_2_4.JPG)
+
+덴드로그램의 가지의 길이는 합쳐진 클러스터가 얼마나 멀리 떨어져 있는지를 보여준다. '세 개 클러스터'로 표시한 점선이 가로지르는 세 개의 수직선의 길이가 가장 긴데 이것은 세 개에서 두 개로 될 때 꽤 먼 거리의 포인트를 모은다는 뜻이다.
