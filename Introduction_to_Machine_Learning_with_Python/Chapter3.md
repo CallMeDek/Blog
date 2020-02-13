@@ -710,3 +710,158 @@ plt.ylabel("t-SNE 특성 1")
 ![](./Figure/3_4_3_3.JPG)
 
 t-SNE의 매개변수 조정을 고려해 볼만한 매개변수로 perplexity와 early_exaggeration이 있다. perplexity의 값이 크면 더 많은 이웃을 포함하며 작은 그룹이 무시된다. 보통 데이터셋이 클 경우 perplexity 값도 커져야 한다. TSNE 모델은 초기 과정(early exaggeration) 단계와 최적화 단계를 가지는데 early_exaggeration 매개변수는 초기 과장 단계에서 원본 공간의 클러스터들이 얼마나 멀게 2차원에 나타낼지르 정한다. early_exaggeration의 값이 클수록 간격이 커진다.
+
+
+
+### 3.5 군집
+
+**군집(Clustering)** 은 데이터 셋을 **클러스터(Cluster)** 라는 그룹으로 나누는 작업이다. 클러스터 안의 데이터 포인트 끼리는 비슷하고 다른 클러스트의 데이터 포인트와는 구분된다.  군집 알고리즘은 각 데이터 포인트가 어느 클러스터에 속하는지 할당(예측)한다.
+
+
+
+##### 3.5.1 k-평균 군집
+
+***k*-평균(*k*-means)** 군집은 어떤 영역을 대표하는 **클러스터 중심(Cluster center)** 을 찾는다. 먼저 데이터 포인트를 가장 가까운 클러스터 중심에 할당하고, 그런 다음 클러스터에 할당된 데이터 포인트의 평균으로 클러스터 중심을 다시 지정한다. 이 과정은 클러스터에 할당되는 데이터 포인트에 변화가 없을 때까지 진행된다. 
+
+```python 
+mglearn.plots.plot_kmeans_algorithm()
+```
+
+![](./Figure/3_5_1_1.JPG)
+
+
+
+새로운 데이터 포인트가 주어지면 k-평균 알고리즘은 가장 가까운 클러스터 중심을 할당한다.
+
+```python 
+mglearn.plots.plot_kmeans_boundaries()
+```
+
+![](C:\Users\LAB\Desktop\3_5_1_2.JPG)
+
+
+
+```python 
+In:
+from sklearn.datasets import make_blobs
+from sklearn.cluster import KMeans
+
+X, y = make_blobs(random_state=1)
+kmeans = KMeans(n_clusters=3)
+kmeans.fit(X)
+```
+
+```python 
+Out:
+KMeans(algorithm='auto', copy_x=True, init='k-means++', max_iter=300,
+       n_clusters=3, n_init=10, n_jobs=None, precompute_distances='auto',
+       random_state=None, tol=0.0001, verbose=0)
+```
+
+```python 
+In:
+print(f"클러스터 레이블:\n{kmeans.labels_}")
+```
+
+```python 
+Out:
+클러스터 레이블:
+[1 2 2 2 0 0 0 2 1 1 2 2 0 1 0 0 0 1 2 2 0 2 0 1 2 0 0 1 1 0 1 1 0 1 2 0 2
+ 2 2 0 0 2 1 2 2 0 1 1 1 1 2 0 0 0 1 0 2 2 1 1 2 0 0 2 2 0 1 0 1 2 2 2 0 1
+ 1 2 0 0 1 2 1 2 2 0 1 1 1 1 2 1 0 1 1 2 2 0 0 1 0 1]
+```
+
+```python 
+In:
+print(kmeans.predict(X))
+```
+
+```python 
+Out:
+[1 2 2 2 0 0 0 2 1 1 2 2 0 1 0 0 0 1 2 2 0 2 0 1 2 0 0 1 1 0 1 1 0 1 2 0 2
+ 2 2 0 0 2 1 2 2 0 1 1 1 1 2 0 0 0 1 0 2 2 1 1 2 0 0 2 2 0 1 0 1 2 2 2 0 1
+ 1 2 0 0 1 2 1 2 2 0 1 1 1 1 2 1 0 1 1 2 2 0 0 1 0 1]
+```
+
+군집은 각 데이터 포인트가 레이블을 가진다는 면에서 분류와 조금 비슷해 보이나 레이블 자체에 아무 의미가 없고 정답을 모르고 있다는 점에서 다르다. 
+
+
+
+```python 
+mglearn.discrete_scatter(X[:, 0], X[:, 1], kmeans.labels_, markers='o')
+mglearn.discrete_scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], [0, 1, 2], markers='^', markeredgewidth=2)
+```
+
+![](./Figure/3_5_1_3.JPG)
+
+```python 
+fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+
+kmeans = KMeans(n_clusters=2)
+kmeans.fit(X)
+assignments = kmeans.labels_
+
+mglearn.discrete_scatter(X[:, 0], X[:, 1], assignments, ax=axes[0])
+
+kmeans = KMeans(n_clusters=5)
+kmeans.fit(X)
+assignments = kmeans.labels_
+
+mglearn.discrete_scatter(X[:, 0], X[:, 1], assignments, ax=axes[1])
+```
+
+![](./Figure/3_5_1_4.JPG)
+
+
+
+##### k-평균 알고리즘이 실패하는 경우
+
+데이터 셋의 클러스터의 개수를 정확하게 알고 있더라도 k-평균 알고리즘이 항상 이를 구분해낼 수 있는 것은 아니다. 각 클러스터를 정의 하는 것이 중심 하나뿐이므로 클러스터는 둥근 형태로 나타난다. k-평균은 모든 클러스터의 반경이 똑같다고 가정한다. 그래서 클러스터 중심 사이의 정확히 중간에 경계를 그린다.
+
+```python 
+X_varided, y_varied = make_blobs(n_samples=200, cluster_std=[1.0, 2.5, 0.5], random_state=170)
+y_pred = KMeans(n_clusters=3, random_state=0).fit_predict(X_varided)
+mglearn.discrete_scatter(X_varided[:, 0], X_varided[:, 1], y_pred)
+plt.legend(['클러스터 0', '클러스터 1', '클러스터 2'], loc='best')
+plt.xlabel("특성 0")
+plt.ylabel("특성 1")
+```
+
+![](./Figure/3_5_1_5.JPG)
+
+```python 
+X, y = make_blobs(random_state=170, n_samples=600)
+rng = np.random.RandomState(74)
+
+transformation = rng.normal(size=(2, 2))
+X = np.dot(X, transformation)
+
+kmeans = KMeans(n_clusters=3)
+kmeans.fit(X)
+y_pred = kmeans.predict(X)
+
+mglearn.discrete_scatter(X[:, 0], X[:, 1], kmeans.labels_, markers='o')
+mglearn.discrete_scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], [0, 1, 2], markers='^', markeredgewidth=2)
+plt.xlabel("특성 0")
+plt.ylabel("특성 1")
+```
+
+![](./Figure/3_5_1_6.JPG)
+
+```python 
+from sklearn.datasets import make_moons
+
+X, y = make_moons(n_samples=200, noise=.05, random_state=0)
+
+kmeans = KMeans(n_clusters=2)
+kmeans.fit(X)
+y_pred = kmeans.predict(X)
+
+plt.scatter(X[:, 0], X[:, 1], c=y_pred, cmap=mglearn.cm2, s=60, edgecolors='k')
+plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], marker='^', 
+            c=[mglearn.cm2(0), mglearn.cm2(1)], s=100, linewidths=2, edgecolors='k')
+plt.xlabel("Feature 0")
+plt.ylabel("Feature 1")
+```
+
+![](./Figure/3_5_1_7.JPG)
