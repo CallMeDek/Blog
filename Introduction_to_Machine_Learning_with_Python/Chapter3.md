@@ -1041,3 +1041,110 @@ plt.ylabel("클러스터 거리")
 ![](./Figure/3_5_2_4.JPG)
 
 덴드로그램의 가지의 길이는 합쳐진 클러스터가 얼마나 멀리 떨어져 있는지를 보여준다. '세 개 클러스터'로 표시한 점선이 가로지르는 세 개의 수직선의 길이가 가장 긴데 이것은 세 개에서 두 개로 될 때 꽤 먼 거리의 포인트를 모은다는 뜻이다.
+
+
+
+##### 3.5.3 DBSCAN
+
+**DBSCAN(Density-based spatial clustering of applications with noise)** 는 클러스터의 개수를 미리 지정할 필요가 없다. 복잡한 형상도 찾을 수 있고 어떤 클래스에도 속하지 않는 포인트를 구분할 수 있다. 병합 군집이나 *k*-평균보다는 느리지만 비교적 큰 데이터 셋에도 적용할 수 있다. 
+
+DBSCAN은 특성 공간에서 가까이 있는 데이터가 많아 붐비는 지역의 포인트를 찾는다. 이런 지역을 특성 공간의 **밀집 지역(Dense region)** 이라고 한다. 데이터의 밀집 지역을 한 클러스터로 구성하며 비교적 비어 있는 지역을 경계로 다른 클러스터와 구분한다.
+
+밀집 지역에 있는 포인트를 **핵심 샘플(핵심 포인트)** 라고 하며 다음과 같이 정의한다. 두 개의 매개변수 min_samples와 eps가 있는데 한 데이터 포인트 안에서 eps 거리 안에 데이터 포인트가 min_samples 만큼 있으면 이 데이터 포인트를 핵심 샘플로 분류한다(거리를 재는 방식은 metric 매개변수에서 조정 가능하며 기본 값은 'Euclidean'이다). eps보다 가까운 핵심 샘플은 DBSCAN에 의해 동일한 클러스터로 합쳐진다. 
+
+1.   무작위로 포인트를 선택.
+
+2. 1에서 선택한 포인트에서 eps 거리 안의 모든 포인트를 찾는다
+
+    2-1. 만약 eps 거리 안에 있는 포인트 수가 min_samples보다 적다면 어떤 클래스에도 속하지 않
+
+   ​        는 잡음(Noise)로 레이블한다.
+
+    2-2. eps 거리 안에 min_samples보다 많은 포인트가 있다면 그 포인트는 핵심 샘플로 레이블하고 
+
+   ​        새로운 클러스터 레이블을 할당한다.
+
+3. 2에서 레이블을 할당한 포인트의 eps 거리 내의 모든 이웃을 살핀다.
+
+    3-1. 이웃이 아직 어떤 클러스터에도 할당 되지 않았다면 바로 직전에 만들었던 클러스터 레이블     
+
+   ​         을 할당 한다.
+
+    3-2. 이웃이 핵심 샘플이면 그 포인틔 이웃을 차례로 방문 한다.
+
+4. 클러스터는 eps 거리 안에 더 이상 핵심 샘플이 없을 때까지 커진다. 
+
+5. 아직 방문하지 않은 포인트를 선택하여 같은 과정을 반복한다.
+
+포인트의 종류는 3가지 이다(핵심, 경계 - 핵심 포인트에서 eps 거리 안에 있는 포인트, 잡음). DBSCAN을 한 데이터 셋에 여러번 실행하면 핵심 포인트의 군집은 항상 같고 매번 같은 포인트를 잡음으로 레이블 한다. 그러나 경계 포인트는 한 개 이상의 클러스터 핵심 샘플의 이웃이 될 수 있는데 이때는 포인트를 방문하는 순서에 따라 클러스터 레이블이 바뀔 수 있다. 
+
+병합 군집과 마찬가지로 새로운 테스터 데이터에 대해 예측 할 수 없으므로 fit_predict 메소드를 사용하여 군집과 클러스터 레이블을 한 번에 계산한다.
+
+```python 
+In:
+from sklearn.cluster import DBSCAN
+from sklearn.datasets import make_blobs
+
+X, y = make_blobs(random_state=0, n_samples=12)
+
+dbscan = DBSCAN()
+clusters = dbscan.fit_predict(X)
+print(f"클러스터 레이블:\n{clusters}")
+```
+
+```python 
+Out:
+클러스터 레이블:
+[-1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1]    
+```
+
+여기서는 작은 데이터셋에는 적합하지 않은 eps와 min_samples의 기본 값 때문에 모든 포인트에 잡음을 의미하는 -1이 부여되었다.
+
+
+
+```python 
+In:
+mglearn.plots.plot_dbscan()
+```
+
+```python 
+Out:
+min_samples: 2 eps: 1.000000  클러스터: [-1  0  0 -1  0 -1  1  1  0  1 -1 -1]
+min_samples: 2 eps: 1.500000  클러스터: [0 1 1 1 1 0 2 2 1 2 2 0]
+min_samples: 2 eps: 2.000000  클러스터: [0 1 1 1 1 0 0 0 1 0 0 0]
+min_samples: 2 eps: 3.000000  클러스터: [0 0 0 0 0 0 0 0 0 0 0 0]
+min_samples: 3 eps: 1.000000  클러스터: [-1  0  0 -1  0 -1  1  1  0  1 -1 -1]
+min_samples: 3 eps: 1.500000  클러스터: [0 1 1 1 1 0 2 2 1 2 2 0]
+min_samples: 3 eps: 2.000000  클러스터: [0 1 1 1 1 0 0 0 1 0 0 0]
+min_samples: 3 eps: 3.000000  클러스터: [0 0 0 0 0 0 0 0 0 0 0 0]
+min_samples: 5 eps: 1.000000  클러스터: [-1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1]
+min_samples: 5 eps: 1.500000  클러스터: [-1  0  0  0  0 -1 -1 -1  0 -1 -1 -1]
+min_samples: 5 eps: 2.000000  클러스터: [-1  0  0  0  0 -1 -1 -1  0 -1 -1 -1]
+min_samples: 5 eps: 3.000000  클러스터: [0 0 0 0 0 0 0 0 0 0 0 0]
+```
+
+![](./Figure/3_5_3_1.JPG)
+
+ eps를 증가시키면(왼쪽에서 오른쪽) 하나의 클러스터에 더 많은 포인트가 포함된다. 이는 클러스터를 커지게 하고 여러 클러스터를 하나로 합치게도 만든다. min_smaples를 키우면(위에서 아래) 핵심 포인트 수가 줄어들며 잡음 포인트가 늘어난다.  eps 매개 변수는 가까운 포인트의 범위를 결정하기 때문에 중요하다. eps를 매우 작게 하면 어떤 포인트도 핵심 포인트가 되지 못하고, 모든 포인트가 잡음 포인트가 될 수 있다. eps를 매우 크게 하면 모든 포인트가 단 하나의 클러스터에 속하게 된다. min_smaples 설정은 덜 조밀한 지역에 있는 포인트들이 잡음이 될지 하나의 클러스터가 될 지를 결정하는 데 중요한 역할을 한다. min_samples를 늘리면 min_samples의 수보다 작은 클러스터들은 잡음이 된다. 따라서 min_samples는 클러스터의 최소 크기를 결정한다. 
+
+적절한 eps 값을 쉽게 찾으려면 StandardScaler나 MinMaxScaler로 모든 특성의 스케일을 비슷한 범위로 조정해 주는 것이 좋다.
+
+```python 
+from sklearn.datasets import make_moons
+from sklearn.preprocessing import StandardScaler
+
+X, y = make_moons(n_samples=200, noise=.05, random_state=0)
+
+scaler = StandardScaler()
+scaler.fit(X)
+X_scaled = scaler.transform(X)
+
+dbscan = DBSCAN()
+clusters = dbscan.fit_predict(X_scaled)
+plt.scatter(X_scaled[:, 0], X_scaled[:, 1], c=clusters, cmap=mglearn.cm2, s=60,
+            edgecolors='black')
+plt.xlabel("특성 0")
+plt.ylabel("특성 1")
+```
+
+![](./Figure/3_5_3_2.JPG)
