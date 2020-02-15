@@ -1148,3 +1148,109 @@ plt.ylabel("특성 1")
 ```
 
 ![](./Figure/3_5_3_2.JPG)
+
+
+
+
+##### 3.5.4 군집 알고리즘의 비교와 평가
+
+##### 타깃값으로 군집 평가하기
+
+군집 알고리즘의 결과를 실제 정답 클러스터와 비교하여 평가할 수 있는 지표들이 있다. 
+
+1(최적일 때)와 0(무작위로 분류될 때) 사이의 값을 제공하는 **ARI(Adjusted rand index)** 와 **NMI(Normalized mutual information)** 이다.
+
+무작위로 클러스터에 포인트를 할당할 경우 ARI 값은 0에 가까워지며, 무작위 할당보다도 나쁘게 군집되면 음수 값을 가질 수 있다. NMI를 위한 함수 사용법은 ARI의 adjusted_rand_score와 같다.
+
+```python 
+from sklearn.metrics.cluster import adjusted_rand_score
+from sklearn.datasets import make_moons
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.cluster import DBSCAN
+from sklearn.cluster import AgglomerativeClustering
+
+X, y = make_moons(n_samples=200, noise=.05, random_state=0)
+
+scaler = StandardScaler()
+scaler.fit(X)
+X_scaled = scaler.transform(X)
+
+fig, axes = plt.subplots(1, 4, figsize=(15, 3), subplot_kw={'xticks':(), 'yticks':()})
+
+algorithms = [KMeans(n_clusters=2), AgglomerativeClustering(n_clusters=2), DBSCAN()]
+
+random_state = np.random.RandomState(seed=0)
+random_clusters = random_state.randint(low=0, high=2, size=len(X))
+
+axes[0].scatter(X_scaled[:, 0], X_scaled[:, 1], c=random_clusters, cmap=mglearn.cm3, s=60,
+                edgecolors='black')
+axes[0].set_title(f"무작위 할당 - ARI: {adjusted_rand_score(y, random_clusters):.2f}")
+
+for ax, algorithm in zip(axes[1:], algorithms):
+  clusters = algorithm.fit_predict(X_scaled)
+  ax.scatter(X_scaled[:, 0], X_scaled[:, 1], c=clusters, cmap=mglearn.cm3, s=60,
+             edgecolors='black')
+  ax.set_title(f"{algorithm.__class__.__name__} - ARI: {adjusted_rand_score(y, clusters):.2f}")
+```
+
+![](./Figure/3_5_4_1.JPG)
+
+
+
+다음은 흔히 하는 실수로 군집 모델을 평가할 때 accuracy_score를 사용하는 것이다.
+
+```python 
+In:
+from sklearn.metrics import accuracy_score
+
+clusters1 = [0, 0, 1, 1, 0]
+clusters2 = [1, 1, 0, 0, 1]
+
+print(f"정확도: {accuracy_score(clusters1, clusters2):.2f}")
+print(f"ARI: {adjusted_rand_score(clusters1, clusters2):.2f}")    
+```
+
+```python 
+Out:
+정확도: 0.00
+ARI: 1.00    
+```
+
+
+
+##### 타깃값 없이 군집 평가하기
+
+앞에서 설명한 ARI 같은 방법에는 큰 문제점이 있다. 보통 군집 알고리즘을 적용할 때는 그 결과와 비교할 타깃이 없다. 데이터가 속한 정확한 클러스터를 알고 있다면 지도 학습 모델을 만들 것이다. 그러므로 ARI나 NMI 같은 지표는 알고리즘을 개발할 때나 도움이 된다.
+
+타깃값이 필요 없는 군집용 지표로 **실루엣 계수(Silhouette coefficient)** 가 있다.  실제로 잘 동작하지는 않는다. 실루엣 점수는 클러스터의 밀집 정도를 계산하는 것으로, 높을수록 좋고 최대 점수는 1이다(-1은 잘못된 군집, 0은 중첩된 클러스터를 뜻한다). 밀집된 클러스터가 좋긴 하나 모양이 복잡할 때는 밀집도를 활용한 평가가 잘 들어맞지 않는다.
+
+```python 
+from sklearn.metrics.cluster import silhouette_score
+
+X, y = make_moons(n_samples=200, noise=.05, random_state=0)
+scaler = StandardScaler()
+scaler.fit(X)
+X_scaled = scaler.transform(X)
+
+fig, axes = plt.subplots(1, 4, figsize=(15, 3), subplot_kw={'xticks': (), 'yticks': ()})
+
+random_state = np.random.RandomState(seed=0)
+random_clusters = random_state.randint(low=0, high=2, size=len(X))
+
+algorithms = [KMeans(n_clusters=2), AgglomerativeClustering(n_clusters=2), DBSCAN()]
+
+axes[0].scatter(X_scaled[:, 0], X_scaled[:, 1], c=random_clusters, cmap=mglearn.cm3, s=60,
+                edgecolors='black')
+axes[0].set_title(f"무작위 할당 - ARI: {silhouette_score(X_scaled, random_clusters):.2f}")
+
+for ax, algorithm in zip(axes[1:], algorithms):
+  clusters = algorithm.fit_predict(X_scaled)
+  ax.scatter(X_scaled[:, 0], X_scaled[:, 1], c=clusters, cmap=mglearn.cm3, s=60,
+             edgecolors='black')
+  ax.set_title(f"{algorithm.__class__.__name__} - ARI: {silhouette_score(X_scaled, clusters):.2f}")
+```
+
+![](./Figure/3_5_4_2.JPG)
+
+위 그림과 같이 DBSCAN의 결과가 낫지만 *k*-평균의 실루엣 점수가 더 높다. 클러스터 평가에 더 적합한 전략은 견고성 기반(Robustness-based)의 지표이다. 데이터에 잡음 포인트를 추가하거나 여러 가지 매개변수 설정으로 알고리즘을 실행하고 그 결과를 비교하는 것이다.  매개변수와 데이터에 변화를 주며 반복해도 결과가 일정하다면 신뢰할만 하다고 말할 수 있다. 군집 모델이 매우 안정적이거나 실루엣 점수가 높다고 해도, 군집에 어떤 유의미한 것이 있는지 또는 군집이 데이터에 흥미로운 면을 반영하고 있는지는 알 수 없다. 이를 확인하는 유일한 방법은 클러스터를 직접 확인하는 것이다. 
