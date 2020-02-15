@@ -1254,3 +1254,318 @@ for ax, algorithm in zip(axes[1:], algorithms):
 ![](./Figure/3_5_4_2.JPG)
 
 위 그림과 같이 DBSCAN의 결과가 낫지만 *k*-평균의 실루엣 점수가 더 높다. 클러스터 평가에 더 적합한 전략은 견고성 기반(Robustness-based)의 지표이다. 데이터에 잡음 포인트를 추가하거나 여러 가지 매개변수 설정으로 알고리즘을 실행하고 그 결과를 비교하는 것이다.  매개변수와 데이터에 변화를 주며 반복해도 결과가 일정하다면 신뢰할만 하다고 말할 수 있다. 군집 모델이 매우 안정적이거나 실루엣 점수가 높다고 해도, 군집에 어떤 유의미한 것이 있는지 또는 군집이 데이터에 흥미로운 면을 반영하고 있는지는 알 수 없다. 이를 확인하는 유일한 방법은 클러스터를 직접 확인하는 것이다. 
+
+
+
+##### 얼굴 데이터셋으로 군집 알고리즘 비교
+
+LFW 데이터셋으로 군집 알고리즘을 비교한다.
+
+```python 
+from sklearn.datasets import fetch_lfw_people
+from sklearn.decomposition import PCA
+
+people = fetch_lfw_people(min_faces_per_person=20, resize=.7)
+image_shape = people.images[0].shape
+
+#데이터 편중을 없애기 위해서 사람마다 50개의 이미지만 사용
+mask = np.zeros(people.target.shape, dtype=np.bool)
+for target in np.unique(people.target):
+  mask[np.where(people.target == target)[0][:50]] = 1
+
+X_people = people.data[mask]
+y_people = people.target[mask]
+
+X_people /= 255.
+
+pca = PCA(n_components=100, whiten=True, random_state=0)
+pca.fit_transform(X_people)
+X_pca = pca.transform(X_people)
+```
+
+
+
+##### DBSCAN으로 얼굴 데이터셋 분석하기
+
+```python 
+In:
+dbscan = DBSCAN()
+labels = dbscan.fit_predict(X_pca)
+print(f"고유한 레이블: {np.unique(labels)}")    
+```
+
+```python 
+Out:
+고유한 레이블: [-1]
+```
+
+```python 
+In:
+dbscan = DBSCAN(min_samples=3)
+labels = dbscan.fit_predict(X_pca)
+print(f"고유한 레이블: {np.unique(labels)}")
+```
+
+```python 
+Out:
+고유한 레이블: [-1]    
+```
+
+```python 
+In:
+dbscan = DBSCAN(min_samples=3, eps=15)
+labels = dbscan.fit_predict(X_pca)
+print(f"고유한 레이블: {np.unique(labels)}")
+```
+
+```python 
+Out:
+고유한 레이블: [-1  0]
+```
+
+
+
+잡음 포인트를 확인하면 다음과 같다
+
+```python 
+In:
+#bincount는 음수를 받을 수 없어서 labels에 1을 더함.
+#반환 값의 첫 번째 원소는 잡음 포인트의 수.
+print(f"클러스터별 포인트 수: {np.bincount(labels+1)}")
+```
+
+```python 
+Out:
+클러스터별 포인트 수: [  32 2031]
+```
+
+```python 
+noise = X_people[labels==-1]
+
+fig, axes = plt.subplots(3, 9, subplot_kw={'xticks':(), 'yticks': ()}, 
+                         figsize=(12, 4))
+for image, ax in zip(noise, axes.ravel()):
+  ax.imshow(image.reshape(image_shape), vmin=0, vmax=1)
+```
+
+![](./Figure/3_5_4_3.JPG)
+
+손이 얼굴 앞을 가린다던지, 잔에 든 것을 마시는 사람 사진 등 특이한 것을 찾아내는 이런 종류의 분석을 **이상치 검출(Outlier dectection)** 이라고 한다. 
+
+
+
+```python 
+In:
+for eps in [2*i + 1 for i in range(7)]:
+  print(f"\neps={eps}")
+  dbscan = DBSCAN(eps=eps, min_samples=3)
+  labels = dbscan.fit_predict(X_pca)
+  print(f"클러스터의 수: {len(np.unique(labels))}")
+  print(f"클러스터 크기: {np.bincount(labels + 1)}")
+```
+
+```python 
+Out:
+eps=1
+클러스터의 수: 1
+클러스터 크기: [2063]
+
+eps=3
+클러스터의 수: 1
+클러스터 크기: [2063]
+
+eps=5
+클러스터의 수: 1
+클러스터 크기: [2063]
+
+eps=7
+클러스터의 수: 14
+클러스터 크기: [2004    3   14    7    4    3    3    4    4    3    3    5    3    3]
+
+eps=9
+클러스터의 수: 4
+클러스터 크기: [1307  750    3    3]
+
+eps=11
+클러스터의 수: 2
+클러스터 크기: [ 413 1650]
+
+eps=13
+클러스터의 수: 2
+클러스터 크기: [ 120 1943]
+```
+
+```python 
+dbscan = DBSCAN(min_samples=3, eps=7)
+labels = dbscan.fit_predict(X_pca)
+
+for cluster in range(max(labels) + 1):
+    mask = labels == cluster
+    n_images =  np.sum(mask)
+    fig, axes = plt.subplots(1, n_images, figsize=(n_images*1.5, 4),
+                             subplot_kw={'xticks': (), 'yticks': ()})
+    i = 0
+    for image, label, ax in zip(X_people[mask], y_people[mask], axes):
+        ax.imshow(image.reshape(image_shape), vmin=0, vmax=1)
+        ax.set_title(people.target_names[label].split()[-1])
+        i += 1
+    for j in range(len(axes) - i):
+        axes[j+i].imshow(np.array([[1]*65]*87), vmin=0, vmax=1)
+        axes[j+i].axis('off')
+```
+
+![](./Figure/3_5_4_4.JPG)
+
+
+
+##### k-평균으로 얼굴 데이터셋 분석하기
+
+DBSCAN에서는 하나의 큰 클러스터 외에는 만들 수 없다는 것을 바로 앞 예제에서 확인했다. 이에 비해 병합 군집과 *K*-평균은 비슷한 크기의 클러스터들을 만들 수 있지만 클러스터 개수를 지정해야만 한다. 
+
+```python 
+In:
+km = KMeans(n_clusters=10, random_state=0)
+labels_km = km.fit_predict(X_pca)
+print(f"k-평균 클러스터 크기: {np.bincount(labels_km)}")
+```
+
+```python 
+Out:
+k-평균 클러스터 크기: [282 226 105 268 151 324 202 208 208  89]
+```
+
+
+
+*k*-평균의 클러스터 중심을 pca.inverse_transform을 사용해 원본 공간으로 되돌린 후 시각화하면 다음과 같다.
+
+```python 
+fig, axes = plt.subplots(2, 5, subplot_kw={'xticks': (), 'yticks': ()},
+                         figsize=(12, 4))
+for center, ax in zip(km.cluster_centers_, axes.ravel()):
+  ax.imshow(pca.inverse_transform(center).reshape(image_shape),
+            vmin=0, vmax=1)
+```
+
+![](./Figure/3_5_4_5.JPG)
+
+
+
+다음은 *k*-평균으로 찾은 클러스터의 중심, 중심에서 가장 가까운 5개 포인트, 클러스터 중심에서 가장 먼 5개의 포인트이다.
+
+![](./Figure/3_5_4_6.JPG)
+
+*k*-평균이 잡음 포인트 개념이 없기 때문에 클러스터에서 멀리 떨어진 포인트들은 중심 포인트와 관련이 별로 없어 보인다. 클러스터 수를 늘리면 알고리즘이 미세한 차이를 더 찾을 수 있지만 너무 많이 늘리면 직접 조사하는 것이 더 어려워진다.
+
+
+
+##### 병합 군집으로 얼굴 데이터셋 분석하기
+
+```python 
+In:
+agglomerative = AgglomerativeClustering(n_clusters=10)
+labels_agg = agglomerative.fit_predict(X_pca)
+
+print(f"병합 군집의 클러스터 크기: {np.bincount(labels_agg)}")
+```
+
+```python 
+Out:
+병합 군집의 클러스터 크기: [169 660 144 329 217  85  18 261  31 149]
+```
+
+*k*-평균보다는 크기가 고르지 않지만 DBSCAN보다는 훨씬 비슷한 크기이다.
+
+
+
+ARI 점수를 이용해 병합 군집과 *K*-평균으로 만든 두 데이터가 비슷한지 측정한 결과는 다음과 같다.
+
+```python 
+In:
+from sklearn.metrics.cluster import adjusted_rand_score
+
+print(f"ARI: {adjusted_rand_score(labels_agg, labels_km)}")
+```
+
+```python 
+Out:
+ARI: 0.10292906782941566
+```
+
+
+
+덴드로그램을 그리면 다음과 같다. 단, truncate_mode='level'과 p=7을 통해 트리의 최대 깊이를 7로 제한했다.
+
+```python 
+from scipy.cluster.hierarchy import dendrogram, ward
+
+linkage_array = ward(X_pca)
+plt.figure(figsize=(20, 5))
+dendrogram(linkage_array, p=7, truncate_mode='level', no_labels=True)
+
+plt.xlabel("샘플 번호")
+plt.ylabel("클러스터 거리")
+ax = plt.gca()
+bounds = ax.get_xbound()
+ax.plot(bounds, [36, 36], '--', c='k')
+```
+
+![](./Figure/3_5_4_7.JPG)
+
+
+
+10개의 클러스터를 그림으로 나타내면 다음과 같다. 병합 군집에서는 클러스터 중심이라는 개념이 없으므로 그냥 클러스터에 속한 몇 개의 포인트를 나타냈다. 첫 번째 이미지 왼쪽에는 각 클러스터에 속한 데이터 포인트의 수를 나타내었다.
+
+```python 
+n_clusters = 10
+for cluster in range(n_clusters):
+    mask = labels_agg == cluster
+    fig, axes = plt.subplots(1, 10, subplot_kw={'xticks': (), 'yticks': ()},
+                             figsize=(15, 8))
+    axes[0].set_ylabel(np.sum(mask))
+    for image, label, asdf, ax in zip(X_people[mask], y_people[mask],
+                                      labels_agg[mask], axes):
+        ax.imshow(image.reshape(image_shape), vmin=0, vmax=1)
+        ax.set_title(people.target_names[label].split()[-1],
+                     fontdict={'fontsize': 9})
+```
+
+![](./Figure/3_5_4_8.JPG)
+
+
+
+클러스터의 수를 늘려 그 중 몇 가지 흥미로운 클러스터를 골라 시각화 하면 다음과 같다.
+
+```python 
+In:
+agglomerative = AgglomerativeClustering(n_clusters=40)
+labels_agg = agglomerative.fit_predict(X_pca)
+print(f"병합 군집의 클러스터 크기: {np.bincount(labels_agg)}")
+```
+
+```python 
+Out:
+병합 군집의 클러스터 크기: [ 43 120 100 194  56  58 127  22   6  37  65  49  84  18 168  44  47  31
+  78  30 166  20  57  14  11  29  23   5   8  84  67  30  57  16  22  12
+  29   2  26   8]
+```
+
+```python 
+n_clusters = 40
+for cluster in [10, 13, 19, 22, 36]: #흥미로운 클러스터 
+    mask = labels_agg == cluster
+    fig, axes = plt.subplots(1, 15, subplot_kw={'xticks': (), 'yticks': ()},
+                             figsize=(15, 8))
+    cluster_size = np.sum(mask)
+    axes[0].set_ylabel(f"#{cluster}: {cluster_size}")
+    for image, label, asdf, ax in zip(X_people[mask], y_people[mask],
+                                      labels_agg[mask], axes):
+        ax.imshow(image.reshape(image_shape), vmin=0, vmax=1)
+        ax.set_title(people.target_names[label].split()[-1],
+                     fontdict={'fontsize': 9})
+    for i in range(cluster_size, 15):
+      axes[i].set_visible(False)
+```
+
+![](./Figure/3_5_4_9.JPG)
+
+군집 알고리즘이 '대머리', '옆모습', '웃는 여성' 등을 뽑아낸 것으로 보인다.
