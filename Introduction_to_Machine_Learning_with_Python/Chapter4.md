@@ -565,3 +565,192 @@ Out:
 ```
 
 위와 같이 Ridge에서는 상호작용과 다항식 특성이 성능을 크게 높였으나 랜덤 포레스트에서는 오히려 성능이 조금 줄어 들었다.
+
+
+
+### 4.4 일변량 비선형 변환
+
+트리 기반 모델은 특성의 순서에만 영향을 받으나(트리 기반 모델의 max_features 매개변수는 트리의 각 분기에서 사용될 후보 특성의 개수를 제한한다. 랜덤 포레스트는 "auto"가 기본 값으로 특성 개수의 제곱근만큼 사용하고 의사결정 트리와 그래디언트 부스팅 트리의 기본값은 "None"으로 특성을 모두 사용한다) 선형 모델과 신경망은 각 특성의 스케일과 분포에 밀접하게 연관 되어 있다. 특히 선형 회귀에서는 특성과 타깃값 사이에 비선형성이 있으면 모델을 만들기 어렵다. log, exp 함수 등은 데이터의 스케일을 변경해 선형 모델과 신경망의 성능을 올리는 데 도움을 주기도 한다.
+
+대부분의 모델은 각 특성이 (회귀에서는 타깃 포함) 정규 분포와 비슷할 때 최고의 성능을 낸다(확률적 요소를 가진 많은 알고리즘의 이론이 정규분포를 근간으로 한다). 정수 카운트 데이터는 음수가 없으며 특별한 통계 패턴을 따르기 때문에 이런 변환이 도움이 되기도 한다.
+
+```python 
+In:
+rnd = np.random.RandomState(0)
+X_org = rnd.normal(size=(1000, 3))
+w = rnd.normal(size=3)
+X = rnd.poisson(10 * np.exp(X_org))
+y = np.dot(X_org, w)
+print(X[:10, 0])
+```
+
+```python 
+Out:
+[ 56  81  25  20  27  18  12  21 109   7]
+```
+
+```python 
+In:
+print(f"특성 출현 횟수:\n{np.bincount(X[:, 0])}")
+```
+
+```python 
+Out:
+특성 출현 횟수:
+[28 38 68 48 61 59 45 56 37 40 35 34 36 26 23 26 27 21 23 23 18 21 10  9
+ 17  9  7 14 12  7  3  8  4  5  5  3  4  2  4  1  1  3  2  5  3  8  2  5
+  2  1  2  3  3  2  2  3  3  0  1  2  1  0  0  3  1  0  0  0  1  3  0  1
+  0  2  0  1  1  0  0  0  0  1  0  0  2  2  0  1  1  0  0  0  0  1  1  0
+  0  0  0  0  0  0  1  0  0  0  0  0  1  1  0  0  1  0  0  0  0  0  0  0
+  1  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1]
+```
+
+![](./Figure/4_4_1.JPG)
+
+위와 같은 분포는 푸아송(Poisson) 분포로 카운트 데이터의 전형적인 분포이다. 
+
+(푸아송 분포는 단위 시간 안에 일어날 이벤트 횟수를 표현하는 확률 분포이다.)
+
+![](./Figure/4_4_2.JPG)
+
+
+
+선형 모델은 이런 데이터를 잘 처리하지 못한다.
+
+```python 
+In:
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+score = Ridge().fit(X_train, y_train).score(X_test, y_test)
+print(f"테스트 점수: {score:.3f}")
+```
+
+```python 
+Out:
+테스트 점수: 0.622
+```
+
+
+
+이를 로그 스케일로 변환하면 도움이 될 수 있다.
+
+```python 
+X_train_log = np.log(X_train + 1)
+X_test_log = np.log(X_test + 1)
+plt.rc('font', size=12)
+plt.rc('axes', labelsize=15)
+plt.figure(figsize=(10, 8))
+plt.hist(X_train_log[:, 0], bins=25, color='gray')
+plt.ylabel("출현 횟수")
+plt.xlabel("값")
+plt.xlim(left=0)
+```
+
+![](./Figure/4_4_3.JPG)
+
+변환 후 데이터 분포를 보면 데이터의 분포가 덜 치우쳐 있으며 매우 큰 값의 이상치가 보이지 않는다.
+
+```python 
+In:
+score = Ridge().fit(X_train_log, y_train).score(X_test_log, y_test)
+print(f"테스트 점수: {score:.3f}") 
+```
+
+```python 
+Out:
+테스트 점수: 0.875
+```
+
+
+
+이 예에서는 모든 특성이 같은 속성을 가지고 있지만 실제로 이런 경우는 드물며, 일부 특성만 변환하거나 특성마다 모두 다르게 변환하기도 한다. 이런 변환은 트리 기반 모델에서는 불필요하지만 선형 모델에서는 필수이다.  회귀에서 타깃 변수 y를 변환 하는 것이 좋을 때도 있다(위와 같은 카운트를 예측하는 경우). 
+
+구간 분할, 다항식, 상호 작용은 데이터가 주어진 상황에서 모델의 성능에 큰 영향을 줄 수 있다. 
+
+- 선형 모델, 나이브 베이즈 모델 같은 덜 복잡한 모델 - 구간 분할, 다항식, 상호 작용 등이 성능에 기여하는 바가 큼.
+- 트리 기반 모델 - 스스로 중요한 상호작용을 찾아낼 수 있고 대부분의 경우 데이터를 명시적으로 변환할 필요가 없음.
+- SVM, 최근접 이웃, 신경망 - 이따금 이득을 볼 수 있으나 선형 모델과 같이 영향이 뚜렷하지 않음.
+
+
+
+### 4.5 특성 자동 선택
+
+새로운 특성을 만들다보면 원본 특성의 수 이상으로 증가하기 쉬운데 특성이 추가될수록 모델은 더 복잡해지고 과대적합될 가능성도 높아진다. 보통 가장 유용한 특성만 선택하고 나머지는 무시해서 특성의 수를 최적화 하는 것이 좋다. 어떤 특성이 좋은지 파악하기 위한 전략으로 **변량 통계(Univariate statistics)** , **모델 기반 선택(Model-based selection)** , **반복적 선택(Iterative selection)** 이 있다. 이들 모두 지도 학습학습이다.
+
+
+
+##### 4.5.1 일변량 통계
+
+일변량 통계에서는 개개의 특성과 타깃 사이에 중요한 통계적 관계가 있는지를 계산한다.  그런 다음 깊게 관련되어 있다고 판단 되는 특성을 선택한다. 분류에서는 **분산 분석(ANOVA, Analysis of variance)** 라고도 한다(데이터를 클래스별로 나누어 평균을 비교하는 방법. 분산 분석으로 계산한 어떤 특성의 F-통계값이 높으면 그 특성은 클래스별 평균이 서로 다르다는 뜻). 이 방법의 핵심은  **일변량(Univariate)** , 즉 각 특성이 독립적으로 평가된다는 점이다. 따라서 다른 특성과 깊게 연관된 특성은 선택되지 않는다. 일변량 분석은 계산이 빠르고 평가를 위해 모델을 만들 필요가 없다. 
+
+scikit-learn에서는 일변량 분석으로 특성을 선택하려면 분류에서는 f_classif를, 회귀에서는 f_regression을 선택하여 테스트 하고([참고](http://vassarstats.net/textbook/ch14pt1.html)), 계산한 *p*-값(*p*-value)에 기초하여 특성을 제외한다. 이런 방식들은 매우 높은 *p*-값을 가진(타깃값과 연관성이 작을 것 같은) 특성을 제외할 수 있도록 임계값을 조정하는 매개변수를 사용한다.  SelectKBest는 고정된 k개의 특성을 선택하고 SelectPercentile은 지정된 비율만큼 특성을 선택한다.
+
+```python 
+In:
+from sklearn.datasets import load_breast_cancer
+from sklearn.feature_selection import SelectPercentile
+
+cancer = load_breast_cancer()
+rng = np.random.RandomState(42)
+noise = rng.normal(size=(len(cancer.data), 50))
+
+X_w_noise = np.hstack([cancer.data, noise])
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X_w_noise, cancer.target, random_state=0, test_size=.5)
+select = SelectPercentile(percentile=50)
+select.fit(X_train, y_train)
+
+X_train_selected = select.transform(X_train)
+
+print(f"X_train.shape: {X_train.shape}")
+print(f"X_train_selected.shape: {X_train_selected.shape}")
+```
+
+```python 
+Out:
+X_train.shape: (284, 80)
+X_train_selected.shape: (284, 40)
+```
+
+```python 
+#선택된 특성을 참 거짓으로 표시해주어 어떤 특성이 선택되었는지 확인 가능
+mask = select.get_support()
+print(mask)
+plt.matshow(mask.reshape(1, -1), cmap='gray_r')
+plt.xlabel("특성 번호")
+```
+
+``````
+Out:
+[ True  True  True  True  True  True  True  True  True False  True False
+  True  True  True  True  True  True False False  True  True  True  True
+  True  True  True  True  True  True False False False  True False  True
+ False False  True False False False False  True False False  True False
+ False  True False  True False False False False False False  True False
+  True False False False False  True False  True False False False False
+  True  True False  True False False False False]
+``````
+
+![](./Figure/4_5_1_1.JPG)
+
+```python 
+In:
+from sklearn.linear_model import LogisticRegression
+
+X_test_selected = select.transform(X_test)
+
+lr = LogisticRegression()
+lr.fit(X_train, y_train)
+print(f"전체 특성을 사용한 점수: {lr.score(X_test, y_test):.3f}")
+lr.fit(X_train_selected, y_train)
+print(f"선택된 일부 특성을 사용한 점수: {lr.score(X_test_selected, y_test):.3f}")
+```
+
+```python 
+Out:
+전체 특성을 사용한 점수: 0.916
+선택된 일부 특성을 사용한 점수: 0.919
+```
