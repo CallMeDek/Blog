@@ -754,3 +754,101 @@ Out:
 전체 특성을 사용한 점수: 0.916
 선택된 일부 특성을 사용한 점수: 0.919
 ```
+
+
+
+##### 4.5.2 모델 기반 특성 선택
+
+모델 기반 특성 선택은 지도 학습 머신러닝 모델을 사용하여 특성의 중요도를 평가해서 가장 중요한 특성들만 선택한다.  특성 선택에 사용하는 지도 학습 모델이 최종 사용 모델과 같을 필요는 없다. 모델이 특성의 중요도를 평가하기 때문에 당연하게도 모델은 각 특성의 중요도를 측정하여 순서를 매길 수 있어야 한다. 예를 들어 결정 트리와 이를 기반으로 하는 모델은 각 특성의 중요도가 담겨 있는 feature_importances_ 속성을 제공한다. 선형 모델 계수의 절댓값도 특성의 중요도를 재는 데 사용할 수 있다. L1 규제를 사용한 모델이 일부 특성의 계수만 학습함을 보았는데 이를 다른 모델을 위한 전처리 단계에 사용할 수 있다. 일변량 분석과는 다르게 모델 기반 특성 선택은 한 번에 모든 특성을 고려하므로 상호작용 부분을 반영할 수 있는 가능성이 있다. 
+
+```python 
+In:
+from sklearn.feature_selection import SelectFromModel
+from sklearn.ensemble import RandomForestClassifier
+
+select = SelectFromModel(
+    RandomForestClassifier(n_estimators=100, random_state=42), 
+    threshold='median')
+select.fit(X_train, y_train)
+X_train_l1 = select.transform(X_train)
+print(f"X_train.shape: {X_train.shape}")
+print(f"X_train_l1.shape: {X_train_l1.shape}")
+```
+
+```python 
+Out:
+X_train.shape: (284, 80)
+X_train_l1.shape: (284, 40)
+```
+
+ (L1 규제가 없는 모델을 사용할 경우 SelectFromModel threshold 매개변수의 기본 값은 "mean"이다. 또한 "1.2*median"과 같이 비율로 나타낼 수 있다.)
+
+```python 
+mask = select.get_support()
+plt.matshow(mask.reshape(1, -1), cmap='gray_r')
+plt.xlabel("특성 번호")
+```
+
+![](./Figure/4_5_2_1.JPG)
+
+```python 
+In:
+from sklearn.linear_model import LogisticRegression
+
+X_test_l1 = select.transform(X_test)
+score = LogisticRegression().fit(X_train_l1, y_train).score(X_test_l1, y_test)
+print(f"테스트 점수: {score:.3f}")
+```
+
+```python 
+Out:
+테스트 점수: 0.919
+```
+
+
+
+##### 4.5.3 반복적 특성 선택
+
+**반복적 특성 선택(Iterative Feature Selection)** 에서는 특성의 수가 각기 다른 모델이 만들어진다.
+
+두 가지 방법이 있는데 첫 번째는 특성을 하나도 선택하지 않은 상태에서 어떤 종료 조건에 도달할 때까지 하나씩 추가하는 방법이 있고 두 번째는 모든 특성을 가지고 시작해서 어떤 종료 조건이 될 때까지 특성을 하나씩 제거해가는 방법이다. 일련의 모델이 만들어지기 때문에 계산 비용이 훨씬 많이 든다. **재귀적 특성 제거(Recursive feature elimination, RFE)** 가 이런 방법 중 하나이다. 모든 특성으로 시작해서 모델을 만들고 특성 중요도가 가장 낮은 특성을 제거하여 새로운 모델을 만든다. 이런식으로 특성의 개수가 미리 정해진만큼 남을때까지 계속한다. 
+
+(회귀 모델에서 사용하는 반복적인 선택 방법인 전진 선택법(Foward stepwise selection)과 후진 선택법(Backward stepwise selection)은 scikit-learn에서 제공하지 않으나 score 함수의 R^2 값으로 위와 같이 구현이 가능하다.)
+
+```python 
+from sklearn.feature_selection import RFE
+
+select = RFE(RandomForestClassifier(n_estimators=100, random_state=42), 
+             n_features_to_select=40)
+
+select.fit(X_train, y_train)
+mask = select.get_support()
+plt.matshow(mask.reshape(1, -1), cmap='gray_r')
+plt.xlabel("특성 번호")
+```
+
+![](./Figure/4_5_3_1.JPG)
+
+```python 
+In:
+X_train_rfe = select.transform(X_train)
+X_test_rfe = select.transform(X_test)
+
+score = LogisticRegression().fit(X_train_rfe, y_train).score(X_test_rfe, y_test)
+print(f"테스트 점수: {score:.3f}")
+```
+
+```python 
+Out:
+테스트 점수: 0.930
+```
+
+```python 
+In:
+print(f"테스트 점수: {select.score(X_test, y_test):.3f}")
+```
+
+```python 
+Out:
+테스트 점수: 0.951
+```
