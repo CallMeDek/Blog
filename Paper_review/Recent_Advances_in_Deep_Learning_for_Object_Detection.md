@@ -86,3 +86,35 @@ Keywords: Object Detection, Deep Learning, Deep Convolutional Neural Networks
 - YOLO(You only look once)와 그 아종들과 같은 One-stage 그룹 - 1단계 탐지기들은 지역 분류 단계 없이 특징 맵의 각 지역들의 객체들에 대해 곧바로 분류 작업을 수행한다.  1단계 탐지기들은 시간적인 측면에서 효율적이므로 실시간 객체 탐지에 이용 가능하다.
 
 ![](./Figure/Recent_Advances_in_Deep_Learning_for_Object_Detection_3.JPG)
+
+
+
+## 2. Problem Settings
+
+객체 탐지는 객체 분류와 같은 인식 과정과 위치 회귀와 같은 위치 측정 과정을 포함한다. 하나의 객체 탐지기는 이미지 안에서 배경으로부터 특정 타겟 클래스의 객체를 구별할 필요가 있다. 또한 각 객체의 카테고리와 위치를 정확하게 맞춰야 한다. 바운딩 박스나 픽셀 마스크가 이런 타겟 객체의 위치를 측정하기 위해서 예측된다.
+
+예를 들어 우리가 N개의, 주석이 달린 이미지 {x1, x2, …, xN}을 가지고 있다고 가정하자. i번째 이미지 xi에는 C라는 카테고리 집합 중에 하나의 카테고리에 속하는 Mi 개의 객체들이 존재한다. 
+
+![](./Figure/Recent_Advances_in_Deep_Learning_for_Object_Detection_4.JPG)
+
+각각의 c(i, j)는 카테고리 집합 C의 원소이고 i번째 이미지의 j번째 객체의 카테고리를 나타낸다. b(i, j)는 i번째 이미지 xi의 j번째 객체의 바운딩 박스 혹은 픽셀 마스크를 나타낸다. 탐지기 f는 θ에 의해서 매개변수화 된다. xi 이미지의 예측 값 yi_pred는 yi와 같은 형식을 갖는다.
+
+![](./Figure/Recent_Advances_in_Deep_Learning_for_Object_Detection_5.JPG)
+
+손실 함수 *ℓ* 탐지기를 최적화 하기 위해 다음과 같이 세팅된다.
+
+![](./Figure/Recent_Advances_in_Deep_Learning_for_Object_Detection_6.JPG)
+
+Softmax loss, focal loss 같은 손실 함수들은 탐지기의 최종 성능에 영향을 끼친다. 
+
+위치 측정의 질을 평가 하기 위해서 객체들과 예측 값들 사이의 **Intersection-over-union(IoU)** 라는 계량법이 사용된다. 
+
+![](./Figure/Recent_Advances_in_Deep_Learning_for_Object_Detection_7.JPG)
+
+b_gt는 바운딩 박스 혹은 픽셀 마스크의 실제 값을 나타낸다.  IoU의 한계값 Ω은 예측 값이 객체를 밀접하게 덮는지 결정하기 위해서 세팅된다.  객체 탐지에서는 예측 값이 성공적으로 위치 측정을 했는지를 다음과 같이 나타낸다.
+
+![](./Figure/Recent_Advances_in_Deep_Learning_for_Object_Detection_8.JPG)
+
+일반적인 객체 탐지 문제에서 카테고리 예측을 평가하기 위해서 mean average precision(mAP)가 사용된다. 
+
+탐지 정확도와 더불어 추론 시간도 중요한 요소 중에 하나이다. 추론 시간을 평가 하기 위한 단위로 **Frame per second(FPS)** - (1초당 얼마나 많은 이미지들의 처리가 이루어지는 지)가 사용된다. 보통 20 FPS이면 실시간 탐지기로 여겨 진다.
