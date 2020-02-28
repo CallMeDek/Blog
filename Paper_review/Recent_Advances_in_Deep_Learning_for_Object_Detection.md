@@ -434,3 +434,9 @@ Fast R-CNN, Faster R-CNN과 같이 한 계층의 특징 맵으로 객체를 탐�
   - Super resolution tasks에 영감을 받아서 Zhou 등은 여러 탐지 크기들에서 크기 간 일관성 특성을 명시적으로 탐색하는 새로운 변환 블록을 사용하여 고 해상도 기능 맵을 개발했습니다.
   
 ![](./Figure/Recent_Advances_in_Deep_Learning_for_Object_Detection_16.JPG)
+
+
+
+#### 3.5.2 Region Feature Encoding
+
+Two-stage 탐지기에게 지역 특징 인코딩은 후보들에게서 특징을 추출해서 고정된 길이의 특징 벡터로 만드는 아주 중요한 단계이다. R-CNN에서 Girshick 등은 지역 후보들을 전체 이미지에서 잘라내어 이중 선형 보간법을 통해 고정된 사이즈(224 x 224)의 패치들로 조정하고 깊은 컨볼루션 특징 추출기로 보냈다. 이 방법은 고 해상도의 지역 후보들을 인코딩 했으나 컴퓨팅 비용이 비쌌다. 
