@@ -852,3 +852,7 @@ print(f"테스트 점수: {select.score(X_test, y_test):.3f}")
 Out:
 테스트 점수: 0.951
 ```
+
+
+
+### 4.6 전문가 지식 활용
