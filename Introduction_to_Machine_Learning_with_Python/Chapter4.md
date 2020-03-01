@@ -856,3 +856,224 @@ Out:
 
 
 ### 4.6 전문가 지식 활용
+
+특성 공학에서 전문가의 지식(Expert Knowledge)을 사용할 경우, 종종 초기 데이터에서 더 유용한 특성을 선책하는데 도움이 될 수 있다. 
+
+다음은 시티바이크의 자전거 대여 데이터를 활용해 특정 날짜와 시간에 자전거를 사람들이 얼마나 대여할 것인지를 예측하는 예제이다. 
+
+이 대여소에 대한 2015년 8월 데이터는 세 시간 간격으로 자전거 대여 횟수가 누적되어 있다. 
+
+```python 
+In:
+citibike = mglearn.datasets.load_citibike()
+print(f"시티바이크 데이터:\n{citibike.head()}")
+```
+
+```python 
+Out:
+시티바이크 데이터:
+starttime
+2015-08-01 00:00:00     3
+2015-08-01 03:00:00     0
+2015-08-01 06:00:00     9
+2015-08-01 09:00:00    41
+2015-08-01 12:00:00    39
+Freq: 3H, Name: one, dtype: int64
+```
+
+```python 
+import pandas as pd
+
+plt.figure(figsize=(10, 3))
+xticks = pd.date_range(start=citibike.index.min(), end=citibike.index.max(), freq='D')
+week = ["일", "월", "화", "수", "목", "금", "토"]
+xticks_name = [week[int(w)]+d for w, d in zip(xticks.strftime("%w"),
+                                              xticks.strftime(" %m-%d"))]
+plt.xticks(xticks, xticks_name, rotation=90, ha='left')
+plt.plot(citibike, linewidth=1)
+plt.xlabel("날짜")
+plt.ylabel("대여횟수")
+```
+
+![](./Figure/4_6_1.JPG)
+
+
+
+그래프를 보면 낮과 밤, 주중과 주말의 패턴의 차이를 확인할 수 있다. 여기서 23일치 184개의 데이터(24시간/3시간 = 8개씩)를 훈련 세트로, 남은 8일 치 64개의 데이터를 테스트 세트로 사용한다. 
+
+
+
+첫번째로 시도할 방법은 POSIX 시간 표현 방법으로 날짜와 시간을 하나의 숫자로 표현한 특성을 사용한다.
+
+```python 
+y = citibike.values
+X = citibike.index.astype("int64").values.reshape(-1, 1) // 10**9
+
+n_train = 184
+
+def eval_on_features(features, target, regressor):
+    X_train, X_test = features[:n_train], features[n_train:]
+    y_train, y_test = target[:n_train], target[n_train:]
+    regressor.fit(X_train, y_train)
+    print("테스트 세트 R^2: {:.2f}".format(regressor.score(X_test, y_test)))
+    y_pred = regressor.predict(X_test)
+    y_pred_train = regressor.predict(X_train)
+    plt.figure(figsize=(10, 3))
+
+    plt.xticks(range(0, len(X), 8), xticks_name, rotation=90, ha="left")
+
+    plt.plot(range(n_train), y_train, label="훈련")
+    plt.plot(range(n_train, len(y_test) + n_train), y_test, '-', label="테스트")
+    plt.plot(range(n_train), y_pred_train, '--', label="훈련 예측")
+
+    plt.plot(range(n_train, len(y_test) + n_train), y_pred, '--',
+             label="테스트 예측")
+    plt.legend(loc=(1.01, 0))
+    plt.xlabel("날짜")
+    plt.ylabel("대여횟수")
+```
+
+
+
+랜덤 포레스트는 데이터 전처리가 거의 필요하지 않아 맨 처음 시도해 보기 좋다.
+
+```python 
+In:
+from sklearn.ensemble import RandomForestRegressor
+
+regressor = RandomForestRegressor(n_estimators=100, random_state=0)
+eval_on_features(X, y, regressor)
+
+Out:
+테스트 세트 R^2: -0.04
+```
+
+![](./Figure/4_6_2.JPG)
+
+랜덤 포레스트 모델은 훈련세트의 예측은 매우 정확하나 테스트 데이터에 대해선 한 가지 값으로 예측했고 R^2 이 -0.04로 거의 아무것도 학습되지 않음을 확인 할 수 있다. 랜덤 포레스트는 훈련 세트에 있는 특성의 범위 밖으로 외삽(Extrapolation)하는 능력이 없으므로 테스트 세트와 가장 가까이 있는 훈련 세트 데이터의 타깃값을 예측으로 사용한다. 
+
+
+
+전문가 지식을 활용하여 POSIX 시간 특성을 제외하고 시간 특성만 사용해본다.
+
+```python 
+In:
+X_hour = citibike.index.hour.values.reshape(-1, 1)
+eval_on_features(X_hour, y, regressor)
+
+Out:
+테스트 세트 R^2: 0.60
+```
+
+![](./Figure/4_6_3.JPG)
+
+
+
+요일 특성을 추가해본다.
+
+```python 
+In:
+X_hour_week = np.hstack([citibike.index.dayofweek.values.reshape(-1, 1),
+                         citibike.index.hour.values.reshape(-1, 1)])
+eval_on_features(X_hour_week, y, regressor)
+
+Out:
+테스트 세트 R^2: 0.84
+```
+
+![](./Figure/4_6_4.JPG)
+
+위 모델이 학습한 것은 8월 23일까지 요일별, 시간별 평균 대여 횟수이다(랜덤 포레스트 회귀로 만든 예측은 여러 트리가 예측한 값들의 평균이므로). 
+
+
+
+다음은 LinearRegression 모델을 적용했을 때이다.
+
+```python 
+In:
+from sklearn.linear_model import LinearRegression
+
+eval_on_features(X_hour_week, y, LinearRegression())
+
+Out:
+테스트 세트 R^2: 0.13
+```
+
+![](./Figure/4_6_5.JPG)
+
+선형 모델은 시간을 선형 함수로만 학습할 수 있어서 시간이 흐를수록 대여 수가 늘어나게 학습되었다. 또, 성능이 나쁘고 패턴이 이상한 이유는 요일과 시간이 정수로 인코딩되어 있어서 연속형 변수로 해석되기 때문이다.
+
+
+
+OneHotEncoder를 사용하여 정수형을 범주형으로 바꿔보았다.
+
+```python 
+In:
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.linear_model import Ridge
+
+enc = OneHotEncoder()
+X_hour_week_onehot = enc.fit_transform(X_hour_week).toarray()
+
+eval_on_features(X_hour_week_onehot, y, Ridge())
+
+Out:
+테스트 세트 R^2: 0.62
+```
+
+![](./Figure/4_6_6.JPG)
+
+
+
+상호특성을 사용하여 시간과 요일의 조합별 계수를 학습시켜 보았다.
+
+```python 
+In:
+from sklearn.preprocessing import PolynomialFeatures
+
+poly_transformer = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
+X_hour_week_onehot_poly = poly_transformer.fit_transform(X_hour_week_onehot)
+lr = Ridge()
+eval_on_features(X_hour_week_onehot_poly, y, lr)
+
+Out:
+테스트 세트 R^2: 0.85
+```
+
+![](./Figure/4_6_7.JPG)
+
+
+
+랜덤 포레스트와는 달리 선형 회귀 모델에서는 모델이 학습한 계수를 그래프로 나타낼 수 있다.
+
+```python 
+hour = ["%02d:00"%i for i in range(0, 24, 3)]
+day = ["월", "화", "수", "목", "금", "토", "일"]
+features = day + hour
+
+features_poly = poly_transformer.get_feature_names(features)
+features_nonzero = np.array(features_poly)[lr.coef_ != 0]
+coef_nonzero = lr.coef_[lr.coef_ != 0]
+
+plt.figure(figsize=(15, 2))
+plt.plot(coef_nonzero, 'o')
+plt.xticks(np.arange(len(coef_nonzero)), features_nonzero, rotation=90)
+plt.xlabel("특성 이름")
+plt.ylabel("계수 크기")
+```
+
+![](./Figure/4_6_8.JPG)
+
+
+
+### 4.7 요약 및 정리
+
+이번 장에서는 여러 종류의 데이터 타입(특히 범주형 변수)을 다루는 법을 정리했다. 
+
+- 원-핫-인코딩 범주형 변수처럼 머신러닝 알고리즘에 적합한 방식으로 데이터를 표현하는 것이 중요
+- 새로운 특성을 만드는 방법
+- 데이터에서 특성을 유도하기 위해 전문가의 지식 활용
+- 선형 모델은 구간 분할이나 상호작용 특성을 추가해 성능을 끌어올릴 있음
+- 랜덤 포레스트나 SVM 같은 비선형 모델은 특성을 늘리지 않고서도 복잡한 문제 학습 가능
+
+어떤 특성을 사용하느냐 그리고 특성과 모델의 궁합이 중요하다.
