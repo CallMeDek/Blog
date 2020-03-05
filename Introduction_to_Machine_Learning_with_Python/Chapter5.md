@@ -504,7 +504,7 @@ results = pd.DataFrame(grid_search.cv_results_)
 display(results.T)
 ```
 
-![](C:\Users\LAB\Desktop\5_2_3_6.JPG)
+![](./Figure/5_2_3_6.JPG)
 
 
 
