@@ -465,3 +465,220 @@ plt.colorbar(scores_image, ax=axes.tolist())
 
 교차검증 점수를 토대로 매개변수 그리드를 튜닝하는 것은 아주 안전한 방법이며, 매개변수들의 중요도를 확인하는 데도 좋다.
 
+
+
+##### 비대칭 매개변수 그리드 탐색
+
+GridSearchCV에 전달할 param_grid를 딕셔너리의 리스트로 만들면 리스트에 있는 각 딕셔너리는 독립적인 그리드로 적용된다. 
+
+```python 
+In:
+from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.datasets import load_iris
+from sklearn.svm import SVC
+
+iris = load_iris()
+X_train, X_test, y_train, y_test = train_test_split(iris.data, iris.target, random_state=0)
+
+param_grid = [{'kernel': ['rbf'], 
+               'C': [10**i for i in range(-3, 3)],
+               'gamma': [10**i for i in range(-3, 3)]},
+              {'kernel': ['linear'],
+               'C': [10**i for i in range(-3, 3)]}]
+grid_search = GridSearchCV(SVC(), param_grid, cv=5)
+grid_search.fit(X_train, y_train)
+print(f"최적 매개변수: {grid_search.best_params_}")
+print(f"최고 교차 검증 점수: {grid_search.best_score_:.2f}")
+```
+
+```python 
+Out:
+최적 매개변수: {'C': 10, 'gamma': 0.1, 'kernel': 'rbf'}
+최고 교차 검증 점수: 0.97
+```
+
+```python 
+import pandas as pd
+
+results = pd.DataFrame(grid_search.cv_results_)
+display(results.T)
+```
+
+![](C:\Users\LAB\Desktop\5_2_3_6.JPG)
+
+
+
+##### 그리드 서치에 다양한 교차 검증 적용
+
+GridSearchCV의 분류에서는 기본적으로 계층형 *k*-겹 교차 검증을 사용하고 회귀에는 *k*-겹 교차 검증을 사용한다. 그러나 cv 매개변수를 통해 다른 교차 검증 분할기를 사용할 수도 있다. ShuffleSplit이나 StratifiedShuffleSplit의 n_splits=1로 하면 훈련 세트와 검증 세트를 1번만 분할하는데 이런 방법은 데이터 셋이 매우 크거나 모델 구축에 시간이 오래 걸릴 때 유용하다.
+
+
+
+##### 중첩 교차 검증
+
+원본 데이터를 훈련 세트와 테스트 세트로 한 번만 나누는 방식 대신 더 나아가 교차 검증 분할 방식을 사용할 수 있다. **중첩 교차 검증(Nested cross-validation)** 은 바깥쪽 루프에서 데이터를 훈련 세트와 테스트 세트로 나눈다. 그리고 각 훈련 세트에 대해 그리드 서치를 실행한다(바깥쪽 루프에서 분할된 훈련 세트마다 최적의 매개변수가 다를 수 있음). 그런 다음 바깥쪽에서 분할된 테스트 세트의 점수를 최적의 매개변수 설정을 사용해 각각 측정한다. 
+
+이 방법은 모델이나 매개변수 설정이 아닌 테스트 점수의 목록을 만들어준다. 이 점수들은 그리드 서치를 통해 찾은 최적 매개변수가 모델을 얼마나 잘 일반화시키는지 알려준다. 새로운 데이터에 적용할 모델을 만드는 것이 아니니, 중첩 교차 검증은 새로운 데이터에 적용하기위한 예측 모델을 찾는데는 사용하지 않는다. 
+
+```python 
+In:
+from sklearn.model_selection import cross_val_score
+
+param_grid = {'C' : [10**i for i in range(-3, 3)],
+              'gamma' : [10**i for i in range(-3, 3)]}
+scores = cross_val_score(GridSearchCV(SVC(), param_grid, cv=5), iris.data, iris.target, cv=5)
+
+scores = list(map(lambda x: float(f"{x:.3f}"), scores))
+print("교차 검증 점수: ", scores)
+print(f"교차 검증 평균 점수: {np.array(scores).mean():.3f}") 
+```
+
+```python 
+Out:
+교차 검증 점수:  [0.967, 1.0, 0.967, 0.967, 1.0]
+교차 검증 평균 점수: 0.980
+```
+
+이를 직접 간단하게 구현해보면 아래와 같다.
+
+```python 
+In:
+from sklearn.model_selection import ParameterGrid, StratifiedKFold
+
+def nested_cv(X, y, inner_cv, outer_cv, Classifier, parameter_grid):
+    outer_scores = []
+    # split 메소드는 훈련과 테스트 세트에 해당하는 인덱스를 리턴
+    for training_samples, test_samples in outer_cv.split(X, y):
+        best_parms = {}
+        best_score = -np.inf
+        for parameters in parameter_grid:
+            cv_scores = []
+            for inner_train, inner_test in inner_cv.split(
+                    X[training_samples], y[training_samples]):
+                clf = Classifier(**parameters)
+                clf.fit(X[inner_train], y[inner_train])
+                score = clf.score(X[inner_test], y[inner_test])
+                cv_scores.append(score)
+            mean_score = np.mean(cv_scores)
+            if mean_score > best_score:
+                best_score = mean_score
+                best_params = parameters
+        clf = Classifier(**best_params)
+        clf.fit(X[training_samples], y[training_samples])
+        outer_scores.append(clf.score(X[test_samples], y[test_samples]))
+    outer_scores = list(map(lambda x: float(f"{x:.3f}"), outer_scores))
+    return np.array(outer_scores)
+
+scores = nested_cv(iris.data, iris.target, StratifiedKFold(5), StratifiedKFold(5),
+                   SVC, ParameterGrid(param_grid))
+print(f"교차 검증 점수: {scores}")
+```
+
+```python 
+Out:
+교차 검증 점수: [0.967 1.    0.967 0.967 1.   ]
+```
+
+
+
+##### 교차 검증과 그리드 서치 병렬화
+
+그리드 서치는 쉽게 병렬화할 수 있다. 하나의 교차 검증 분할에서 특정 매개변수 설정을 사용해 모델을 만드는 일이 매개변수 설정이나 모델과 상관없이 진행할 수 있기 때문이다. GridSearchCV와 cross_val_score에서 n_jobs 매개변수에 사용할 CPU 코어수를 지정할 수 있다. -1이면 가능한 모든 코어를 사용한다.
+
+scikit-learn에서는 병렬화를 중첩해서 사용할 수 없기 때문에 예컨대 모델에서 n_jobs 옵션을 사용하면 이 모델을 사용하는 GridSearchCV에서는 병렬화 옵션을 사용할 수 없다(scikit-learn에서는 병렬화를 위해 joblib.Parallel 라이브러리를 사용하는데 이 라이브러리가 사용하는 파이썬의 multiprocessing 모듈은 작업 프로세스가 고아 프로세스(또는 데몬)가 되는 것을 방지하기 위해서, 포크된 프로세스가 다시 자식 프로세스를 포크하지 못하게 막는다. 그래고 병렬화 옵션을 중첩해서 사용할 경우 경고 메세지와 함꼐 n_jobs 매개변수를 1로 변경한다). 또 데이터셋과 모델이 매우 클 때는 여러 코어를 사용하면 너무 많은 메모리를 차지한다. 
+
+
+
+### 5.3 평가 지표와 측정
+
+실전에서 애플리케이션에 따라 모델을 선택하고 매개변수를 튜닝할 때 올바른 지표를 선택하는 것이 중요하다.
+
+
+
+##### 5.3.1 최종 목표를 기억하라
+
+평가 지표를 선택할 때 머신러닝 애플리케이션의 최종 목표를 기억해야 한다. 머신 러닝 평가 지표를 선택하기 전에 비즈니스 지표라고 부르는 애플링케이션의 고차원적인 목표를 생각해야 한다. 어떤 애플리케이션에서 특정 알고리즘을 선택하여 나타난 결과를 **비즈니스 임팩트(Business impact)** 라고 한다. 모델을 선택하고 매개변수를 조정할 때, 이런 비즈니스 지표에 긍정적인 영향을 주는 모델과 매개변수를 선택해야 한다. 
+
+
+
+##### 5.3.2 이진 분류의 평가 지표
+
+이진 분류에는 양성 클래스와 음성 클래스가 있으며 양성 클래스가 우리의 관심 클래스이다.
+
+
+
+##### 에러의 종류
+
+암 진단을 목적으로 하는 애플리케이션에서 건강한 사람을 암에 걸린으로 잘못된 양성 예측을 하는 것과 같은 에러를 **거짓 양성(False positive)** 라고 한다. 반대로 실제로 암에 걸린 사람을 건강하다고 잘못된 음성 에측을 하는 것과 같은 에러를 **거짓 음성(False negative)** 라고 한다. 통계학에서는 거짓 양성을 타입1 에러, 거짓 음성을 타입2 에러라고도 한다. 
+
+
+
+##### 불균형 데이터셋
+
+한 클래스가 다른 것보다 훨씬 많은 데이터셋을 **불균형 데이터셋(Imbalanced datasets)** 이라고 한다. 샘플의 99%가 음성인 데이터와 1%의 양성의 데이터가 있을 때 무조건 음성으로 예측하면 99%의 정확도를 얻을 수 있다. 그래서 정확도로는 무조건 음성 데이터 모델과 진짜 좋은 모델을 구분하기 어렵다.
+
+
+
+DummyClassifier는 실제 모델과 비교하기 위해 간단한 규칙을 지원하는 모델로 strategy 옵션으로 지정할 수 있는 규칙은 클래스 레이블 비율에 맞게 예측하는 stratified, 가장 많은 레이블을 예측하는 most_frequent 등이 있다. 회귀에는 이에 상응하는 DummyRegressor가 있으며, 지원하는 규칙으로는 평균값을 예측하는 mean과 중간값을 예측하는 median 등이 있다.
+
+```python 
+from sklearn.datasets import load_digits
+from sklearn.model_selection import train_test_split
+from sklearn.dummy import DummyClassifier
+import numpy as np
+
+digits = load_digits()
+y = digitis.target == 9
+
+X_train, X_test, y_train, y_test = train_test_split(digits.data, y, random_state=0)
+
+dummy_majority = DummyClassifier(strategy="most_frequent").fit(X_train, y_train)
+pred_most_frequent = dummy_majority.predict(X_test)
+print(f"예측된 유니크 레이블: {np.unique(pred_most_frequent)}")
+print(f"테스트 점수: {dummy_majority.score(X_test, y_test):.2f}")
+```
+
+```python 
+Out:
+예측된 유니크 레이블: [False]
+테스트 점수: 0.90
+```
+
+```python 
+In:
+from sklearn.tree import DecisionTreeClassifier
+
+tree = DecisionTreeClassifier(max_depth=2).fit(X_train, y_train)
+pred_tree = tree.predict(X_test)
+print(f"테스트 점수: {tree.score(X_test, y_test):.2f}")    
+```
+
+```python 
+Out:
+테스트 점수: 0.92
+```
+
+거의 아무것도 학습하지 않은 분류기와 의사결정트리 분류기의 정확도 차이가 2%밖에 차이나지 않는다.
+
+
+
+```python 
+In:
+from sklearn.linear_model import LogisticRegression
+
+dummy = DummyClassifier().fit(X_train, y_train)
+pred_dummy = dummy.predict(X_test)
+print(f"dummy 점수: {dummy.score(X_test, y_test):.2f}")
+
+logreg = LogisticRegression(C=0.1).fit(X_train, y_train)
+pred_logreg = logreg.predict(X_test)
+print(f"logreg 점수: {logreg.score(X_test, y_test):.2f}")
+```
+
+```python 
+Out:
+dummy 점수: 0.80
+logreg 점수: 0.98
+```
+
+DummyClassifier의 strategy옵션의 기본 값인 stratified로 무작위 선택으로 훈련해도 77%나 맞출 수 있다. 이런 결과가 실제로 유용한 것인지 판단하기가 매우 어려우며 불균형 데이터셋에서 예측 성능을 정량화 하는데 정확도는 적절한 측정 방법이 아니다.
