@@ -682,3 +682,239 @@ logreg 점수: 0.98
 ```
 
 DummyClassifier의 strategy옵션의 기본 값인 stratified로 무작위 선택으로 훈련해도 77%나 맞출 수 있다. 이런 결과가 실제로 유용한 것인지 판단하기가 매우 어려우며 불균형 데이터셋에서 예측 성능을 정량화 하는데 정확도는 적절한 측정 방법이 아니다.
+
+
+
+
+##### 오차 행렬
+
+**오차 행렬(Confusion matrix)** 는 이진 분류 평가 결과를 나타낼 때 가장 널리 사용하는 방법 중 하나이다. 행은 정 답 클래스에 해당하고, 열은 예측 클래스에 해당한다. 오차 행렬의 대각 행렬은 정확히 분류된 경우이고 다른 항목은 한 클래스의 샘플들이 다른 클래스로 잘못 분류된 경우가 얼마나 많은지를 알려준다. 
+
+```python 
+from sklearn.metrics import confusion_matrix
+
+confusion = confusion_matrix(y_test, pred_logreg)
+print(f"오차 행렬:\n{confusion}")
+```
+
+![](./Figure/5_3_2_1.JPG)
+
+
+
+양성 클래스로 올바르게 분류한 샘플을 진짜 양성(True positive), 음성 클래스로 정확하게 분류한 샘플을 진짜 음성(True negative)라 한다. 진짜 양성, 진짜 음성, 거짓 양성, 거짓 음성을 각각 축약해서 TP, TN, FP, FN으로 쓰고 다음과 같이 표시한다.
+
+![](./Figure/5_3_2_2.JPG)
+
+
+
+앞에서 만든 모델 결과를 오차 행렬을 사용하여 비교하면 다음과 같다. 
+
+```python 
+print("빈도 기반 더미 모델:")
+print(confusion_matrix(y_test, pred_most_frequent))
+print("\n무작위 더미 모델:")
+print(confusion_matrix(y_test, pred_dummy))
+print("\n결정 트리:")
+print(confusion_matrix(y_test, pred_tree))
+print("\n로지스틱 회귀:")
+print(confusion_matrix(y_test, pred_logreg))
+```
+
+```python 
+Out:
+빈도 기반 더미 모델:
+[[403   0]
+ [ 47   0]]
+
+무작위 더미 모델:
+[[365  38]
+ [ 43   4]]
+
+결정 트리:
+[[390  13]
+ [ 24  23]]
+
+로지스틱 회귀:
+[[402   1]
+ [  6  41]]
+```
+
+
+
+##### 정확도와의 관계
+
+정확도는 정확히 예측한 수(TP와 TN)를 전체 샘플 수 (오차 행렬의 모든 항목을 더한 값)으로 나눈 것이다.
+
+![](./Figure/5_3_2_3.JPG)
+
+
+
+##### 정밀도, 재현율, f-점수
+
+ **정밀도(Precision)** 는 양성으로 예측된 것(TP + FP) 중 얼마나 많은 샘플이 진짜 양성(TP)인지 측정한다.
+
+![](./Figure/5_3_2_4.JPG)
+
+정밀도는 거짓 양성(FP)의 수를 줄이는 것이 목표일 때 성능 지표로 사용하낟. 예를 들어 임상 실험을 통해 신약의 치료 효과를 예측하는 모델에서 임상 실험은 비싸기 때문에 제약 회사는 단 한 번의 실험으로 신약의 효과를 검증하기 원한다고 하자. 그렇기 떄문에 모델이 거짓 양성(FP)을 많이 만들지 않는 것이 중요하다. 다른 말로 하면 높은 정밀도가 필요하다. 정밀도는 **양성 예측도(PPV)** 라고도 한다.
+
+
+
+**재현율(Recall)** 은 전체 양성 샘플(TP + FN) 중에서 얼마나 많은 샘플이 양성 클래스(TP)로 분류되는 지를 측정한다. 
+
+![](./Figure/5_3_2_5.JPG)
+
+재현율은 모든 양성 샘플을 식별해야 할 때 성능 지표로 사용한다. 즉 거짓 음성(FN)을 피하는 것이 중요할 때이다. 건강한 사람이 일부 포함되더라도 암에 걸린 사람을 빠짐없이 찾는 것이 중요할 때 같은 상황이 있다. 재현율을 **민감도(Sensitivity)** , **적중률(Hit rate)** , **진짜 양성 비율(TPR)** 이라고도 한다. 
+
+
+
+재현율 최적화와 정밀도 최적화는 상충한다.
+
+
+
+정밀도와 재현율이 매우 중요한 측정 방법이지만, 전체 그림을 보기 위해서 정밀도와 재현율의 조화 평균인 ***f*-점수(*f*-score)** 또는 *f*-측정(*f*-measure)을 사용하기도 한다. 
+
+![](./Figure/5_3_2_6.JPG)
+
+*f*-점수의 일반화된 가중치 조화 평균 공식은 정밀도를 P, 재현율을 R이라고 할 때,
+
+![](./Figure/5_3_2_7.JPG)
+
+이다.  *f1*은 *β* = 1일때, 즉 정밀도와 재현율의 가중치가 동일한 *α* = 0.5일 때 점수를 말한다. *β*가 1보다 크면 재현율이 강조되고 1보다 작으면 정밀도가 강조된다. 
+
+```python 
+In:
+from sklearn.metrics import f1_score
+
+print(f"빈도 기반 더미 모델의 f1 score: {f1_score(y_test, pred_most_frequent):.2f}")
+print(f"무작위 더미 모델의 f1 score: {f1_score(y_test, pred_dummy):.2f}")
+print(f"트리 모델의 f1 score: {f1_score(y_test, pred_tree):.2f}")
+print(f"로지스틱 회귀 몰델의 f1 score: {f1_score(y_test, pred_logreg):.2f}")
+```
+
+```python 
+Out:
+빈도 기반 더미 모델의 f1 score: 0.00
+무작위 더미 모델의 f1 score: 0.09
+트리 모델의 f1 score: 0.55
+로지스틱 회귀 몰델의 f1 score: 0.92
+```
+
+
+
+classification_report 함수는 정밀도, 재현율, *f1*-점수 모두를 한 번에 계산해서 깔끔하게 출력해준다.
+
+```python 
+In:
+from sklearn.metrics import classification_report
+
+print(classification_report(y_test, pred_most_frequent, target_names=["9 아님", "9"]))
+```
+
+```python 
+Out:
+                 precision    recall  f1-score   support
+
+        9 아님      0.90      1.00      0.94       403
+           9       0.00      0.00      0.00        47
+
+    accuracy                           0.90       450
+   macro avg       0.45      0.50      0.47       450
+weighted avg       0.80      0.90      0.85       450
+```
+
+```python 
+In:
+print(classification_report(y_test, pred_dummy, target_names=["9 아님", "9"]))
+```
+
+```python 
+Out:
+                precision    recall  f1-score   support
+
+        9 아님      0.89      0.91      0.90       403
+           9       0.10      0.09      0.09        47
+
+    accuracy                           0.82       450
+   macro avg       0.49      0.50      0.50       450
+weighted avg       0.81      0.82      0.82       450
+```
+
+```python 
+In:
+print(classification_report(y_test, pred_logreg, target_names=["9 아님", "9"]))
+```
+
+```python 
+Out:
+                precision    recall  f1-score   support
+
+        9 아님      0.99      1.00      0.99       403
+           9       0.98      0.87      0.92        47
+
+    accuracy                           0.98       450
+   macro avg       0.98      0.93      0.96       450
+weighted avg       0.98      0.98      0.98       450
+```
+
+만약에 양성 클래스를 "9 아님"으로 바꿨을 때 f1-score만 본다면 로지스틱 회귀 모델과 무작위 더미 모델의 큰 성능 차이가 나지 않는다. 따라서 모든 숫자를 함께 보고 정확한 판단을 내리는 것이 중요하다. 
+
+
+
+##### 불확실성 고려
+
+오차 행렬과 분류 리포트가 예측 결과를 자세히 분석할 수 있도록 도와주기는 하나, 예측 값은 모델에 감긴 많은 정보가 이미 손실된 상태이다. 대부분의 분류기는 예측의 확신을 가늠하기 위한 decision_function이나 predict_proba 메소드를 제공한다. 예측을 만들어 내는 과정은 decision_function이나 predict_proba 출력의 임계 값을 검증하는 것이다. 이진 탐색에서 decision_function은 0을, predict_proba는 0.5를 임계값으로 사용한다. 
+
+```python 
+X, y = make_blobs(n_samples=(400, 50), cluster_std=[7.0, 2], random_state=22)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+svc = SVC(gamma=.05).fit(X_train, y_train)
+mglearn.plots.plot_decision_threshold()
+```
+
+![](./Figure/5_3_2_8.JPG)
+
+위의 결과를 보면 임계 값을 조정하여 양성에 해당하는 범위를 더 넓혔을 때 더 많은 포인트들이 양성으로 분류됨을 확인 할 수 있다. 이에 따라 재현율과 정밀도도 변하게 된다.
+
+```python 
+In:
+print(classification_report(y_test, svc.predict(X_test)))
+```
+
+```python 
+Out:
+				precision    recall  f1-score   support
+
+           0       0.97      0.89      0.93       104
+           1       0.35      0.67      0.46         9
+
+    accuracy                           0.88       113
+   macro avg       0.66      0.78      0.70       113
+weighted avg       0.92      0.88      0.89       113
+```
+
+```python 
+y_pred_lower_threshold = svc.decision_function(X_test) > -.8
+```
+
+```python 
+In:
+print(classification_report(y_test, y_pred_lower_threshold))
+```
+
+```python 
+Out:
+				precision    recall  f1-score   support
+
+           0       1.00      0.82      0.90       104
+           1       0.32      1.00      0.49         9
+
+    accuracy                           0.83       113
+   macro avg       0.66      0.91      0.69       113
+weighted avg       0.95      0.83      0.87       113
+```
+
+
+
+이처럼 재현율과 정밀도의 중요도가 달라지거나 데이터가 심하게 불균형일 때 결정 함수의 임계 값을 바꾸면 더 나은 결과를 얻을 수도 있다. decision_function은 임의의 범위를 가지고 있으므로 임계점을 고르는 일반적인 방법을 제시하기는 어렵다. predict_proba 메소드는 출력이 0에서 1 사이로 고정되니 predict_proba를 제공하는 모델은 임계값을 선택하기가 더 쉽다. 기본 값인 0.5를 임계값으로 설정한 모델은 양성 클래스라는 확인 50% 이상일 때 양성으로 분류한다. **보정(Calibration)** 된 모델은 불확실성을 정확하게 측정하는 모델이다. 
+
+보정에 관한 내용은 Alexandru Niculescu-Mizil과 Rich Caruana가 쓴 Predicting Good Probabilities with Supervised Learning 참조.
