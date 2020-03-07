@@ -918,3 +918,221 @@ weighted avg       0.95      0.83      0.87       113
 이처럼 재현율과 정밀도의 중요도가 달라지거나 데이터가 심하게 불균형일 때 결정 함수의 임계 값을 바꾸면 더 나은 결과를 얻을 수도 있다. decision_function은 임의의 범위를 가지고 있으므로 임계점을 고르는 일반적인 방법을 제시하기는 어렵다. predict_proba 메소드는 출력이 0에서 1 사이로 고정되니 predict_proba를 제공하는 모델은 임계값을 선택하기가 더 쉽다. 기본 값인 0.5를 임계값으로 설정한 모델은 양성 클래스라는 확인 50% 이상일 때 양성으로 분류한다. **보정(Calibration)** 된 모델은 불확실성을 정확하게 측정하는 모델이다. 
 
 보정에 관한 내용은 Alexandru Niculescu-Mizil과 Rich Caruana가 쓴 Predicting Good Probabilities with Supervised Learning 참조.
+
+
+
+##### 정밀도-재현율 곡선과 ROC 곡선
+
+모델의 분류 작업을 결정하는 임계값을 바꾸는 것은 해당 분류기의 정밀도와 재현율의 상충 관계를 조정하는 일이다. 조정의 정도는 애플리케이션에 따라 다르며 비즈니스 목표에 따라 결정된다. 어떤 목표가 선택되면(어떤 클래스에 대한 특정 재현율 또는 정밀도의 값) 적절한 임계값을 지정할 수 있다. 그러면서 중요한 부분은 이 임계값을 유지하면서 적절한 정밀도를 만드는 일이다. 어떤 분류기의 필요조건을 지정하는 것을 **운영 포인트(Operating point)** 를 지정한다고 한다. 운영 포인트를 고정하면 비즈니스 목표를 설정할 때 고객이나 조직 내 다른 그룹에 성능을 보장하는 데 도움이 된다. 새로운 모델을 만들 때 운영 포인트가 명확하지 않은 경우가 많은데 이런 경우에는 문제를 더 잘 이해하기 위해서 모든 임계값을 조사해보거나, 한 번에 정밀도나 재현율의 모든 장단점을 살펴 보는 것이 좋다. 이를 위해 **정밀도-재현율 곡선(Precision-recall curve)** 를 사용한다. sklearn에서 제공하는 이 곡선을 만드는 함수는 타깃 레이블과 decision_function이나 predict_proba 메소드로 계산한 예측 불확실성을 이용한다. 
+
+```python 
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+from sklearn.metrics import precision_recall_curve
+from mglearn.datasets import make_blobs
+
+X, y = make_blobs(n_samples=(4000, 500), cluster_std=[7.0, 2], random_state=22)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+
+svc = SVC(gamma=.05).fit(X_train, y_train)
+
+precision, recall, thresholds = precision_recall_curve(
+    y_test, svc.decision_function(X_test))
+
+# 0에 가까운 임계값을 찾는다.
+close_zero = np.argmin(np.abs(thresholds))
+plt.plot(precision[close_zero], recall[close_zero], 'o', markersize=10,
+         label="임계값 0", fillstyle="none", c='k', mew=2)
+
+plt.plot(precision, recall, label="정밀도-재현율 곡선")
+plt.xlabel("정밀도")
+plt.ylabel("재현율")
+plt.legend(loc="best")
+```
+
+![](./Figure/5_3_2_9.JPG)
+
+곡선의 각 포인트는 decision_function의 가능한 모든 임계값에 대응한다. 예를 들어 정밀도가 약 0.75일 때의 재현율은 0.4이다. 가운데 검은 원은 decision_function의 기본 임계 값인 0 지점을 나타낸다. 이 지점은 predict 메소드를 호출 할 때 사용되는 임계 값이다. 
+
+곡선이 오른쪽 위로 갈수록 더 좋은 분류기이다. 곡선은 임계값이 매우 낮아 전부 양성 클래스가 되는 왼쪽에서 시작해서 임계값이 점점 커지면서 정밀도가 커지고 재현율이 낮아진다. 정밀도가 높아져도 재현율이 높게 유지될수록 더 좋은 모델이다. 
+
+
+
+분류기가 다르면 곡선의 다른 부분에서 장점이 생긴다. 즉, 운영 포인트가 달라지게 된다. 랜덤 포레스트의 경우 decision_function을 제공하지 않고 predict_proba만 가지고 있다. 이진 분류에서 predict_proba의 기본 임계값은 0.5이다. 
+
+```python 
+from sklearn.ensemble import RandomForestClassifier
+
+rf = RandomForestClassifier(n_estimators=100, random_state=0, max_features=2)
+rf.fit(X_train, y_train)
+
+# RandomForestClassifier는 decision_function 대신 predict_proba를 제공한다.
+precision_rf, recall_rf, thresholds_rf = precision_recall_curve(
+    y_test, rf.predict_proba(X_test)[:, 1])
+
+plt.plot(precision, recall, label="svc")
+
+plt.plot(precision[close_zero], recall[close_zero], 'o', markersize=10,
+         label="svc: 임계값 0", fillstyle="none", c='k', mew=2)
+
+plt.plot(precision_rf, recall_rf, label="rf")
+
+close_default_rf = np.argmin(np.abs(thresholds_rf - 0.5))
+plt.plot(precision_rf[close_default_rf], recall_rf[close_default_rf], '^', c='k',
+         markersize=10, label="rf: 임계값 0.5", fillstyle="none", mew=2)
+plt.xlabel("정밀도")
+plt.ylabel("재현율")
+plt.legend(loc="best")
+```
+
+![](./Figure/5_3_2_10.JPG)
+
+그래프를 보면 극단적인 부분, 즉 재현율이 매우 높거나 정밀도가 매우 높을 때는 랜덤 포레스트가 더 낫다는 것을 알 수 있다. 정밀도가 0.7 정도 되는 곳은 SVM이 더 좋다. 
+
+
+
+*f1*-점수만으로 전체 성능을 비교한다면 이런 부분을 놓칠수 있다. 왜냐하면 *f1*-점수는 정밀도-재현율 곡선의 한 지점인 기본 임계값에 대한 점수 이기 때문이다.
+
+```python 
+In:
+from sklearn.metrics import f1_score    
+    
+print(f"랜덤 포레스트의 f1_score: {f1_score(y_test, rf.predict(X_test)):.3f}")
+print(f"SVC의 f1_score: {f1_score(y_test, svc.predict(X_test)):.3f}")
+```
+
+```python 
+Out:
+랜덤 포레스트의 f1_score: 0.610
+svc의 f1_score: 0.656
+```
+
+
+
+모델을 자동으로 비교하려면 특정 임계값이나 운영 포인트에 국한하지 않고 전체 곡선에 담긴 정보를 요약해야 한다. 이러한 요약 방법 중 하나로 정밀도-재현율 곡선의 아랫부분 면적을 계산할 수 있으며, 이를 **평균 정밀도(Average precision)** 이라고 한다(정밀도-재현율 곡선의 아래 면적과 정보 검색 이론에서 말하는 평균 정밀도는 미묘한 기술적 차이가 있다. 정보 검색 이론에서 평균 정밀도는 샘플이 TP로 분류될 때 마다 정밀도를 누적하여 전체 양성 샘플수(TP + FN)로 나눈 값이다. 이는 각 정밀도에 재현율의 변화량 1/TP+FN 을 곱하여 누적한 것과 같다. 정밀도-재현율 곡선의 아래 면적은 재현율 변화량을 높이로 하는 두 정밀도 사이의 사다리꼴 면적을 누적한 것이다). 
+
+```python 
+In:
+from sklearn.metrics import average_precision_score
+
+ap_rf = average_precision_score(y_test, rf.predict_proba(X_test)[:, 1])
+ap_svc = average_precision_score(y_test, svc.decision_function(X_test))
+print("랜덤 포레스트의 평균 정밀도: {:.3f}".format(ap_rf))
+print("svc의 평균 정밀도: {:.3f}".format(ap_svc))
+```
+
+```python 
+Out:
+랜덤 포레스트의 평균 정밀도: 0.660
+svc의 평균 정밀도: 0.666    
+```
+
+평균 정밀도는 0에서 1 사이를 지나는 곡선의 아래 면적이므로 항상 0(가장 나쁨)과 1(가장 좋음) 사이의 값을 반환한다. 무작위로 예측하는 분류기의 decision_function의 평균 정밀도는 데이터셋에 있는 양성 클래스의 비율이 된다. 
+
+
+
+##### ROC와 AUC
+
+**ROC(Receiver operating characteristics)** 곡선은 정밀도-재현율 곡선과 비슷하게 분류기의 모든 임계값을 고려하지만, 정밀도와 재현율 대신에 **진짜 양성 비율(TPR)** 에 대한 **거짓 양성 비율(FPR)** 을 나타낸다. 진짜 양성 비율은 재현율의 다른 이름이며, 거짓 양성 비율은 전체 음성 샘플 중에서 거짓 양성으로 잘못 분류한 비율이다. 
+
+![](./Figure/5_3_2_11.JPG)
+
+```python 
+from sklearn.metrics import roc_curve
+
+fpr, tpr, thresholds = roc_curve(y_test, svc.decision_function(X_test))
+plt.plot(fpr, tpr, label="ROC 곡선")
+plt.xlabel("FPR")
+plt.ylabel("TPR (재현율)")
+
+# 0 근처의 임계값을 찾는다.
+close_zero = np.argmin(np.abs(thresholds))
+plt.plot(fpr[close_zero], tpr[close_zero], 'o', markersize=10,
+         label="임계값 0", fillstyle="none", c='k', mew=2)
+plt.legend(loc=4)
+```
+
+![](./Figure/5_3_2_12.JPG)
+
+ROC 곡선은 왼쪽 위에 가까울 수록 좋다. 거짓 양성 비율(FPR)이 낮게 유지되면서 재현율이 높은 분류기가 좋다. 기본 임계값 0의 지점과 비교했을 떄, FPR을 조금 늘리면 재현율을 크게 높일 수 있다(재현율 0.9 부근). 왼쪽 상단에 가장 가까운 지점이 기본 값으로 찾은 것보다 더 좋은 운영 포인트가 된다. 
+
+
+
+다음은 랜덤 포레스트와 SVM의 ROC 곡선이다. 
+
+```python 
+from sklearn.metrics import roc_curve
+
+fpr_rf, tpr_rf, thresholds_rf = roc_curve(y_test, rf.predict_proba(X_test)[:, 1])
+plt.plot(fpr, tpr, label="SVC의 ROC 곡선")
+plt.plot(fpr_rf, tpr_rf, label="RF의 ROC 곡선")
+
+plt.xlabel("FPR")
+plt.ylabel("TPR (재현율)")
+plt.plot(fpr[close_zero], tpr[close_zero], 'o', markersize=10,
+         label="SVC 임계값 0", fillstyle="none", c='k', mew=2)
+close_default_rf = np.argmin(np.abs(thresholds_rf - 0.5))
+plt.plot(fpr_rf[close_default_rf], tpr[close_default_rf], '^', markersize=10,
+         label="RF 임계값 0.5", fillstyle="none", c='k', mew=2)
+
+plt.legend(loc=4)
+```
+
+![](./Figure/5_3_2_13.JPG)
+
+
+
+정밀도-재현율 곡선에서처럼 곡선 아래의 면적 값으로 ROC 곡선을 요약할 때가 많다(이 면적을 **AUC(Area under the curve)**라고 한다). 
+
+```python 
+In:
+from sklearn.metrics import roc_auc_score
+
+rf_auc = roc_auc_score(y_test, rf.predict_proba(X_test)[:, 1])
+svc_auc = roc_auc_score(y_test, svc.decision_function(X_test))
+print("랜덤 포레스트의 AUC: {:.3f}".format(rf_auc))
+print("SVC의 AUC: {:.3f}".format(svc_auc))
+```
+
+```python 
+Out:
+랜덤 포레스트의 AUC: 0.937
+SVC의 AUC: 0.916    
+```
+
+AUC가 0과 1 사이의 곡선 아래 면적이므로 항상 0(최악)과 1(최선) 사이의 값을 가진다. 데이터셋에 담긴 클래스가 아무리 불균형 하더라도 무작위로 예측한 AUC 값은 0.5가 된다(FPR과 TPR은 오차 행렬에서 각각 다른 행을 이용하여 만들기 때문에 클래스 불균형이 FPR과 TPR 계산에 영향을 주지 않는다. 클래스별 양성과 음성 비율이 비슷해저 FPR과 TPR 값이 거의 같이 지므로, ROC 곡선은 y=x에 가깝게 되어 AUC 면적은 0.5가 된다). 그래서 불균형한 데이터셋에서는 정확도보다 AUC가 훨씬 좋은 지표가 된다. AUC는 양성 샘플의 순위를 평가하는 것으로 볼 수있는데 이는 분류기에서 무작위로 선책한 양성 클래스 포인트이 점수가 무작위로 선택한 음성 클래스 포인트의 점수보다 높을 확률과 같다. 그래서 AUC가 1일 때는 모든 양성 포인트의 점수가 모든 음성 포인트의 점수보다 높다(양성 포인트가 음성 클래스로 분류될 가능성이 없기 때문에 FN이 0이 되고 TPR(재현율)은 항상 1이 된다). 불균형한 클래스를 분류하는 문제에서 모델을 선택할 때는 정확도보다 AUC가 훨씬 의미 있는 정보를 제공한다. 
+
+
+
+```python 
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_curve
+from sklearn.datasets import load_digits
+
+digits = load_digits()
+y = digits.target == 9
+X_train, X_test, y_train, y_test = train_test_split(digits.data, y, random_state=0)
+
+plt.figure()
+
+for gamma in [10**i for i in range(0, -3, -1)]:
+  svc = SVC(gamma=gamma).fit(X_train, y_train)
+  accuracy = svc.score(X_test, y_test)
+  auc = roc_auc_score(y_test, svc.decision_function(X_test))
+  fpr, tpr, _ = roc_curve(y_test, svc.decision_function(X_test))
+  print(f"gamma = {gamma:.2f}, 정확도 = {accuracy:.2f}, AUC = {auc:.2f}")
+  plt.plot(fpr, tpr, label=f"gamma={gamma:.2f}")
+
+plt.xlabel("FPR")
+plt.ylabel("TPR")
+plt.xlim(-.01, 1)
+plt.ylim(0, 1.02)
+plt.legend(loc="best")
+```
+
+![](./Figure/5_3_2_14.JPG)
+
+결과를 보면 세 가지 gamma에 대한 정확도는 90%로 모두 같다. 그러나 AUC와 ROC 곡선을 보면 세 모델의 차이가 뚜렷하게 확인된다. gamma=1.0에서 AUC는 0.5로, decision_function의 출력이 무작위 선택과 다를 바가 없다. gamma=0.01에서 AUC는 1로, 결정 함수에 의해서 모든 양성 포인트는 어떤 음성 포인트보다 더 높은 점수를 가진다. 즉, 적절한 임계 값에서 이 모델은 데이터를 완벽하게 분류할 수 있다. 
+
+이 사실은 이모델에서 임계 값을 조정해서 아주 높은 예측 성능을 얻을 수있음을 말해준다. 정확도만 사용한다면 이런 점을 결코 발견하지 못한다. 이런 이유로 불균형한 데이터셋에서 모델을 평가할 때는 AUC를 주로 사용한다. 하지만 AUC 값이 기본 임계 값과는 상관 없으므로, AUC가 높은 모델에서 좋은 분류 결과를 얻으려면 결정 임계 값을 조정해야 한다. 
