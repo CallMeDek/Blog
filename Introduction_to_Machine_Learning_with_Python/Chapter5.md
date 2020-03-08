@@ -1136,3 +1136,235 @@ plt.legend(loc="best")
 결과를 보면 세 가지 gamma에 대한 정확도는 90%로 모두 같다. 그러나 AUC와 ROC 곡선을 보면 세 모델의 차이가 뚜렷하게 확인된다. gamma=1.0에서 AUC는 0.5로, decision_function의 출력이 무작위 선택과 다를 바가 없다. gamma=0.01에서 AUC는 1로, 결정 함수에 의해서 모든 양성 포인트는 어떤 음성 포인트보다 더 높은 점수를 가진다. 즉, 적절한 임계 값에서 이 모델은 데이터를 완벽하게 분류할 수 있다. 
 
 이 사실은 이모델에서 임계 값을 조정해서 아주 높은 예측 성능을 얻을 수있음을 말해준다. 정확도만 사용한다면 이런 점을 결코 발견하지 못한다. 이런 이유로 불균형한 데이터셋에서 모델을 평가할 때는 AUC를 주로 사용한다. 하지만 AUC 값이 기본 임계 값과는 상관 없으므로, AUC가 높은 모델에서 좋은 분류 결과를 얻으려면 결정 임계 값을 조정해야 한다. 
+
+
+
+
+##### 다중 분류의 평가 지표
+
+기본적으로 다중 분류를 위한 지표는 모두 이진 분류에서 유도되었으며, 모든 클래스에 대해 평균을 낸 것이다. 다중 분류의 정확도도 정확히 분류된 샘플의 비율로 정의 한다. 그래서 클래스가 불균형 할 때의 정확도는 조은 평가 방법이 되지 못한다. 다중 분류의 평가에는 정확도 외에 앞 절의 이진 분류에서 사용한 오차 행렬과 분류 리포트 등을 일반적으로 사용한다. 
+
+```python 
+In:
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import load_digits
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.linear_model import LogisticRegression
+
+digits = load_digits()
+X_train, X_test, y_train, y_test = train_test_split(digits.data, digits.target, random_state=0)
+
+lr = LogisticRegression().fit(X_train, y_train)
+pred = lr.predict(X_test)
+
+print(f"정확도: {accuracy_score(y_test, pred):.3f}")
+print(f"오차행렬:\n{confusion_matrix(y_test, pred)}")
+```
+
+```python 
+Out:
+정확도: 0.951
+오차행렬:
+[[37  0  0  0  0  0  0  0  0  0]
+ [ 0 40  0  0  0  0  0  0  2  1]
+ [ 0  1 40  3  0  0  0  0  0  0]
+ [ 0  0  0 43  0  0  0  0  1  1]
+ [ 0  0  0  0 37  0  0  1  0  0]
+ [ 0  0  0  0  0 46  0  0  0  2]
+ [ 0  1  0  0  0  0 51  0  0  0]
+ [ 0  0  0  1  1  0  0 46  0  0]
+ [ 0  3  1  0  0  0  0  0 43  1]
+ [ 0  0  0  0  0  1  0  0  1 45]]
+```
+
+```python 
+scores_image = mglearn.tools.heatmap(
+    confusion_matrix(y_test, pred), xlabel="예측 레이블",
+    ylabel="진짜 레이블", xticklabels=digits.target_names,
+    yticklabels=digits.target_names, cmap=plt.cm.gray_r, fmt="%d"
+)
+plt.title("오차 행렬")
+plt.gca().invert_yaxis()
+```
+
+![](./Figure/5_3_3_1.JPG)
+
+첫 번째 클래스인 숫자 0은 샘플이 총 37개이며, 모두 클래스 0으로 분류했다. 클래스 0에는 거짓 음성(FN)이 없다. 왜냐하면 오차 행렬의 첫 번째 행에서 다른 항목들이 모두 0이기 때문이다. 또한 오차 행렬의 첫 번째 열의 다른 항목들이 모두 0이므로 클래스 0에는 거짓 양성(FP)가 없다. 
+
+```python 
+In:
+from sklearn.metrics import classification_report
+
+print(classification_report(y_test, pred))
+```
+
+```python 
+Out:
+				precision    recall  f1-score   support
+
+           0       1.00      1.00      1.00        37
+           1       0.89      0.93      0.91        43
+           2       0.98      0.91      0.94        44
+           3       0.91      0.96      0.93        45
+           4       0.97      0.97      0.97        38
+           5       0.98      0.96      0.97        48
+           6       1.00      0.98      0.99        52
+           7       0.98      0.96      0.97        48
+           8       0.91      0.90      0.91        48
+           9       0.90      0.96      0.93        47
+
+    accuracy                           0.95       450
+   macro avg       0.95      0.95      0.95       450
+weighted avg       0.95      0.95      0.95       450
+```
+
+숫자 0에는 오차가 없으므로 클래스 0의 정밀도와 재현율은 모두 1이다. 클래스 7은 다른 클래스가 7로 잘못 분류한 것이 없어서 정밀도가 1이고, 클래스 6은 거짓 음성(FN)이 없어서 재현율이 1이다. 
+
+
+
+다중 분류에서 불균형 데이터셋을 위해 가장 널리 사용하는 평가 지표는 *f1*-점수의 다중 분류 버전이다(f1_score는 averate 매개변수를 통하여 이진 분류와 다중 분류를 모두 지원한다. average 매개변수의 기본 값은 이진 분류에 해당하는 binary이다). 다중 클래스용 *f1*-점수는 한 클래스를 양성 클래스로 두고 나머지 클래스들을 음성 클래스로 간주하여 클래스마다 f1-점수를 계산한다. 그런 다음, 클래스별 *f1*-점수를 다음 전략 중 하나를 사용하여 평균을 낸다.
+
+- "macro" 평균은 클래스별 *f1*-점수에 가중치를 두지 않고 클래스 크기에 상관 없이 모든 클래스를 같은 비중으로 다룬다.
+- "weighted" 평균은 클래스별 샘플 수로 가중치를 두어 *f1*-점수의 평균을 계산한다. 이 값이 분류 리포트에 나타나는 값이다.
+- "micro" 평균은 모든 클래스의 거짓 양성(FP), 거짓 음성(FN), 진짜 양성(TP)의 총 수를 세고 정밀도, 재현율, *f1*-점수를 이 수치로 계산한다. 
+
+일반적으로 각 샘플을 똑같이 간주한다면 "micro" 평균 *f1*-점수를, 각 클래스를 동일한 비중으로 고려한다면 "macro" 평균 *f1*-점수를 추천한다. 
+
+```python 
+In:
+from sklearn.metrics import f1_score
+
+print(f"Micro 평균 f1 점수: {f1_score(y_test, pred, average='micro'):.3f}")
+print(f"Macro 평균 f1 점수: {f1_score(y_test, pred, average='macro'):.3f}")
+```
+
+```python 
+Out:
+Micro 평균 f1 점수: 0.951
+Macro 평균 f1 점수: 0.952
+```
+
+
+
+##### 5.3.4 회귀의 평가 지표
+
+회귀 평가는 분류에서와 비슷하게 할 수 있다. 예를 들어, 타겟을 과대 예측한 것 대비 과소 예측 한것을 분석한다. 대부분의 애플리케이션에서는 회귀 추정기의 score 메소드에서 이용하는 R^2만으로 충분하다. 가끔 평균 제곱 에러나 평균 절댓값 에러를 사용하여 모델을 튜닝할 때 이련 지표를 기반으로 비즈니스 결정을 할 수 있다. 그러나 일반적으로 R^2이 회귀 모델을 평가하는 데 나은 지표이다. 
+
+
+
+##### 5.3.5 모델 선택에서 평가 지표 사용하기
+
+scikit-learn에서 GridSearchCV와 cross_val_score의 scoring 매개 변수를 통해 AUC 같은 평가 지표를 사용할 수 있다. 
+
+```python 
+In:
+from sklearn.model_selection import cross_val_score
+from sklearn.datasets import load_digits
+from sklearn.svm import SVC
+
+digits = load_digits()
+scores = cross_val_score(SVC(), digits.data, digits.target == 9)
+scores_default = list(map(lambda x: float(f"{x:.3f}"), scores))
+print(f"기본 평가 지표: {scores_default}")
+
+explicit_accuracy = cross_val_score(SVC(), digits.data, digits.target == 9,
+                                    scoring="accuracy")
+scores_acc = list(map(lambda x: float(f"{x:.3f}"), explicit_accuracy))
+print(f"정확도 지표: {scores_acc}")
+roc_auc = cross_val_score(SVC(), digits.data, digits.target == 9,
+                          scoring="roc_auc")
+scores_roc_auc = list(map(lambda x: float(f"{x:.3f}"), roc_auc))
+print(f"AUC 지표: {scores_roc_auc}")
+```
+
+```python 
+Out:
+기본 평가 지표: [0.975, 0.992, 1.0, 0.994, 0.981]
+정확도 지표: [0.975, 0.992, 1.0, 0.994, 0.981]
+AUC 지표: [0.997, 0.999, 1.0, 1.0, 0.984]
+```
+
+```python 
+In:
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import roc_auc_score
+from sklearn.datasets import load_digits
+
+digits = load_digits()
+X_train, X_test, y_train, y_test = train_test_split(
+    digits.data, digits.target == 9, random_state=0)
+
+#적절하지 않은 그리드
+param_grid = {'gamma': [10**i for i in range(-4, 2) if i != -3]}
+grid = GridSearchCV(SVC(), param_grid=param_grid)
+grid.fit(X_train, y_train)
+print("정확도 지표를 사용한 그리드 서치")
+print("최적의 매개변쉬 ", grid.best_params_)
+print(f"최상의 교차 검증 점수 (정확도): {grid.best_score_:.3f}")
+print(f"테스트 세트 AUC: {roc_auc_score(y_test, \
+                          grid.decision_function(X_test)):.3f}")
+print(f"테스트 세트 정확도: {grid.score(X_test, y_test):.3f}")
+```
+
+```python 
+Out:
+정확도 지표를 사용한 그리드 서치
+최적의 매개변쉬  {'gamma': 0.0001}
+최상의 교차 검증 점수 (정확도): 0.976
+테스트 세트 AUC: 0.992
+테스트 세트 정확도: 0.973
+```
+
+```python 
+In:
+grid = GridSearchCV(SVC(), param_grid=param_grid, scoring="roc_auc")
+grid.fit(X_train, y_train)
+print("AUC 지표를 사용한 그리드 서치")
+print("최적의 매개변쉬 ", grid.best_params_)
+print(f"최상의 교차 검증 점수 (AUC): {grid.best_score_:.3f}")
+print(f"테스트 세트 AUC: {roc_auc_score(y_test, \
+                          grid.decision_function(X_test)):.3f}")
+print(f"테스트 세트 정확도: {grid.score(X_test, y_test):.3f}")
+```
+
+```python 
+Out:
+AUC 지표를 사용한 그리드 서치
+최적의 매개변쉬  {'gamma': 0.01}
+최상의 교차 검증 점수 (AUC): 0.998
+테스트 세트 AUC: 1.000
+테스트 세트 정확도: 1.000
+```
+
+정확도를 사용할 때는 gamma=0.001이 선택되지만 AUC를 사용하면 gamma=0.01이 선택된다. AUC를 사용한 것이 AUC와 정확도 비교 측면에서 더 나은 매개변수를 찾았다.
+
+
+
+scoring 옵션에 대한 정보는 다음과 같이 확인 할 수 있다. 
+
+[Scoring 매개변수 옵션](https://scikit-learn.org/stable/modules/model_evaluation.html#the-scoring-parameter-defining-model-evaluation-rules)
+
+```python 
+In:
+from sklearn.metrics.scorer import SCORERS
+import pprint
+
+print("가능한 평가 방식:", )
+pprint.pprint(list(sorted(SCORERS.keys())), width=100, compact=True)
+```
+
+```python 
+Out:
+가능한 평가 방식:
+['accuracy', 'adjusted_mutual_info_score', 'adjusted_rand_score', 'average_precision',
+ 'balanced_accuracy', 'completeness_score', 'explained_variance', 'f1', 'f1_macro', 'f1_micro',
+ 'f1_samples', 'f1_weighted', 'fowlkes_mallows_score', 'homogeneity_score', 'jaccard',
+ 'jaccard_macro', 'jaccard_micro', 'jaccard_samples', 'jaccard_weighted', 'max_error',
+ 'mutual_info_score', 'neg_brier_score', 'neg_log_loss', 'neg_mean_absolute_error',
+ 'neg_mean_gamma_deviance', 'neg_mean_poisson_deviance', 'neg_mean_squared_error',
+ 'neg_mean_squared_log_error', 'neg_median_absolute_error', 'neg_root_mean_squared_error',
+ 'normalized_mutual_info_score', 'precision', 'precision_macro', 'precision_micro',
+ 'precision_samples', 'precision_weighted', 'r2', 'recall', 'recall_macro', 'recall_micro',
+ 'recall_samples', 'recall_weighted', 'roc_auc', 'roc_auc_ovo', 'roc_auc_ovo_weighted',
+ 'roc_auc_ovr', 'roc_auc_ovr_weighted', 'v_measure_score']
+```
