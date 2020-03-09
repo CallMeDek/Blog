@@ -206,3 +206,126 @@ def predict(self, X):
 ![](./Figure/6_4_1.JPG)
 
  
+
+##### 6.4.1 make_pipeline을 사용한 파이프라인 생성
+
+make_pipeline 함수는 각 단계 이름에 해당 파이썬 클래스의 이름을 부여한 파이프라인을 만들어준다. 
+
+```python 
+In:
+from sklearn.pipeline import Pipeline
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.svm import SVC
+
+#표준적인 방법
+pipe_ling = Pipeline([("scaler", MinMaxScaler()), ("svm", SVC(C=100))])
+#간소화된 방법
+pipe_short = make_pipeline(MinMaxScaler(), SVC(C=100))
+print(f"파이프라인 단계:\n{pipe_short.steps}")
+```
+
+```python 
+Out:
+파이프라인 단계:
+[('minmaxscaler', MinMaxScaler(copy=True, feature_range=(0, 1))), ('svc', SVC(C=100, break_ties=False, cache_size=200, class_weight=None, coef0=0.0,
+    decision_function_shape='ovr', degree=3, gamma='scale', kernel='rbf',
+    max_iter=-1, probability=False, random_state=None, shrinking=True,
+    tol=0.001, verbose=False))]
+```
+
+같은 파이썬 클래스를 여러 단계에서 사용하면 이름 뒤에 숫자가 추가로 붙는다.
+
+```python 
+In:
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
+pipe = make_pipeline(StandardScaler(), PCA(n_components=2), StandardScaler())
+print(f"파이프라인 단계:\n{pipe.steps}")
+```
+
+```python 
+Out:
+파이프라인 단계:
+[('standardscaler-1', StandardScaler(copy=True, with_mean=True, with_std=True)), ('pca', PCA(copy=True, iterated_power='auto', n_components=2, random_state=None,
+    svd_solver='auto', tol=0.0, whiten=False)), ('standardscaler-2', StandardScaler(copy=True, with_mean=True, with_std=True))]
+```
+
+
+
+##### 6.4.2 단계 속성에 접근하기
+
+선형 모델의 계수나 PCA에서 추출한 주성분 같이 파이프라인의 단계 중 하나의 속성을 확인하려면 단계 이름을 키로 가진 딕셔너리인 named_steps 속성을 사용하면 파이프라인의 각 단계에 쉽게 접근할 수 있다. 
+
+```python 
+In:
+from sklearn.datasets import load_breast_cancer
+
+cancer = load_breast_cancer()
+pipe.fit(cancer.data)
+components = pipe.named_steps["pca"].components_
+print(f"Components.shape: {components.shape}")
+```
+
+```python 
+Out:
+Components.shape: (2, 30) 
+```
+
+
+
+##### 6.4.3 그리드 서치 안의 파이프라인 속성에 접근하기
+
+```python 
+In:
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split, GridSearchCV
+import pprint
+
+pipe = make_pipeline(StandardScaler(), LogisticRegression())
+param_grid = {'logisticregression__C': [10**i for i in range(-2, 3)]}
+X_train, X_test, y_train, y_test = train_test_split(cancer.data, cancer.target, random_state=4)
+grid = GridSearchCV(pipe, param_grid, cv=5)
+grid.fit(X_train, y_train)
+print(f"최상의 모델:\n{grid.best_estimator_}")
+print("\n")
+print(f"로지스틱 회귀 단계:\n{grid.best_estimator_.named_steps['logisticregression']}")
+print("\n")
+print("로지스틱 회귀 계수:", )
+pprint.pprint(grid.best_estimator_.named_steps["logisticregression"].coef_, width=100, compact=True)
+```
+
+```python 
+Out:
+최상의 모델:
+Pipeline(memory=None,
+         steps=[('standardscaler',
+                 StandardScaler(copy=True, with_mean=True, with_std=True)),
+                ('logisticregression',
+                 LogisticRegression(C=1, class_weight=None, dual=False,
+                                    fit_intercept=True, intercept_scaling=1,
+                                    l1_ratio=None, max_iter=100,
+                                    multi_class='auto', n_jobs=None,
+                                    penalty='l2', random_state=None,
+                                    solver='lbfgs', tol=0.0001, verbose=0,
+                                    warm_start=False))],
+         verbose=False)
+
+
+로지스틱 회귀 단계:
+LogisticRegression(C=1, class_weight=None, dual=False, fit_intercept=True,
+                   intercept_scaling=1, l1_ratio=None, max_iter=100,
+                   multi_class='auto', n_jobs=None, penalty='l2',
+                   random_state=None, solver='lbfgs', tol=0.0001, verbose=0,
+                   warm_start=False)
+
+
+로지스틱 회귀 계수:
+array([[-0.43570655, -0.34266946, -0.40809443, -0.5344574 , -0.14971847,
+         0.61034122, -0.72634347, -0.78538827,  0.03886087,  0.27497198,
+        -1.29780109,  0.04926005, -0.67336941, -0.93447426, -0.13939555,
+         0.45032641, -0.13009864, -0.10144273,  0.43432027,  0.71596578,
+        -1.09068862, -1.09463976, -0.85183755, -1.06406198, -0.74316099,
+         0.07252425, -0.82323903, -0.65321239, -0.64379499, -0.42026013]])
+```
