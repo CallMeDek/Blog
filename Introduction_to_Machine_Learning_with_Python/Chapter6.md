@@ -178,7 +178,7 @@ R^2 점수가 음수로 성능이 매우 낮은 모델임을 나타낸다. 파�
 
 내부적으로는 Pipeline.fit 메소드가 실행되는 동안, 파이프라인은 각 단계에서 이전 단계의 transform의 출력을 입력으로 받아 fit과 transform 메소드를 차례로 호출한다(fit_transform이 있는 경우 이를 호출). 그리고 마지막 단계는 fit 메소드만 호출한다. 그러므로 마지막 단계에는 predict는 없어도 최소한 fit 메소드는 있어야 한다. 
 
-세부 사항은 예를 들어, pipeline.steps는 튜플의 리스트라서 pipeline.steps[0]_0은 첫 번째 추정기의 이름이고  pipeline.steps[0]_1은 첫 번째 추정기 자체가 된다. 
+세부 사항은 예를 들어, pipeline.steps는 튜플의 리스트라서 pipeline.steps[0][0]은 첫 번째 추정기의 이름이고  pipeline.steps[0][1]은 첫 번째 추정기 자체가 된다. 
 
 ```python 
 def fit(self, X, y):
