@@ -329,3 +329,129 @@ array([[-0.43570655, -0.34266946, -0.40809443, -0.5344574 , -0.14971847,
         -1.09068862, -1.09463976, -0.85183755, -1.06406198, -0.74316099,
          0.07252425, -0.82323903, -0.65321239, -0.64379499, -0.42026013]])
 ```
+
+
+
+### 6.5 전처리와 모델의 매개변수를 위한 그리드 서치
+
+파이프라인을 사용하면 머신러닝 워크플로에 필요한 모든 처리 단계를 하나의 scikit-learn 추정기로 캡슐화 할 수 있다. 또 다른 장점으로는 회귀와 분류 같은 지도 학습의 출력을 이용해서 전처리 매개변수를 조정할 수 있다. 
+
+```python 
+from sklearn.datasets import load_boston
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from sklearn.linear_model import Ridge
+
+boston = load_boston()
+X_train, X_test, y_train, y_test = train_test_split(boston.data, boston.target,
+                                                    random_state=0)
+
+pipe = make_pipeline(
+    StandardScaler(),
+    PolynomialFeatures(),
+    Ridge()
+)
+
+param_grid = {'polynomialfeatures__degree': [1, 2, 3],
+              'ridge__alpha': [10**i for i in range(-3, 3)]}
+            
+grid = GridSearchCV(pipe, param_grid=param_grid, cv=5, n_jobs=-1)
+grid.fit(X_train, y_train)
+
+mglearn.tools.heatmap(grid.cv_results_['mean_test_score'].reshape(3, -1),
+                      xlabel="ridge__alpha", ylabel="polynomialfeatures__degree",
+                      xticklabels=param_grid['ridge__alpha'],
+                      yticklabels=param_grid['polynomialfeatures__degree'], vmin=0)
+```
+
+![](./Figure/6_5_1.JPG)
+
+```python 
+In:
+print(f"최적의 매개변수: {grid.best_params_}")
+```
+
+```python 
+Out:
+최적의 매개변수: {'polynomialfeatures__degree': 2, 'ridge__alpha': 10}
+```
+
+```python 
+In:
+print(f"테스트 점수: {grid.score(X_test, y_test):.2f}")
+```
+
+```python 
+Out:
+테스트 점수: 0.77
+```
+
+다항식 특성이 없는 그리드 서치는 다음과 같다.
+
+```python 
+In:
+param_grid = {'ridge__alpha': [10**i for i in range(-3, 3)]}
+pipe = make_pipeline(StandardScaler(), Ridge())
+grid = GridSearchCV(pipe, param_grid, cv=5)
+grid.fit(X_train, y_train)
+print(f"다항 특성이 없을 때 점수: {grid.score(X_test, y_test):.2f}")
+```
+
+```python 
+Out:
+다항 특성이 없을 때 점수: 0.63
+```
+
+모델의 매개변수와 함께 전처리 과정의 매개변수를 찾는 것은 매우 강력한 전략이다. 하지만 GridSearchCV는 지정한 매개변수의 모든 가능한 조합을 시도한다. 그러므로 매개변수 그리드에 많은 매개변수를 추가하면 만들어야 할 모델이 급격히 증가하게 된다.
+
+
+
+### 6.6 모델 선택을 위한 그리드 서치
+
+GridSearchCV와 Pipeline을 연결하는 것에서 더 나아가, 파이프라인을 구성하는 단계도 탐색 대상으로 삼을 수 있다(예를 들어 StandardScaler와 MinMaxScaler 중 어떤 것을 사용할지). 파이프라인의 단계를 건너 뛰어야 할 때는 단계에 None을 할당한다.
+
+```python 
+In:
+from sklearn.svm import SVC
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import load_breast_cancer
+
+pipe = Pipeline([('preprocessing', StandardScaler()), ('classifier', SVC())])
+
+param_grid = [
+              {'classifier': [SVC()], 'preprocessing': [StandardScaler()],
+               'classifier__gamma': [10**i for i in range(-3, 3)],
+               'classifier__C': [10**i for i in range(-3, 3)]},
+              {'classifier': [RandomForestClassifier(n_estimators=100)],
+               'preprocessing': [None], 'classifier__max_features': [1, 2, 3]}]
+
+cancer = load_breast_cancer()
+X_train, X_test, y_train, y_test = train_test_split(
+    cancer.data, cancer.target, random_state=0)
+
+grid = GridSearchCV(pipe, param_grid, cv=5)
+grid.fit(X_train, y_train)
+
+print(f"최적의 매개변수:\n{grid.best_params_}")
+print(f"최상의 교차 검증 점수: {grid.best_score_:.2f}")
+print(f"테스트 점수: {grid.score(X_test, y_test):.2f}")
+```
+
+```python 
+Out:
+최적의 매개변수:
+{'classifier': SVC(C=10, break_ties=False, cache_size=200, class_weight=None, coef0=0.0,
+    decision_function_shape='ovr', degree=3, gamma=0.01, kernel='rbf',
+    max_iter=-1, probability=False, random_state=None, shrinking=True,
+    tol=0.001, verbose=False), 'classifier__C': 10, 'classifier__gamma': 0.01, 'preprocessing': StandardScaler(copy=True, with_mean=True, with_std=True)}
+최상의 교차 검증 점수: 0.99
+테스트 점수: 0.98
+```
+
+
+
+### 6.7 요약 및 정리
+
+파이프라인을 사용하면 머신러닝 워크플로의 여러 처리 단계를 하나의 파이썬 객체로 캡슐화해주고 scikit-learn의 fit, predict, transform 인터페이스를 사용할 수 있다. 특히 교차 검증을 사용하여 모델을 평가하고 그리드 서치를 사용하여 매개변수 선택을 할 때 모든 처리 단계를 Pipeline으로 묶는 것은 올바른 평가를 위해 필수적이다. 또, Pipeline 파이썬 클래스는 코드를 간결하게 작성하도록 도와주고, Pipeline을 사용하지 않고 처리 단계를 구현할 때 발생할 수있는 실수를 방지해준다(테스트 세트에 변환을 모두 적용하지 않거나 순서를 바꿔 적용하는 경우). 파이프라인을 사용하면 여러 처리 단계를 손쉽게 시도해볼 수는 있으나 실험 단계에서는 처리 단계를 너무 복잡하게 만들지 말고, 모델에 포함된 모든 요소가 꼭 필요한 것인지 평가해야 한다. 
