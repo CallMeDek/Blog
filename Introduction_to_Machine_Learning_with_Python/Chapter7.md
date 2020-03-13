@@ -457,3 +457,398 @@ idf가 가장 낮은 특성:
  'disclose' 'peculiarly' 'tellingly' 'brainchild' 'britons'
  'dimensionality']
 ```
+
+
+
+
+### 7.6 모델 계수 조사
+
+아래의 그래프는 로지스틱 회귀의 가장 큰 계수 25개와 가장 작은 계수 25개를 보여준다. 막대의 크기는 계수의 크기이다. 
+
+```python 
+mglearn.tools.visualize_coefficients(
+    grid.best_estimator_.named_steps['logisticregression'].coef_[0],
+    feature_names, n_top_features=40)
+```
+
+![](./Figure/7_6_1.JPG)
+
+왼쪽의 음수 계수는 모델에서 부정적인 리뷰를 의미하는 단어에 속하고, 오른쪽 양수 계수는 긍정적인 리뷰의 단어에 해당하는 것을 확인할 수 있다.
+
+
+
+### 7.7 여러 단어로 만든 BOW(n-그램)
+
+BOW 표현 방식은 단어의 순서가 완전히 무시된다는 큰 단점이 있다. 그렇기 때문에 의미가 완전히 반대인 두 문자열 "it's bad, not good at all"과 "it's good, not bad at all"이 완전히 동일하게 변환된다. BOW 표현 방식을 사용할 때 문맥을 고려하는 방법이 있는데 토큰 하나의 횟수만 고려하지 않고 옆에 있는 두 세개의 토큰을 함께 고려하는 방식이다.  토큰 2개를 **바이그램(Bigram)**, 3개를 **트라이그램(Trigram)** 이라고 하며일반적으로 연속된 토큰을 **n-그램(n-gram)** 이라고 한다. CountVectorizer와 TfidfVectorizer는 ngram_range 매개변수에 특성으로 고려할 토큰의 범위를 지정할 수 있다. ngram_range 매개변수의 입력 값은 튜플이며 연속된 토큰의 최소 길이와 최대 길이이다.
+
+```python 
+In:
+print(f"bards_words:\n{bards_words}")
+```
+
+```python 
+Out:
+bards_words:
+['The fool doth think he is wise,', 'but the wise man knows himself to be a fool']
+```
+
+
+
+토큰 1개는 **유니 그램(Unigram)** 이라고 한다.
+
+```python 
+In:
+from sklearn.feature_extraction.text import CountVectorizer
+
+cv = CountVectorizer(ngram_range=(1, 1)).fit(bards_words)
+print(f"어휘 사전 크기: {len(cv.vocabulary_)}")
+print(f"어휘 사전:\n{cv.get_feature_names()}")
+```
+
+```python 
+Out:
+어휘 사전 크기: 13
+어휘 사전:
+['be', 'but', 'doth', 'fool', 'he', 'himself', 'is', 'knows', 'man', 'the', 'think', 'to', 'wise']
+```
+
+
+
+토큰 두 개가 연속된 바이그램만 만들려면 ngram_range에 (2, 2)를 지정한다.
+
+```python 
+In:
+cv = CountVectorizer(ngram_range=(2, 2)).fit(bards_words)
+print(f"어휘 사전 크기:{len(cv.vocabulary_)}")
+print(f"어휘 사전:\n{cv.get_feature_names()}")
+```
+
+```python 
+Out:
+어휘 사전 크기:14
+어휘 사전:
+['be fool', 'but the', 'doth think', 'fool doth', 'he is', 'himself to', 'is wise', 'knows himself', 'man knows', 'the fool', 'the wise', 'think he', 'to be', 'wise man']
+```
+
+
+
+연속된 토큰의 수가 커지면 보통 특성이 더 구체적이고 많이 만들어진다. bard_words에 있는 두 문장 사이에는 공통된 바이그램이 없다. 
+
+```python 
+In:
+print(f"변환된 데이터 (밀집 배열):\n{cv.transform(bards_words).toarray()}")
+```
+
+```python 
+Out:
+변환된 데이터 (밀집 배열):
+[[0 0 1 1 1 0 1 0 0 1 0 1 0 0]
+ [1 1 0 0 0 1 0 1 1 0 1 0 1 1]]
+```
+
+단어 하나가 큰 의미를 가진 경우가 많으므로 대부분의 애플리케이션에서 토큰의 최소 길이는 1이다. 많은 경우에 바이그램을 추가하면 도움이 된다. 더 길게 5-그램까지는 도움이 되지만 특성의 갯수가 많아질수 있으며 구체적인 특성이 많아지기 때문에 과대적합할 가능이 있다. 이론상 바이그램의 수는 유니그램 수의 제곱이 되고, 트라이그램의 수는 유니그램의 세제곱이 되므로 특성의 갯수가 많이 늘어난다. (영어) 언어의 구조상 실제로 데이터에 나타나는 높은 n-그램의 횟수가 많기는 하지만 이보다는 훨씬 적다.
+
+```python 
+In:
+cv = CountVectorizer(ngram_range=(1, 3)).fit(bards_words)
+print(f"어휘 사전 크기: {len(cv.vocabulary_)}")
+print(f"어휘 사전:\n{cv.get_feature_names()}")
+```
+
+```python 
+Out:
+어휘 사전 크기: 39
+어휘 사전:
+['be', 'be fool', 'but', 'but the', 'but the wise', 'doth', 'doth think', 'doth think he', 'fool', 'fool doth', 'fool doth think', 'he', 'he is', 'he is wise', 'himself', 'himself to', 'himself to be', 'is', 'is wise', 'knows', 'knows himself', 'knows himself to', 'man', 'man knows', 'man knows himself', 'the', 'the fool', 'the fool doth', 'the wise', 'the wise man', 'think', 'think he', 'think he is', 'to', 'to be', 'to be fool', 'wise', 'wise man', 'wise man knows']
+```
+
+
+
+다음은 IMDb 영화 리뷰 데이터에 TfidfVectorizer를 적용하고 그리드 서치로 최적의 n-그램 범위를 찾는 예제이다. 
+
+```python 
+In:
+from sklearn.pipeline import make_pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import GridSearchCV
+from sklearn.linear_model import LogisticRegression
+
+pipe = make_pipeline(TfidfVectorizer(min_df=5), LogisticRegression())
+param_grid = {"logisticregression__C": [10**i for i in range(-3, 3)],
+              "tfidfvectorizer__ngram_range": [(1, 1), (1, 2), (1, 3)]}
+
+grid = GridSearchCV(pipe, param_grid, cv=5)
+grid.fit(text_train, y_train)
+print(f"최상의 교차 검증 점수: {grid.best_score_:.2f}")
+print(f"최적의 매개변수:\n{grid.best_params_}")
+```
+
+```python 
+Out:
+최상의 교차 검증 점수: 0.91
+최적의 매개변수:
+{'logisticregression__C': 100, 'tfidfvectorizer__ngram_range': (1, 3)}
+```
+
+```python 
+#그리드 서치에서 테스트 점수를 추출한다.
+scores = grid.cv_results_['mean_test_score'].reshape(-1, 3).T
+heatmap = mglearn.tools.heatmap(
+    scores, xlabel="C", ylabel="ngram_range", cmap="viridis", fmt="%.3f",
+    xticklabels=param_grid['logisticregression__C'],
+    yticklabels=param_grid['tfidfvectorizer__ngram_range'])
+plt.colorbar(heatmap)
+```
+
+![](./Figure/7_7_1.JPG)
+
+```python 
+vect = grid.best_estimator_.named_steps['tfidfvectorizer']
+feature_names = np.array(vect.get_feature_names())
+coef = grid.best_estimator_.named_steps['logisticregression'].coef_
+mglearn.tools.visualize_coefficients(coef, feature_names, n_top_features=40)
+```
+
+![](./Figure/7_7_2.JPG)
+
+```python 
+#트라이그램 특성을 찾음.
+mask = np.array([len(feature.split(" ")) for feature in feature_names]) == 3
+#트라이그램 특성만 그래프로 나타냄.
+mglearn.tools.visualize_coefficients(coef.ravel()[mask],
+                                     feature_names[mask], n_top_features=40)
+```
+
+![](./Figure/7_7_3.JPG)
+
+
+
+### 7.8 고급 토큰화, 어간 추출, 표제어 추출
+
+"drawback", "drawbacks", "drawer" 등 BOW 모델에서 의미가 매우 가까워서 이를 구분하면 과대적합되기 쉽고, 모델이 훈련 데이터를 완전하게 활용하지 못하는 경우가 있다. 이 문제를 해결하려면 각 단어를 그 단어의 어간(Stem)을 표현해서 같은 어간을 가진 모든 단어를 구분해야(또는 합쳐야) 한다. 일일이 어미를 찾아 제외하는 규칙 기반 방식을 **어간 추출(Stemming)** 이라고 한다. 대신 알려진 단어의 형태 사전(명시적이고 사람이 구축한 시스템)을 사용하고 문장에서 단어의 역할을 고려하는 처리 방식을 **표제어 추출(Lemmatization)** 이라고 하며 단어의 표준 형태를 표제어라고 한다. 두 처리 방식은 단어의 일반 형태를 추출하는 **정규화(Normalization)** 의 한 형태로 볼 수 있다. 
+
+```python 
+In:
+import spacy
+import nltk
+
+en_nlp = spacy.load('en')
+stemmer = nltk.stem.PorterStemmer()
+
+def compare_normalization(doc):
+  doc_spacy = en_nlp(doc)
+  print("표제어:")
+  print([token.lemma_ for token in doc_spacy])
+  print("어간:")
+  print([stemmer.stem(token.norm_.lower()) for token in doc_spacy])
+
+compare_normalization(u"Our meeting today was worse than yesterday, I'm scared of meeting the clients tomorrow.")
+```
+
+```python 
+Out:
+표제어:
+['-PRON-', 'meeting', 'today', 'be', 'bad', 'than', 'yesterday', ',', '-PRON-', 'be', 'scared', 'of', 'meet', 'the', 'client', 'tomorrow', '.']
+어간:
+['our', 'meet', 'today', 'wa', 'wors', 'than', 'yesterday', ',', 'i', 'am', 'scare', 'of', 'meet', 'the', 'client', 'tomorrow', '.']
+```
+
+어간 추출이 단어에서 어간만 남겨놓고 제거하므로 "was"는 "wa"가 되지만, 표제어 추출은 올바른 동사형인 "be"를 추출했다. 어간 추출이 두 번의 "meeting"을 "meet"로 바꿨지만 표제어 추출은 첫 번쨰 "meeting"은 명사로 인식해서 그대로 두고 두 번째는 동사로 인식 "meet"로 바꿨다. 일반적으로 표제어 추출은 어간 추출보다 훨씬 복잡한 처리를 거친다. 하지만 머신러닝을 위해 토큰 정규화를 할 때는 어간 추출보다 좋은 결과를 낸다고 알려져 있다. 
+
+```python 
+In:
+import re
+
+regexp = re.compile('(?u)\\b\\w\\w+\\b')
+
+en_nlp = spacy.load('en')
+old_tokenizer = en_nlp.tokenizer
+en_nlp.tokenizer = lambda string: old_tokenizer.tokens_from_list(regexp.findall(string))
+
+def custom_tokenizer(document):
+  doc_spacy = en_nlp(document)
+  return [token.lemma_ for token in doc_spacy]
+
+lemma_vect = CountVectorizer(tokenizer=custom_tokenizer, min_df=5)
+
+X_train_lemma = lemma_vect.fit_transform(text_train)
+print(f"X_train_lemma.shape: {X_train_lemma.shape}")
+
+vect = CountVectorizer(min_df=5).fit(text_train)
+X_train = vect.transform(text_train)
+print(f"X_train.shape: {X_train.shape}")
+```
+
+```python 
+Out:
+X_train_lemma.shape: (25000, 21571)
+X_train.shape: (25000, 27271)
+```
+
+결과를 보면 알 수 있듯이, 표제어 추출은 특성 개수를 (표준 CountVectorizer에서 얻은) 27,271개에서 21,571개로 줄여준다. 표제어 추출은 일부 특성들을 합치기 때문에 일종의 규제로 볼 수 있다. 그래서 데이터셋이 작을 때도 표제어 추출이 성능을 높여줄 수 있다. 
+
+다음은 표제어가 어떻게 효과가 있는 지 보기 위해 StratifiedShuffleSplit을 사용해 훈련 세트의 1%만 훈련 폴드로 하고, 나머지는 테스트 폴드로 하여 교차 검증을 수행하는 예제이다.
+
+```python 
+In:
+from sklearn.model_selection import StratifiedShuffledSplit
+
+param_grid = {'C': [10**i for i in range(-3, 2)]}
+cv = StratifiedShuffledSplit(n_split=5, test_size=0.99, train_size=0.01, random_state=0)
+grid = GrodSearchCV(LogisticRegression(), param_grid, cv=cv)
+grid.fit(X_train, y_train)
+print(f"최상의 교차 검증 점수: (기본 CountVectorizer): {grid.best_score_:.3f}")
+grid.fit(X_train_lemma, y_train)
+print(f"최상의 교차 검증 점수: (표제어): {grid.best_score_:.3f}")
+```
+
+```python 
+Out:
+최상의 교차 검증 점수: (기본 CountVectorizer): 0.719    
+최상의 교차 검증 점수: (표제어): 0.731
+```
+
+다른 특성 추출 기법들과 마찬가지로 데이터셋에 따라 결과에 차이가 있다. 표제어 추출과 어간 추출은 모델을 더 낫게(또는 더 간단하게) 만들어 주기 때문에, 어떤 작업에서 마지막 성능까지 짜내야 할 떄 시도해보면 좋다.
+
+
+
+##### 7.8.1 KoNlPy를 사용한 영화 리뷰 분석
+
+여기서 사용할 한글 영화 리뷰 데이터셋은 다음과 같다.
+
+[Naver sentiment movie corpus](https://github.com/e9t/nsmc/)
+
+이 말뭉치는 네이버 영화 사이트의 리뷰 20만 개를 묶은 데이터이다. 
+
+KoNLPy는 여러 언어로 만들어진 형태소 분석기를 파이썬에서 손쉽게 사용할 수 있도록 도와주는 도구다. 
+
+[KoNLPy 설치 방법](http://konlpy.org/en/latest/install/)
+
+
+
+KoNLPy는 5개의 형태소 분석기를 각각 하나의 태그 클래스로 지원한다. 먼저 트위터에서 만든 한국어 처리기인 twitter-korean-text를 사용한다.
+
+```python 
+import pandas as pd
+
+df_train = pd.read_csv('./ratings_train.txt', delimiter='\t', keep_default_na=False)
+df_train.head(n=3)
+```
+
+![](./Figure/7_8_1_1.JPG)
+
+```python 
+In:
+text_train = df_train['document'].as_matrix()
+y_train = df_train['label'].as_matrix()
+
+df_test = pd.read_csv('./ratings_test.txt', delimiter='\t', keep_default_na=False)
+text_test = df_test['document'].as_matrix()
+y_test = df_test['label'].as_matrix()
+
+print(len(text_train), np.bincount(y_train))
+print(len(text_test), np.bincount(y_test))
+```
+
+```python 
+Out:
+150000 [75173 74827]
+50000 [24827 25173]
+```
+
+KoNLPy의 Twitter 클래스의 객체를 만들고 TfidfVectorizer의 tokenizer 매개변수에 주입할 함수를 만든다. 이 함수는 텍스트 하나를 입력 받아서 Twitter의 형태소 분석 메소드인 morphs에서 받은 문자열의 리스트를 그대로 반환한다.
+
+```python 
+from konlpy.tag import Twitter
+
+twitter_tag = Twitter()
+
+def twitter_tokenizer(text):
+  return twitter_tag.morphs(text)
+```
+
+```python 
+In:
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV
+
+twit_param_grid = {'tfidfvectorizer__min_df': [3, 5, 7],
+                   'tfidfvectorizer__ngram_range': [(1, 1), (1, 2), (1, 3)],
+                   'logisticregression__C': [0.1, 1, 10]}
+twit_pipe = make_pipeline(TfidfVectorizer(tokenizer=twitter_tokenizer), LogisticRegression())
+twit_grid = GridSearchCV(twit_pipe, twit_param_grid)
+
+twit_grid.fit(text_train[0:1000], y_train[0:1000])
+print(f"최상의 교차 검증 점수: {twit_grid.best_score_:.3f}")
+print(f"최적의 교차 검증 매개변수: ", twit_grid.best_params_)
+```
+
+```python 
+Out:
+최상의 교차 검증 점수: 0.718
+최적의 교차 검증 매개변수:  {'logisticregression__C': 1, 'tfidfvectorizer__min_df': 3, 'tfidfvectorizer__ngram_range': (1, 3)}
+```
+
+```python 
+In:
+X_test_konlpy = twit_grid.best_estimator_.named_steps['tfidfvectorizer'].transform(text_test)
+score = twit_grid.best_estimator_.named_steps['logisticregression'].score(X_test_konlpy, y_test)
+print(f"테스트 세트 점수: {score:.3f}")
+```
+
+```python 
+Out:
+테스트 세트 점수: 0.707
+```
+
+전체 훈련 데이터를 사용해 그리드 서치를 진행하려면 테스트할 매개변수 조합이 많아 매우 오랜 시간이 걸린다. 여기서는 C++ 기반의 Mecab 태그 클래스를 사용한다. 
+
+Mecab 형태소 분석을 사용하는 토큰 분할 함수를 만든다.
+
+```python 
+from konlpy.tag import Mecab
+mecab = Mecab()
+
+def mecab_tokenizer(text):
+  return mecab.morphs(text)
+```
+
+특별히 PC에 장착된 CPU 코어를 최대한 활용하기 위해 n_jobs=-1로 지정한다. 
+
+```python 
+In:
+from sklearn.pipeline import make_pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV
+
+mecab_param_grid = {'tfidfvectorizer__min_df': [3, 5, 7],
+                    'tfidfvectorizer__ngram_range': [(1, i) for i in [1, 2, 3]],
+                    'logisticregression__C': [10**i for i in range(-1, 3)]}
+mecab_pipe = make_pipeline(TfidfVectorizer(tokenizer=mecab_tokenizer),
+                           LogisticRegression())
+mecab_grid = GridSearchCV(mecab_pipe, mecab_param_grid, n_jobs=-1)
+mecab_grid.fit(text_train, y_train)
+print(f"최상의 교차 검증 점수: {mecab_grid.best_score_:.3f}")
+print(f"최적의 교차 검증 매개변수: ", mecab_grid.best_params_)
+```
+
+```python 
+Out:
+최상의 교차 검증 점수: 0.870
+최적의 교차 검증 매개변수:  {'logisticregression__C': 10, 'tfidfvectorizer__min_df': 3, 'tfidfvectorizer__ngram_range': (1, 3)}
+```
+
+```python 
+In:
+X_test_mecab = mecab_grid.best_estimator_.named_steps['tfidfvectorizer'].transform(text_test)
+score = mecab_grid.best_estimator_.named_step['logisticregression'].score(X_test_mecab, y_test)
+print(f"테스트 세트 점수: {score:.3f}")
+```
+
+```python 
+Out:
+테스트 세트 점수: 0.875
+```
