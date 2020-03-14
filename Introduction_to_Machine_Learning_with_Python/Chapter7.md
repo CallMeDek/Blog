@@ -1083,9 +1083,9 @@ LDA와 같은 토픽 모델은 레이블이 없거나, 레이블이 있더라도
 
 참고 사항
 
-- [Natural Language Processing with Python]: http://www.nltk.org/book/
+- [Natural Language Processing with Python](http://www.nltk.org/book/)
 
-- [Introduction to Information Retrieval]: https://nlp.stanford.edu/IR-book/
+- [Introduction to Information Retrieval](https://nlp.stanford.edu/IR-book/)
 
 고수준의 텍스트 처리를 위한 패키지
 
@@ -1097,8 +1097,8 @@ LDA와 같은 토픽 모델은 레이블이 없거나, 레이블이 있더라도
 
 - word2vec 라이브러리에 구현된 단어 벡터(Word vector) 또는 분산 단어 표현(Distributed word representations)의 연속적인 벡터 표현 
 
-  [Distributed Representations of Words and Phrases and Their Compositionality]: https://goo.gl/V3mTpj
+  [Distributed Representations of Words and Phrases and Their Compositionality](https://goo.gl/V3mTpj)
 
 - 텍스트 처리와 순환 신경망(Recurrent neural networks, RNN). RNN은 신경망의 한 종류로, 클래스 레이블을 할당하는 분류 모데로가 달리 텍스트를 출력할 수 있다. 텍스트 출력을 만들 수 있기 때문에 자동 번역이나 자동 요약에 잘 맞는다.  
 
-  [Sequence to Sequence Learning with Neural Networks]: https://papers.nips.cc/paper/5346-sequence-to-sequence-learning-with-neural-networks.pdf
+  [Sequence to Sequence Learning with Neural Networks](https://papers.nips.cc/paper/5346-sequence-to-sequence-learning-with-neural-networks.pdf)
