@@ -852,3 +852,253 @@ print(f"테스트 세트 점수: {score:.3f}")
 Out:
 테스트 세트 점수: 0.875
 ```
+
+
+
+### 7.9 토픽 모델링과 문서 군집화
+
+텍스트 데이터에 자주 적용하는 기법으로 **토픽 모델링(Topic modeling)**이 있다. 이 용어는 비지도 학습으로 문서를 하나 또는 그 이상의 토픽으로 할당하는 작업을 통칭한다. '정치', '금융', '스포츠' 등의 토픽으로 묶을 수 있는 뉴스 데이터가 좋은 예이다. 한 문서가 하나의 토픽에 할당되면 문서를 군집시키는 문제가 된다. 문서가 둘 이상의 토픽을 가질 수 있다면 학습된 각 성분은 하나의 토픽에 해당하며 문서를 표현한 성분의 계수는 문서가 어떤 토픽에 얼마만큼 연관되어 있는지를 말해준다. 보통 토픽 모델링에 대해 이야기할 때 **잠재 디리클레 할당(Latent Dirichlet Allocation(LDA))** 라고 하는 특정한 성분 분해 방법을 이야기한다. 
+
+
+
+##### 7.9.1 LDA
+
+LDA 모델은 함께 자주 나타나는 단어의 그룹(토픽)을 찾는 것이다. 또 LDA는 각 문서에 토픽의 일부가 혼합되어 있다고 간주한다. 머신러닝에서 토픽은 일상 대화에서 말하는 '주제'가 아니고 의미가 있든 없든 PCA나 NMF로 추출한 성분에 가까운 것이다. LDA의 토픽에 의미가 있다고 하더라도, 이것은 보통 말하는 주제는 아니다. 정치 기사에서는 '주지사', '선거', '정당' 등의 단어를 예상할 수 있고 스포츠 기사에서는 '팀', '점수', '시즌' 같은 단어를 예상할 수 있다. 이런 그룹들의 단어는 함께 나타나는 경우가 많으며 '팀'과 '주지사'는 함께 나타나는 경우가 드물다. 그러나 동시에 나타날 것 같은 단어의 그룹만 있는 것은 아니다. 예를 들어 두 기자는 다른 문장이나 다른 종류의 단어를 좋아할 수있다. 한 명은 '구별'이란 단어를 즐겨 쓰고 다른 한 명은 '분리'란 말을 좋아할 수 있다. 이때 토픽은 전자의 기자가 즐겨쓰는 단어와 후자의 기자가 즐겨 쓰는 단어가 될 수 있다. 
+
+다음은 영화 리뷰 데이터셋에 LDA를 적용하는 예제이다.
+
+```python 
+from sklearn.feature_extraction.text import CountVectorizer
+
+#적어도 15%의 문서에서 빈번히 나타나는 단어를 삭제한 후 
+#가장 많이 등장하는 단어 10,000개에 대한 BOW
+vect = CountVectorizer(max_features=10000, max_df=.15)
+X = vect.fit_transform(text_train)
+```
+
+10개의 토픽으로 토픽 모델을 학습시킨다. NMF 성분과 비슷하게 토픽은 어떤 순서를 가지고 있지 않으며, 토픽의 수를 바꾸면 모든 토픽이 바뀌게 된다(NMF과 LDA는 유사한 문제를 풀 수 있어서 토픽 추출에 NMF를 사용할 수도 있다). 기본 학습 방법인 "online" 대신 조금 느리지만 성능이 나은 "batch" 방법을 사용하고 모델 성능을 위해 "max_iter" 값을 증가시킨다(LDA는 온라인 변분 베이즈 알고리즘(Online varational Bayes algorithm)을 사용하여 max_iter 매개변수의 기본값이 10이다).
+
+```python 
+In:
+from sklearn.decomposition import LatentDirichletAllocation
+
+lda = LatentDirichletAllocation(n_components=10, learning_method="batch",
+                                max_iter=25, random_state=0)
+document_topics = lda.fit_transform(X)
+#LDA에는 토픽 마다 각 단어의 중요도를 저장한 components_ 속성이 있다.
+#components_의 크기는 (n_topics, n_words)
+print(f"lda.components_.shape: {lda.components_.shape}")
+```
+
+```python 
+Out:
+lda.components_.shape: (10, 10000)
+```
+
+```python 
+In:
+#토픽마다(components_의 행) 특성을 오름차순으로 정렬.
+#내림차순이 되도록 [:, ::-1]을 사용해 행의 정렬을 반대로 바꿈.
+sorting = np.argsort(lda.components_, axis=1)[:, ::-1]
+feature_names = np.array(vect.get_feature_names())
+mglearn.tools.print_topics(topics=range(10), feature_names=feature_names, 
+                           sorting=sorting, topics_per_chunk=5, n_words=10)
+```
+
+```python 
+Out:
+topic 0       topic 1       topic 2       topic 3       topic 4       
+--------      --------      --------      --------      --------      
+between       war           funny         show          didn          
+young         world         worst         series        saw           
+family        us            comedy        episode       am            
+real          our           thing         tv            thought       
+performance   american      guy           episodes      years         
+beautiful     documentary   re            shows         book          
+work          history       stupid        season        watched       
+each          new           actually      new           now           
+both          own           nothing       television    dvd           
+director      point         want          years         got           
+
+
+topic 5       topic 6       topic 7       topic 8       topic 9       
+--------      --------      --------      --------      --------      
+horror        kids          cast          performance   house         
+action        action        role          role          woman         
+effects       animation     john          john          gets          
+budget        game          version       actor         killer        
+nothing       fun           novel         oscar         girl          
+original      disney        both          cast          wife          
+director      children      director      plays         horror        
+minutes       10            played        jack          young         
+pretty        kid           performance   joe           goes          
+doesn         old           mr            performances  around        
+```
+
+다음은 100개의 토픽으로 새로운 모델을 학습시킨 예이다. 많은 토픽을 사용하면 분석은 더 어려워지지만 데이터에서 특이한 부분을 잘 잡아낼 수 있다.
+
+```python 
+In:
+lda100 = LatentDirichletAllocation(n_components=100, learning_method="batch",
+                                   max_iter=25, random_state=0)
+document_topics100 = lda100.fit_transform(X)
+topics = np.array([7, 16, 24, 25, 28, 36, 37, 41, 45, 51, 53, 54, 63, 89, 97])
+sorting = np.argsort(lda100.components_, axis=1)[:, ::-1]
+feature_names = np.array(vect.get_feature_names())
+mglearn.tools.print_topics(topics=topics, feature_names=feature_names,
+                           sorting=sorting, topics_per_chunk=5, n_words=20)
+```
+
+```python 
+Out:
+topic 7       topic 16      topic 24      topic 25      topic 28      
+--------      --------      --------      --------      --------      
+thriller      worst         german        car           beautiful     
+suspense      awful         hitler        gets          young         
+horror        boring        nazi          guy           old           
+atmosphere    horrible      midnight      around        romantic      
+mystery       stupid        joe           down          between       
+house         thing         germany       kill          romance       
+director      terrible      years         goes          wonderful     
+quite         script        history       killed        heart         
+bit           nothing       new           going         feel          
+de            worse         modesty       house         year          
+performances  waste         cowboy        away          each          
+dark          pretty        jewish        head          french        
+twist         minutes       past          take          sweet         
+hitchcock     didn          kirk          another       boy           
+tension       actors        young         getting       loved         
+interesting   actually      spanish       doesn         girl          
+mysterious    re            enterprise    now           relationship  
+murder        supposed      von           night         saw           
+ending        mean          nazis         right         both          
+creepy        want          spock         woman         simple        
+
+
+topic 36      topic 37      topic 41      topic 45      topic 51      
+--------      --------      --------      --------      --------      
+performance   excellent     war           music         earth         
+role          highly        american      song          space         
+actor         amazing       world         songs         planet        
+cast          wonderful     soldiers      rock          superman      
+play          truly         military      band          alien         
+actors        superb        army          soundtrack    world         
+performances  actors        tarzan        singing       evil          
+played        brilliant     soldier       voice         humans        
+supporting    recommend     america       singer        aliens        
+director      quite         country       sing          human         
+oscar         performance   americans     musical       creatures     
+roles         performances  during        roll          miike         
+actress       perfect       men           fan           monsters      
+excellent     drama         us            metal         apes          
+screen        without       government    concert       clark         
+plays         beautiful     jungle        playing       burton        
+award         human         vietnam       hear          tim           
+work          moving        ii            fans          outer         
+playing       world         political     prince        men           
+gives         recommended   against       especially    moon          
+
+
+topic 53      topic 54      topic 63      topic 89      topic 97      
+--------      --------      --------      --------      --------      
+scott         money         funny         dead          didn          
+gary          budget        comedy        zombie        thought       
+streisand     actors        laugh         gore          wasn          
+star          low           jokes         zombies       ending        
+hart          worst         humor         blood         minutes       
+lundgren      waste         hilarious     horror        got           
+dolph         10            laughs        flesh         felt          
+career        give          fun           minutes       part          
+sabrina       want          re            body          going         
+role          nothing       funniest      living        seemed        
+temple        terrible      laughing      eating        bit           
+phantom       crap          joke          flick         found         
+judy          must          few           budget        though        
+melissa       reviews       moments       head          nothing       
+zorro         imdb          guy           gory          lot           
+gets          director      unfunny       evil          saw           
+barbra        thing         times         shot          long          
+cast          believe       laughed       low           interesting   
+short         am            comedies      fulci         few           
+serial        actually      isn           re            half          
+```
+
+토픽을 이용해 추론을 더 잘 하려면 토픽에 할당된 문서를 보고 가장 높은 순위에 있는 단어의 의미를 확인해야 한다. 토픽 45는 음악에 관한 것으로 보이는데 이 토픽에 할당된 리뷰는 다음과 같다.
+
+```python 
+In:
+# 음악적인 토픽 45를 가중치로 정렬한다.
+music = np.argsort(document_topics100[:, 45])[::-1]
+# 이 토픽이 가장 비중이 큰 문서 다섯개를 출력한다.
+for i in music[:10]:
+    # 첫 두 문장을 출력한다.
+    print(b".".join(text_train[i].split(b".")[:2]) + b".\n")
+```
+
+```python 
+Out:
+b'I love this movie and never get tired of watching. The music in it is great.\n'
+b"I enjoyed Still Crazy more than any film I have seen in years. A successful band from the 70's decide to give it another try.\n"
+b'Hollywood Hotel was the last movie musical that Busby Berkeley directed for Warner Bros. His directing style had changed or evolved to the point that this film does not contain his signature overhead shots or huge production numbers with thousands of extras.\n'
+b"What happens to washed up rock-n-roll stars in the late 1990's? They launch a comeback / reunion tour. At least, that's what the members of Strange Fruit, a (fictional) 70's stadium rock group do.\n"
+b'As a big-time Prince fan of the last three to four years, I really can\'t believe I\'ve only just got round to watching "Purple Rain". The brand new 2-disc anniversary Special Edition led me to buy it.\n'
+b"This film is worth seeing alone for Jared Harris' outstanding portrayal of John Lennon. It doesn't matter that Harris doesn't exactly resemble Lennon; his mannerisms, expressions, posture, accent and attitude are pure Lennon.\n"
+b"The funky, yet strictly second-tier British glam-rock band Strange Fruit breaks up at the end of the wild'n'wacky excess-ridden 70's. The individual band members go their separate ways and uncomfortably settle into lackluster middle age in the dull and uneventful 90's: morose keyboardist Stephen Rea winds up penniless and down on his luck, vain, neurotic, pretentious lead singer Bill Nighy tries (and fails) to pursue a floundering solo career, paranoid drummer Timothy Spall resides in obscurity on a remote farm so he can avoid paying a hefty back taxes debt, and surly bass player Jimmy Nail installs roofs for a living.\n"
+b"I just finished reading a book on Anita Loos' work and the photo in TCM Magazine of MacDonald in her angel costume looked great (impressive wings), so I thought I'd watch this movie. I'd never heard of the film before, so I had no preconceived notions about it whatsoever.\n"
+b'I love this movie!!! Purple Rain came out the year I was born and it has had my heart since I can remember. Prince is so tight in this movie.\n'
+b"This movie is sort of a Carrie meets Heavy Metal. It's about a highschool guy who gets picked on alot and he totally gets revenge with the help of a Heavy Metal ghost.\n"
+```
+
+토픽을 조사하는 다른 방법은 각 토픽의 가중치가 얼마인지 모든 리뷰에 걸쳐 document_topics 값을 합해서 보는 것이다. 다음은 각 토픽을 대표하는 두 단어로 토픽 이름을 붙인, 학습된 토픽의 가중치이다.
+
+```python 
+fig, ax = plt.subplots(1, 2, figsize=(10, 10))
+topic_names = ["{:>2} ".format(i) + " ".join(words)
+               for i, words in enumerate(feature_names[sorting[:, :2]])]
+# 두 개의 열이 있는 막대 그래프
+for col in [0, 1]:
+    start = col * 50
+    end = (col + 1) * 50
+    ax[col].barh(np.arange(50), np.sum(document_topics100, axis=0)[start:end])
+    ax[col].set_yticks(np.arange(50))
+    ax[col].set_yticklabels(topic_names[start:end], ha="left", va="top")
+    ax[col].invert_yaxis()
+    ax[col].set_xlim(0, 2000)
+    yax = ax[col].get_yaxis()
+    yax.set_tick_params(pad=130)
+plt.tight_layout()
+```
+
+![](./Figure/7_9_1_1.JPG)
+
+중요도가 높은 토픽 중 97번은 거의 불용어에 가깝고 약간 부정적 경향의 단어이다. 토픽 16은 부정적이고, 장르에 관련된 토픽들이 이어지고 36, 37번은 칭찬하는 단어를 포함한다. 이렇게 LDA는 장르와 점수라는 두 종류의 큰 토픽과 어디에도 속하지 않는 토픽을 찾을 수 있다. 
+
+LDA와 같은 토픽 모델은 레이블이 없거나, 레이블이 있더라도 큰 규모의 큰 텍스트 말뭉치를 해석하는 데 좋은 방법이다. LDA는 확률적 알고리즘이기 때문에 random_state를 바꾸면 결과가 많이 달라진다. 토픽으로 구별하는 게 도움이 되더라도 비지도 학습에서 내린 결론은 보수적으로 평가해야 하므로 각 토픽에 해당하는 문서를 직접 보고 직관을 검증하는 것이 좋다. LDA.transform 메소드에서 만든 토픽이 지도 학습을 위한 압축된 표현으로 사용될 수도 있다. 특히 훈련 샘플이 적을 떄 유용하다(훈련 데이터가 적고 특성의 수가 많을 때 과대적합하기 쉬우므로 특성의 수를 줄이는 데 LDA를 사용할 수 있다).
+
+
+
+### 7.10 요약 및 정리
+
+텍스트 데이터를 처리 할 때, 특히 스팸이나 부정거래 탐지, 감성 분석 같은  텍스트 분류 작업에서 BOW 표현은 간단하고 강력한 해법이 될 수 있다. 데이터의 표현이 자연어 처리 애플리케이션의 해심이고 추출된 토큰과 n-그램을 분석하면 모델링 과정에서 많은 통찰을 얻게 된다. 텍스트 처리 애플리케이션에서는 지도 학습이나 비지도 학습 작업을 위해 모델을 자체적으로 분석해 의미를 찾을 수 있을 때가 많다. 실전에서 자연어 처리 기반의 방법을 사용할 때 이 장점을 최대한 활용해야 한다.
+
+참고 사항
+
+- [Natural Language Processing with Python]: http://www.nltk.org/book/
+
+- [Introduction to Information Retrieval]: https://nlp.stanford.edu/IR-book/
+
+고수준의 텍스트 처리를 위한 패키지
+
+- spacy - 비교적 최근에 나왔고 효율적이며 잘 설계된 패키지
+- nltk - 매우 잘 구축되어 있고 기능이 풍부하지만 조금 오래된 라이브러리
+- gensim - 토픽 모델링 강점인 자연어 처리 패키지
+
+신경망과 관련된 몇 가지 연구가 텍스트 처리 분야에서 두각을 보였다.
+
+- word2vec 라이브러리에 구현된 단어 벡터(Word vector) 또는 분산 단어 표현(Distributed word representations)의 연속적인 벡터 표현 
+
+  [Distributed Representations of Words and Phrases and Their Compositionality]: https://goo.gl/V3mTpj
+
+- 텍스트 처리와 순환 신경망(Recurrent neural networks, RNN). RNN은 신경망의 한 종류로, 클래스 레이블을 할당하는 분류 모데로가 달리 텍스트를 출력할 수 있다. 텍스트 출력을 만들 수 있기 때문에 자동 번역이나 자동 요약에 잘 맞는다.  
+
+  [Sequence to Sequence Learning with Neural Networks]: https://papers.nips.cc/paper/5346-sequence-to-sequence-learning-with-neural-networks.pdf
