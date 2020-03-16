@@ -30,7 +30,7 @@
 
 복잡한 머신러닝 시스템 구축 시에 참고.
 
-[Machine Learning: The High Interest Credit Card of Technical Debt]: https://research.google/pubs/pub43146/
+[Machine Learning: The High Interest Credit Card of Technical Debt](https://research.google/pubs/pub43146/)
 
 
 
@@ -44,9 +44,9 @@
 
 Scikit-learn 인터페이스와 호환되는 추정기를 만드는 방법은 다음을 참조.
 
-[Scikit-learn 인터페이스 형식의 추정기 만들기]: https://goo.gl/fkQWsN
+[Scikit-learn 인터페이스 형식의 추정기 만들기](https://goo.gl/fkQWsN)
 
-가장 쉬운 방법은 BaseEstimator와 TransformerMixin을 상속해서 init, fit, transform 메소드를 구현하는 것이다.  분류와 회귀 모델을 만들 떄는 TransformerMixin 대신 ClassifierMixin이나 RegressorMixin을 상속하고, transfor 대신 predict를 구현한다. 
+가장 쉬운 방법은 BaseEstimator와 TransformerMixin을 상속해서 __init__, fit, transform 메소드를 구현하는 것이다.  분류와 회귀 모델을 만들 떄는 TransformerMixin 대신 ClassifierMixin이나 RegressorMixin을 상속하고, transfor 대신 predict를 구현한다. 
 
 ```python 
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -91,15 +91,15 @@ class MyTransformer(BaseEstimator, TransformerMixin):
 
 - 확률 모델링과 추론에 더 관심이 있을 때 statsmodels를 고려해 볼 수 있다. 이 패키지는 조금 더 확률적 입장에서 인터페이스를 구축한 여러 선형 모델을 제공한다.
 
-  [statsmodels]: http://statsmodels.sourceforge.net/
+  [statsmodels](http://statsmodels.sourceforge.net/)
 
 - R은 통계 분석을 위해 특별히 설계된 어어이고 훌륭한 시각화 기능과 많은 통계 모델 패키지를 활용할 수 있다. 
 
-  [R-project]: https://www.r-project.org/
+  [R-project](https://www.r-project.org/)
 
 - 머신러닝에서 유명한 또 다른 패키지로 명령어 인터페이스를 제공하고 C++로 작성된 vowpal wabiit이 있다. vw는 특히 대량의 데이터셋과 스트리밍 데이터에 유용하다. 
 
-  [vowpal wabbit]: https://github.com/VowpalWabbit/vowpal_wabbit/wiki
+  [vowpal wabbit](https://github.com/VowpalWabbit/vowpal_wabbit/wiki)
 
 - 클러스터에 머신러닝 알고리즘을 분산해서 실행하는 기능으로 유명한 프레임워크로, spark 분산 컴퓨팅 환경에서 구축된 스칼라 라이브러리인 MLlib도 있다. 
 
@@ -119,9 +119,9 @@ class MyTransformer(BaseEstimator, TransformerMixin):
 
 ##### 8.5.4 확률 모델링, 추론, 확률적 프로그래밍
 
-- [PyMC]: http://pymc-devs.github.io/pymc/
+- [PyMC](http://pymc-devs.github.io/pymc/)
 
-- [Stan]: https://mc-stan.org/
+- [Stan](https://mc-stan.org/)
 
 
 
@@ -140,6 +140,7 @@ class MyTransformer(BaseEstimator, TransformerMixin):
 
 ##### 8.5.7 실력 기르기
 
-[캐글(Kaggle)]: https://www.kaggle.com/
-[OpenML]: https://www.openml.org/
+- [캐글(Kaggle)](https://www.kaggle.com/)
+
+- [OpenML](https://www.openml.org/)
 
