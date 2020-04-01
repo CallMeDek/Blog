@@ -80,3 +80,23 @@ u1과 u2과 단위 벡터라면 다음과 같다.
 기저 벡터가 단위 벡터라면 다음과 같다. 
 
 ![](./Figure/Orthogonal_Projection13.JPG)
+
+
+
+## Transformation: Orthogonal Projection
+
+어떤 부분공간 W와 Orthonomal한 기저 벡터 u1, u2가 있고, 이 부분 공간 위의 벡터 b를 부분공간 상으로 투영시켜 b_hat으로 만드는 변환이 있다고 할 때 다음과 같이 이 변환이 선형적임을 확인할 수 있다.
+
+![](./Figure/Orthogonal_Projection15.JPG)
+
+![](./Figure/Orthogonal_Projection14.JPG)
+
+
+
+## Orthogonal Projection Perspective
+
+![](./Figure/Orthogonal_Projection16.JPG)
+
+A = U = [u1 u2]이고 A의 역행렬이 존재할 때 b를 입력으로 하여 b_hat을 출력해내는 정규 방정식에서 다음과 같이 선형 변환의 형식을 도출해 낼 수 있다. 
+
+![](./Figure/Orthogonal_Projection17.JPG)
