@@ -38,4 +38,4 @@ x ∈ Nul A, y ∈ Nul A then, ax + by ∈ Nul A? Yes, because a.(b+c)=a.b+a.c
 
 Col A의 경우도 다음과 같이 비슷하다.
 
-![](./Figure/Desktop\Null_space_and_Orthogonal_Complement4.JPG)
+![](./Figure/Null_space_and_Orthogonal_Complement4.JPG)
