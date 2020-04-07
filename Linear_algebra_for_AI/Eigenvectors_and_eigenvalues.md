@@ -41,3 +41,5 @@
 ![](./Figure/Eigenvectors_and_eigenvalues4.JPG)
 
 위에서 행렬 [[-6 6] [5 -5]]의 열벡터들이 선형 종속적이므로 벡터x가 Nontrivial solution을 갖게 된다. 따라서 8이 행렬 A의 고윳값이 되게 되고 Span{[1 1]}이 고유벡터의 집합이 된다. 
+
+![](./Figure/Eigenvectors_and_eigenvalues5.JPG)
