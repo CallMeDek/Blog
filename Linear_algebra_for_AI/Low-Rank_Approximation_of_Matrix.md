@@ -12,6 +12,6 @@
 
 - 참고 사항
 
-  [Lectures on low-rank matrix factorization for topic modeling and](https://www.youtube.com/playlist?list=PLep-kTP3NkcNqn2MtzkscRlTDYTiqKjzD)
+  [Lectures on low-rank matrix factorization for topic modeling and word2vec](https://www.youtube.com/playlist?list=PLep-kTP3NkcNqn2MtzkscRlTDYTiqKjzD)
 
   
