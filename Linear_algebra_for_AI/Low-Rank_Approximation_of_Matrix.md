@@ -4,7 +4,7 @@
 
 ![](./Figure/Low-Rank_Approximation_of_Matrix1.JPG)
 
-![](./Figure/LAB\Desktop\Low-Rank_Approximation_of_Matrix2.JPG)
+![](./Figure/Low-Rank_Approximation_of_Matrix2.JPG)
 
 원하는 성분 갯수만큼 자를때는 남겨둘 성분 외의 성분의 특이 값을 모두 0으로 만든다. 
 
