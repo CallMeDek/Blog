@@ -2,7 +2,7 @@
 
 x = 2.999.... 는 3일까 3이 아닐까. 다음을 생각해보면 3이라고 할 수 있을법하다.
 
-![](C:\Users\LAB\Desktop\Meaning_of_Infinity1.JPG)
+![](./Figure/Meaning_of_Infinity1.JPG)
 
 
 
@@ -10,6 +10,6 @@ x = 2.999.... 는 3일까 3이 아닐까. 다음을 생각해보면 3이라고 �
 
 무한대는 무한히 커져간다라는 과정으로 다음과 같은 이미지이다. 
 
-![](C:\Users\LAB\Desktop\Meaning_of_Infinity2.JPG)
+![](./Figure/Meaning_of_Infinity2.JPG)
 
  유한의 수를 아무리 크게 해도 무한대는 되지 않는다. 유한의 세계와 무한대는 연결되어 있지 않기 때문이다. 이 벽을 뛰어넘는 개념이 극한(Limit)이다. x를 유한의 벽을 넘어 한없이 크게 한다는 것을 위와 같이 나타낸다. 
