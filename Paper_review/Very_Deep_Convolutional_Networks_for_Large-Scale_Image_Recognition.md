@@ -109,3 +109,24 @@ Configuration에서 제시한 각 모델은 먼저 단일 크기의 이미지에
 
 ![](./Figure/Very_Deep_Convolutional_Networks_for_Large-Scale_Image_Recognition4.JPG)
 
+### Multi-crop evaluation
+
+Testing 섹션에서 언급한 두 가지 접근 법(완전 연결 계층 vs 완전 컨볼루션 계층)을 비교했을 때, 완전 연결 계층과 이미지 크롭을 사용하는 것이 성능이 약간 더 좋긴 했으나 두 가지 접근 법을 섞어서 쓰는 방법이 개별적인 방법의 성능을 압도했다. 저자들이 추측하길 이것은 Testing 섹션에서 언급한 것처럼 두 가지 접근법의 처리 방식이 다르기 때문일 것이라고 한다. 
+
+![](./Figure/Very_Deep_Convolutional_Networks_for_Large-Scale_Image_Recognition5.JPG)
+
+### Convnet fusion
+
+이 실험에서 저자들은 여러 모델의 softmax계층을 통과한 결과를 평균을 내어 결과를 도출했다. ILSVRC에는 단일 스케일 네트워크나 Multi 스케일 모델(모든 계층 보다는 Fc만 미세조정)만을 훈련시켰다. 가장 성능이 좋은 Multi 스케일 모델 2개의 앙상블에 Dense evaluation이나 Multi-crop evaluation을 사용한 것이 7개의 네트워크의 앙상블 결과보다 좋다는 것을 확인했다. 
+
+![](./Figure/Very_Deep_Convolutional_Networks_for_Large-Scale_Image_Recognition6.JPG)
+
+### Comparison with the state of the art
+
+![](./Figure/Very_Deep_Convolutional_Networks_for_Large-Scale_Image_Recognition7.JPG)
+
+
+
+## Conclusion
+
+저자들은 이 연구에서 깊은 컨볼루션 네트워크가 큰 사이즈의 이미지 분류 작업에서 좋은 성능을 보일 수 있음을 입증했다.
