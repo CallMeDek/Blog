@@ -47,3 +47,71 @@ CIFAR-10 데이터셋서도 이런 결과를 생성함으로 단순히 특정 �
 
 
 
+## Deep Residual Learning
+
+### Residual Learning
+
+어떤 계층들이 쌓여 있을때 입력 x를 처리하여 나온 출력을 H(x)라고 가정한다. 만약에 여러 비선형 계층이 점근적으로 뭔가 복잡한 함수에 근사할 수 있다면, 이 비선형 계층은 잔차 함수에 점근적으로 근사하는 것이 가능할 것이다(예를 들어 출력과 입력의 차인 H(x) - x, 이때는 물론 출력과 입력의 차원이 같아야 한다). 그래서 저자들은, 계층들이 출력 H(x)을 근사하는 것보다  잔차 함수를 근사하는 것으로   명시했다(F(x) := H(x) - x).  따라서  원래의 함수가 F(x) 대신에 F(x) + x가 되었다. (이 부분은 좀 잘 이해가 안되는데 x를 Transformation하여 나온 출력이 H(x)이고, F(x)가 출력과 입력간의 잔차라고 cs231n에서는 설명한다. 즉, 애초에 계산하기 힘든 H(x)가 가능하다면 H(x)와 입력 x의 잔차 F(x)를 계산하는 것도 가능하다는 의미인 것 같다)
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition3.JPG)
+
+[CS231n: Convolutional Neural Networks for Visual Recognition](http://cs231n.stanford.edu/) 
+
+F(x) + x와 같은 식은 서론에서 언급한 Degradation 문제를 해결하고자 하는 동기에서 비롯돼었다. 추가되는 계층이 항등 매핑 역할을 하는 것 이상이 아니라면 깊은 모델이 얕은 모델보다 훈련 에러가 더 높지 않을것이라고 생각했다. 여러 비선형 계층에 의해서 항등 매핑을 근사하는 것에는 어려움이 있을 수 있다. 그러나 위의 변형된 식에서는 만약에 항등 매핑이 최적화된 상태라면 항등 매핑에 근사하기 위해서 비선형 계층들의 가중치가 0으로 가까워질 것이다. 
+
+그러나 실제로는 항등 매핑이 최적의 상태가 아니다. 하지만 변형된 식이 문제에 대한 선행 조건을 처리하는데는 도움이 될 수 있다. 역전파 시에 항등 매핑에서는 기울기가 최소 1이라도 나오게 된다. 그렇기 때문에 아주 작은 변화라도 일어나는 것이 변화가 없는 매핑보다 더 낫다. 
+
+
+
+### Identity Mapping by Shortcuts
+
+저자들이 구현한 네트워크의 모든 블럭에 Residual learning이 적용되었다. 이 블럭을 식으로 나타내면 다음과 같다.
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition4.JPG)
+
+x, y와는 각각 블럭의 입력과 출력이고 F(x, {Wi})는 학습되어야할 잔차 매핑이다. 서론에서 다뤘던 잔차 블럭은 두 계층으로 이루어져 있다. 여기서 잔차를 식으로 나타내면 F = W2σ(W1x)로 나타낼 수 있다. 여기서 σ는 ReLU 활성화 함수이며 편향은 표기 편의상 생략되었다. F + x은 Shortcut connection에 의해서 수행되며, Element-wise(요소별) 덧셈이 수행된다. Shortcut connection에서 특별히 더 추가되는 모델 파라미터나 계산상의 복잡함은 없다. 특히 저자들의 연구에서 이 개념을 차용해서 Residual learning을 적용한 네트워크와 그렇지 않은 평범한 네트워크 사이의 비교를 진행했다. 두 네트워크는 파라미터 수, 깊이, 넓이, 계산상의 cost 등이 모두 같다(무시해도 될 정도로 아주 적은 요소별 덧셈을 제외하고). 보통은 x와 F의 차원 같으나 그렇지 않은 경우(입력과 출력의 타원이 다른 경우), 차원을 맞추기 위해서 Linear projection Ws 연산을 Shortcut connection에서 수행한다.
+
+![]()![Deep_Residual_Learning_for_Image_Recognition5](./Figure/Deep_Residual_Learning_for_Image_Recognition5.JPG)
+
+식(1)에서도 Ws 연산을 수행할 수 있으나 보통 항등 매핑이면 충분하고 또 경제적이다. 또 저자들이 말하길 이 연구에서는 잔차 블럭에서 2개 혹은 3개의 계층만 사용했으나 다른 수의 계층도 가능하다고 한다. 다만 계층이 1개인 경우 선형 계층(y = W1x + x)과 유사해져서 딱히 장점이 없어진다. 
+
+또, 위의 식이 Fc 같아 보이지만 컨볼루션 계층에도 적용 가능하다고 한다. 이떄에는 F(x, {Wi})가 여러 컨볼루션 계층이 쌓인 것의 매핑을 의미하고 요소별 덧셈은 채널 별로, 두 개의 특징 맵 끼리 수행된다고 한다.
+
+
+
+### Network Architectures
+
+| ![](./Figure/Deep_Residual_Learning_for_Image_Recognition6.JPG) |
+| :----------------------------------------------------------: |
+| ![](./Figure/Deep_Residual_Learning_for_Image_Recognition7.JPG) |
+| ![](./Figure/Deep_Residual_Learning_for_Image_Recognition8.JPG) |
+
+
+
+#### Plain Network
+
+대조군(평범한) 네트워크는 기본적으로 VGG 네트워크 계열의 방식을 따른다. 컨볼루션 계층은 대부분은 3x3의 필터를 가지며 같은 크기의 특징 맵을 출력하는 계층은 같은 숫자의 필터 수를 가지고 특징 맵의 크기가 반이 되면 계층당 시간 복잡도를 유지하기 위해서 필터 수가 두 배가 된다. 다운 샘플링 시에는 컨볼루션 계층의 Stride를 2로 해서 다운 샘플링을 진행한다. 네트워크의 끝에는 Gap가 붙어 있고 1000개의 클래스를 분류할 수 있도록 Softmax 활성화 함수를 수행하는 Fc가 붙어 있다. 주목할만 한 점은 VGG 네트워크보다 더 적은 필터 숫자를 가지고 있고 더 낮은 모델 복잡도를 보인다는 것이다. 
+
+
+
+#### Residual Network
+
+대조군 네트워크에 Shortcut connection을 적용하여 잔차 블럭을 생성한 네트워크가 잔차 네트워크이다. 위 그림에서 3번째 네트워크를 보면 Shortcut connection이 실선으로 나와 있는 것과 점선으로 나와 있는 것이 있다. 실선은 입력과 출력의 차원이 같고 점선은 출력의 차원이 입력의 차원보다 크다. 차원이 증가할 때 두 가지 옵션이 있다.
+
+- 항등 매핑을 진행하되 차원을 맞추기 위해서 증가된 차원에는 0을 추가하므로 추가되는 모델 파라미터는 없다.
+- Projection connection이 식 2에서 차원을 맞추기 위해서 사용되었다(1x1 컨볼루션을 통해서). 
+
+두 옵션 모두 Shortcut이 두 가지 특징 맵 크기를 고려하여 진행될 때 Stride 값을 2로 설정하여 수행된다.
+
+
+
+### Implementation
+
+ImageNet의 이미지들은 Scale augmentation을 위해서 [256, 480] 의 값 중에 한 값을 뽑아서 짧은쪽의 길이를 이 값으로 하여 크기가 재조정 된다. 224x224 Crop된 패치가 원본 이미지나 횡으로 뒤집힌 이미지 중에서 샘플링 되고 픽셀 마다 평균을 빼는 정규화가 진행되었다. 그리고 Standard color augmentation이 적용되었다. 컨볼루션 후, 활성화 함수 적용 전에는 BN이 수행되었고 "Delving deep into rectifiers: Surpassing human-level performance on imagenet classification"의 연구에서 했던 것처럼 가중치를 초기화 했으며 모든 네트워크는 처음부터 훈련이 진행되었다. 최적화 정책으로 SGD를, 배치 사이즈로 256을 설정했으며 Lr은 0.1부터 시작해서 에러율이 정체될때마다 10으로 나눠졌다. 모델은 총 60x10^4 Iteration 만큼 훈련되었다. Weight decay 0.0001 Momentum 0.9 값을 적용행ㅆ으며 Dropout을 적용하지 않았다. 
+
+테스트 시에는 Standard 10 crop을 도입했고 Fully convolutional form을 적용했으며 여러 크기에서의 Score를 평균냈다(짧은 쪾의 길이가 {224, 256, 384, 480, 640}가 되도록).
+
+
+
+
+
