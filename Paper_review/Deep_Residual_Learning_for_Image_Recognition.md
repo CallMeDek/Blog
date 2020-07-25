@@ -113,5 +113,63 @@ ImageNet의 이미지들은 Scale augmentation을 위해서 [256, 480] 의 값 �
 
 
 
+## Experiments
 
+### ImageNet Classification
+
+저자들의 네트워크는 ImageNet 2012에서 검증되었다(레이블 1000개). 1.28 million의 훈련 이미지로 훈련시키고 50k의 검증 이미지로 검증했으며 100k의 테스트 이미지로 최종 결과를 확인했다. 결과로 top-1, top-5 에러율을 확인한다.
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition9.JPG)
+
+
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition10.JPG)
+
+
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition11.JPG)
+
+#### Plain Networks
+
+위 결과들을 보면 대조군(평범한) 모델에서 34 계층의 모델이 18 계층의 모델보다 검증 에러율이 더 높다는 것을 확인할 수 있다. 저자들은 여기서 Degradation 문제를 다시 한번 확인했다.
+
+저자들이 주장하길 이것의 원인은 단순히 기울기 소실 문제가 아니라는 것이다. 저자들은 이를 의식하고 BN을 적용하여 순전파와 역전파 시에 신호(Signals)가 사라지지 않도록 했다. Table3을 보면 그래도 어느정도 경쟁력 있는 정확도를 보인다. 저자들은 깊은 대조군 모델의 아주 낮은 수렴 비율 때문에 훈련간 에러율을 줄이는데 영향을 끼치지 않았을까라고 추측했다. 
+
+
+
+#### Residual Networks
+
+잔차 네트워크 모델은 대조군 모델에 Shortcut connection을 도입한 모델이다. Shortcut connection에서는 항등 매핑을 적용했고, 차원을 늘려야 한다면 0을 패딩으로 해서 차원을 늘렸다. 그래서 대조군 모델과 비교해서 추가적인 파라미터는 없었다. 
+
+결과는 대조군과 반대였다. 34 계층의 잔차 네트워크가 낮은 훈련 에러율을 보였고 검증 데이터에도 사용 가능할 정도로 잘 일반화 되었다. 이것으로 저자들이 보기에는 Degradation 문제가 잘 해결되었고, 층을 더 깊게 만드는 것의 이점을 충분히 획득했다. 
+
+18 계층에서는 대조군이나 잔차 네트워크나 정확도가 비슷했는데 잔차 네트워크의 수렴이 좀 더 빨랐다. 저자들이 말하길 이런 경우에는 학습의 초기 단계에서 최적화가 쉽게 될 수 있도록 하는 역할을 할 수 있다고 한다. 
+
+
+
+#### Identity vs. Projection Shortcut
+
+여기서 저자들은 Identity shortcut과 Projection shortcut(Identity Mapping by Shortcuts 섹션에서 식 2. 입력 x에 Ws를 통해 Transformation 함)을 비교했다. 
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition12.JPG)
+
+저자들은 여기서 3가지 실험 방법을 설계하고 실험을 진행했다.
+
+- (A) 차원이 증가될 때 0을 패딩으로 하고 모든 Shortcut은 추가적인 파라미터가 없게 하는 방법
+- (B) 차원이 증가될 때만 Projection shortcut 적용, 나머지는 Identity shortcut 적용
+- (C) 모든 Shortcut에 Projection shortcut 적용
+
+모든 대조군 네트워크보다 잔차 네트워크의 성능이 좋았다. B 옵션이 A 옵션보다 성능이 약간 좋았는데 저자들은  0으로 패딩 처리를 한 부분은 잔차 학습 개념이 적용되지 않기 때문일 것으로 추측했다.  또 C가 B보다 약간 성능이 좋은데 Projection shortcut에서 추가된 많은 모델 파라미터 때문일 것으로 저자들은 생각했다. A, B, C의 미미한 성능 변화 때문에 저자들은 C 옵션을 사용하지 않기로 결정했다(리소스 복잡도를 줄이고 모델 사이즈를 줄이기 위해). 저자들이 말하길, Identity shortcut이   Bottleneck architectures에서의 복잡도를 줄이는데 아주 중요하다고 한다.
+
+
+
+#### Deeper Bottleneck Architectures
+
+저자들이 모델 훈련에 들어갈 시간이 여유롭지 못했기 때문에 Bottleneck 디자인을 고안했다고 한다. 
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition13.JPG)
+
+Bottleneck 디자인에서 첫번째 1x1 컨볼루션에서 입력 차원의 수를 줄여 3x3 컨볼루션에서 계산에 부담이 되지 않게 했고 두 번째 1x1 컨볼루션에서는 3x3 컨볼루션에서의 출력 데이터의 차원을 다시 회복하는 역할을 맡았다고 한다.
+
+만약에 Bottleneck 디자인에서 Identity Shortcut 대신에 Projection Shortcut을 적용할 경우 시간 복잡도와 모델 사이즈가 두 배가 되므로 Identity Shortcut은 이 디자인에서 굉장히 중요한 개념이라고 한다.
 
