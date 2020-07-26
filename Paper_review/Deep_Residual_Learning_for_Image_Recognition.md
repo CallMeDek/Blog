@@ -173,3 +173,62 @@ Bottleneck 디자인에서 첫번째 1x1 컨볼루션에서 입력 차원의 수
 
 만약에 Bottleneck 디자인에서 Identity Shortcut 대신에 Projection Shortcut을 적용할 경우 시간 복잡도와 모델 사이즈가 두 배가 되므로 Identity Shortcut은 이 디자인에서 굉장히 중요한 개념이라고 한다.
 
+##### 50-layer ResNet
+
+34 계층의 2 계층짜리 블럭을 모두 3 계층 짜리 Bottleneck 블럭으로 변경했다. 그래서 50 계층 ResNet이 만들어졌다. 차원 증가 시에 B 옵션을 적용했다. 이 모델은 3.8 billion FLOP(FLoating point Operations Per Second)의 용량을 가진다.
+
+##### 101-layer and 152-layer ResNets
+
+3 계층짜리 Bottleneck 블럭을 더 추가해서 101 계층, 152 계층짜리 ResNet을 만들었다. 주목할만한 점은 깊이가 증가했음에도 불구하고 VGG-16/19 네트워크보다 복잡도가 낮다는 것이다. 50, 101, 152 계층 모두 34 계층짜리 네트워크보다 더 정확도가 높다. Degradation 문제는 발생하지 않았다.
+
+
+
+#### Comparisons with State-of-the-art Methods
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition14.JPG)
+
+
+
+### CIFAR-10 and Analysis
+
+저자들은 또 CIFAR-10 데이터 셋에서 연구를 추가적으로 수행했다. CIFAR-10 데이터셋은 50k의 훈련 셋과 10k의 테스트 셋으로 이루어져 있고 10개의 클래스가 존재한다. 네트워크는 34 계층짜리 대조군과 잔차 구조를 따른다. 입력 이미지의 크기는 32x32이고 픽셀 마다 평균을 빼는 전처리를 수행했다. 첫번째 계층은 3x3 컨볼루션 계층이다. 그 다음에는 3x3 컨볼루션 계층이 6n 만큼 쌓인다. 이때 특징 맵의 크기는 {32, 16, 8}이고 각각 2n 만큼의 계층이 할당된다. 필터의 숫자는 각각 {16, 32, 64}이다. 서브 샘플링이 스트라이드 2의 컨볼루션 계층에서 수행된다. 끝에는 Gap과 Softmax를 수행하는 10-way Fc가 붙어 있다. 따라서 총 6n + 2의 가중치가 있는 계층이 존재한다. 
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition15.JPG)
+
+Shortcut connection이 적용될 때는 옵션 A로 3x3 컨볼루션 계층의 묶음에 적용되므로 총 3n만큼의 Shortcut connection이 존재한다. 
+
+Weight decay 0.0001, Momentum 0.9, "Delving deep into rectifiers: Surpassing human-level performance on imagenet classification"에서 적용했던 가중치 초기화, BN을 적용했고 Dropout은 적용하지 않았다. 모델들은 128의 배치로 두 개의 GPU에서 훈련되었다. Lr은 0.1에서 시작해서 32k, 48k Iteration마다 10으로 나누어진다. 총 64k의 Iteration 동안 훈련이 진행되었다. 45k, 5k의 훈련셋, 검증셋이 사용되었다. 훈련 동안에는 양 옆, 위 아래에 4 pixel 정도 원본 이미지에 패딩이 추가되어, 패딩이 추가된 이미지와 이를 횡으로 뒤집은 이미지에서 랜덤으로 32x32 크롭된 패치로 훈련을 진행했고 테스트 시에는 원본 32x32 이미지로만 테스트 했다. 
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition16.JPG)
+
+
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition17.JPG)
+
+
+
+n = 18의 110 계층에서는 Lr을 0.1로 초기화 하면 성능의 수렴하기 시작하는 시간이 너무 길었다. 그래서 훈련 에러가 80% 밑으로 떨어질 때까지(대략 400 Iteration)  0.01로 설정하여 훈련을 진행했다. 그러고 나서 다시 0.1로 Lr을 바꿔 훈련을 계속했다. 그 후에 Lr 스케쥴은 위에서 언급한 대로 진행했다. 이렇게 훈련한 110 계층짜리 잔차 네트워크는 결과적으로 성능이 잘 수렴되었고 다른 네트워크(FitNet, Hightway 등)보다 모델 파라미터가 더 적었다고 한다. 그러면서 정확도는 더 좋았다. 
+
+
+
+#### Analysis of Layer Responses
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition18.JPG)
+
+위의 그래프는 3x3 컨볼루션과 BN을 적용하고 난 후, 비선형 활성화 함수를 적용하기 전의 출력의 표준 편차를 나타낸 것이다. ResNet의 출력의 표준 편차가 대조군의 표준 편차보다 더 작은 것을 확인할 수 있다. 
+
+
+
+#### Exploring Over 1000 layers
+
+n = 200을 설정하여 만든 1202 계층짜리 네트워크도 최적화 하는데 큰 어려움은 없다고 한다.  그런데 이 네트워크는 테스트 결과가 110 계층짜리 네트워크보다 안 좋다고 한다. 저자들은 과적합이 발생했다고 추측했다. 
+
+
+
+### Object Detection on PASCAL and MS COCO
+
+![](./Figure/Deep_Residual_Learning_for_Image_Recognition19.JPG)
+
+
+
+저자들은 잔차 학습 방법을 객체 탐지 영역에도 적용해봤다. Faster R-CNN 방법을 적용했고 결과는 위와 같다.
