@@ -132,3 +132,107 @@ activation whitening은 매 훈련 단계나 특정 주기에 수행되었고 �
 다음은 BN 알고리즘의 과정을 나타낸 것이다. 여기서 ε은 mini batch 분산의 안정화를 위해 추가된 값이다.
 
 ![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift25.JPG)
+
+한 가지 알아야할 점은 BN 변환은 각 훈련 셋의 activations을 독립적으로 처리하기보다는 mini-batch 안의 셋들에 의존적이라는 것이다. 정규화된 입력을 스케일링하고 shift한 y 값은 다른 계층으로 전파된다. mini-batch 안의 요소들이 같은 분포에서 샘플링 되는 한 정규화된 입력 값의 분포는 0의 평균 값과 1의 분산 값을 갖는다. ε를 무시한다면 다음을 통해서 이를 확인할 수 있다.
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift26.JPG)
+
+정규화된 다음과 같은 activation들은 
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift27.JPG)
+
+다음과 같은 선형 변환과, 본래의 네트워크에서의 후속 처리로 구성되어 있는 서브 네트워크로의 입력이라고 볼 수 있다.
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift28.JPG)
+
+이 입력들은 고정된 평균과 분산을 가지게 되고, 만약에 훈련 중에 정규화된 이런 입력들의 전체적인(joint) 분포가 변경된다하더라도 이 정규화로 인해서 서브 네트워크의 훈련에 가속이 붙음을 기대할 수 있고 나아가 전체 네트워크의 훈련이 더 빨라질 것을 기대할 수 있다. 
+
+역전파 시에는 다음과 같이 손실에 대한 gradient를 전파할 수 있다. 
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift29.JPG)
+
+다시 한번 말해서, BN 변환은 미분 가능하기 때문에 네트워크 훈련 시에, 종단 간에 같이 훈련이 가능하고 입력의 분포는 Internal covariate shift를 적게 보여서 훈련을 빠르게 만든다. 또, 베타와 감마 덕분에 BN 변환이 항등변환을 나타낼 수 있게 하고(정규화할때 평균을 빼고 분산으로 나눴던 것을 다시 베타와 감마로 scaling하고 shift 시키므로) 이는 원래 네트워크의 역량을 보존하게 한다. 
+
+
+
+### Training and Inference with BatchNormalized Networks
+
+activations의 정규화가 mini-batch에 의존되는 것이 효율적인 훈련을 가능하게 하지만 그게 꼭 추론 시에 필수적이라거나 바람직한 것은 아니다.  추론 시의 출력은 입력 값에만 의존적이면 되고 입력 값에 따라 출력되는 출력 값이 정해지는 것이 좋다. 이를 위해서 추론 시에는 mini-batch에 대한 통계치가 아닌 모집단에 대한 통계치를 사용하여 다음과 같이 정규화 한다. 
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift30.JPG)
+
+위에서 한쪽으로 편향되지 않은 분산 Var([x])는 다음과 같이 계산한다.
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift31.JPG)
+
+위에서 기대값은 크기가 m인 mini-batch의 기대값이고 기대값의 인풋은 그 샘플들의 분산이다. 이동 평균을 사용하면, 훈련 동안에 모델의 정확도를 모니터링 할 수 있다. 다음은 BN이 적용된 네트워크의 훈련 과정을 요약한 것이다. 
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift32.JPG)
+
+
+
+### Batch-Normalized Convolutional Networks
+
+저자들이 말하길 z = g(Wu + b)와 같은 완전 연결 계층이나 컨볼루션 계층에도 BN을 적용할 수 있고 이때는 비선형함수 바로 전에 적용한다고 한다. 
+
+여기서 b는 정규화 과정 중에 평균을 빼는 작업 때문에 효과가 사라지게 되므로 생략할 수 있다(대신에 베타에 의한 shift가 이 역할을 대신한다). 따라서 위의 식은 다음과 같이 대체될 수 있다.
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift33.JPG)
+
+컨불루션 계층에서는 같은 특징 맵에서의 다른 원소들이 정규화된다. 따라서 알고리즘1에서 B가 다음과 같이 설정된다.
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift34.JPG)
+
+(m은 mini batch의 크기, feature map의 크기는 p x q) 그리고 activation마다 감마와 베타가 할당되는 것이 아닌 특징 맵마다 감마와 베타가 할당된다. 
+
+
+
+### Batch Normalization enables higher learning rates
+
+원래의 딥러닝 네트워크에서는 높은 학습률이 gradient를 소실되거나 폭발하게 해서 성능이 안 좋은 로컬 minima에 갇히게 만든다. 또 매개변수에 대한 작은 변화가 gradient 하강 중에 더 크게 증폭되는 것을 방지 한다. 예를 들어서 비선형성의 Saturation을 막는다. 보통은 큰 학습률은 모델 파라미터의 스케일을 증가시켜서 역전파시에 gradient를 증폭시키고 이는 모델 용량의 폭발로 이어진다. 그러나 BN을 적용하면 파라미터의 스케일에 영향을 받지 않는다. 예를 들어서 스칼라 a에 대하여 다음이 성립한다. 
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift35.JPG)
+
+그리고 저자들에 의하면 다음을  확인할 수 있다고 한다.
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift36.JPG)
+
+즉, 스케일은 계층의 야코비언 계산에 영향을 끼치지 않으므로 역전파 시에 gradient에 영향을 끼치지 않는다는 것이다. 거기다 큰 가중치를 작은 gradient로 이끌어서 파라미터의 갱신을 안정화시킨다. 
+
+
+
+### Batch Normalization regularizes the model
+
+BN을 적용하여 훈련을 시키면 훈련 셋은 mini-batch 안의 다른 샘플들과 함께 고려되므로 네트워크가 특정 훈련 샘플에 대해 결정되는 값을 만들어지지 않게 된다. 저자들은 이것이 네트워크의 일반화에 도움을 준다고 봤다. 
+
+
+
+## Experiments
+
+### Activations over time
+
+이 실험에서 저자들은 Internal covariate shift이 끼치는 영향을 확인하고 BN의 효과를 검증하기 위해서 MNIST 데이터 셋으로 숫자를 예측하는 실험을 실시했다. 28x28 크기의 binary 이미지를 입력을 받는, 3개의 히든 완전 연결 계층으로 이루어져 있는 간단한 네트워크에서 실험을 했다. 각 히든 계층은 100개의 activations을 출력하며 Sigmoid 비선형 활성화 함수를 적용하고 무작위 가우시안 값으로 초기화 한다. 마지막에는 10개의 activation을 출력하는 완전 연결 계층이 있고 Cross-entropy로 손실 값을 측정한다. 5000번의 step동안 60개의 mini-batch 사이즈로 훈련을 진행하고 각 히든 계층에는 BN을 추가했다. 그래서 BN을 추가한 것과 추가 하지 않은 것의 성능을 비교했다. 
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift37.JPG)
+
+위 그림을 보면 BN은 높은 학습률의 이점을 제대로 활용하는 것을 볼 수 있다. (b)와 (c)를 보면 BN이 없는 모델의 경우 입력의 분포가 학습하는 동안 지속적으로 변화되는 것을 볼 수 있고 반면에 BN이 적용된 모델은 학습 동안 상당히 안정적인 것을 확인할 수 있다.
+
+
+
+### ImageNet classfication
+
+저자들은 또 BN을 Inception 네트워크의 변종에 적용해서 ImageNet 분류 문제를 해결하는 실험을 실시했다. 네트워크의 변종이 원래의 네트워크와 다른 점은 5x5 컨볼루션 대신에 2개의 연속적인 컨볼루션을 사용했고 128개까지 필터 수가 증가한다는 것이다. 이 네트워크의 파라미터 수는 13.6 x 10^6개이고 맨 마지막 소프트맥스 계층을 제외하고는 완전 연결 계층이 없다. SGD와 momentum을 적용하여 최적화를 진행했고 mini-batch 크기는 32이다. BN은 위에서 기술한대로 비선형 적용 이전에 수행된다. 
+
+
+
+#### Accelerating BN Networks
+
+단순히 BN을 적용하기만 하는 것은 이것의 이점을 충분히 활용하지 못하기 때문에 저자들은 몇 가지 추가적인 설정을 더했다. 
+
+- 학습률 증대: BN을 적용하면 높은 학습률의 부정적인 부수효과가 사라지기 때문에 높은 학습률을 설정한다.
+- Dropout 제거: BN을 적용하면 mini-batch 전체의 통계치를 활용하기 때문에 특정 데이터 샘플에 맞게 출력 값이 나올 확률이 적어진다. 따라서 어느정도 규제의 역할을 할 수 있다고 보고 Dropout을 제거한다. Dropout을 제거함으로서 훈련의 속도가 빨라진다.
+- L2 가중치 규제정도 감소: 원래의 네트워크보다 L2 규제를 5배정도 감소시킨다. 저자들은 이렇게 해서 검증 셋의 정확도가 개선된 것을 확인했다. 
+- 학습률 Decay 가속화: 훈련 중에 학습률을 지수적인 속도로 감소시킨다. 원래의 네트워크 훈련 속도보다 빠르기 때문에 6배 더 빠르게 학습률이 감소한다.
+- Local Response Normalization 제거 : 각 시그널의 값을 동일한 위치의 이웃한 값으로 정규화하는 LRN을 제거했다.
+- 훈련 셋을 철저하게 섞음: 저자들은 동일한 데이터가 mini-batch에 여러번 나오는 것을 방지했다. 이렇게 함으로서 검증셋의 정확도가 1% 개선되었다. BN은 각 batch에서 다른 샘플들이 포함되어야 효과가 극대된다.
+- Photometric distortion 감소: BN 네트워크가 훈련 속도가 빠르고, 그래서 각 훈련 샘플을 적은 시간동안 관찰하기 때문에 이미지를 좀 적게 외곡시켜서 최대한 실사에 가깝게 하도록 했다. 
