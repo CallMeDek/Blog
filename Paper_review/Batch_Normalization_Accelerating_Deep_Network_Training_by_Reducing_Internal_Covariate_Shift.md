@@ -236,3 +236,43 @@ BN을 적용하여 훈련을 시키면 훈련 셋은 mini-batch 안의 다른 �
 - Local Response Normalization 제거 : 각 시그널의 값을 동일한 위치의 이웃한 값으로 정규화하는 LRN을 제거했다.
 - 훈련 셋을 철저하게 섞음: 저자들은 동일한 데이터가 mini-batch에 여러번 나오는 것을 방지했다. 이렇게 함으로서 검증셋의 정확도가 1% 개선되었다. BN은 각 batch에서 다른 샘플들이 포함되어야 효과가 극대된다.
 - Photometric distortion 감소: BN 네트워크가 훈련 속도가 빠르고, 그래서 각 훈련 샘플을 적은 시간동안 관찰하기 때문에 이미지를 좀 적게 외곡시켜서 최대한 실사에 가깝게 하도록 했다. 
+
+
+
+#### Single-Network Classification
+
+저자들은 다음의 네트워크들을 LSVRC2012 훈련 셋으로 훈련시키고 검증셋에서 테스트했다.
+
+- Inception: 위에서 언급한 Inception 네트워크의 변형을 0.0015로 초기화한 학습률로 진행
+- BN-Baseline: Inception의 각 비선형 활성화 함수 계층 전에 BN 삽입
+- BN-x5: BN-Baseline에서 Accelerating BN Networks 섹션에서 언급한 설정 적용. 초기 학습률은 0.0075.
+- BN-x30: BN-x5와 동일하되, 초기 학습률은 0.045.
+- BN-x5-Sigmoid: BN-x5와 동일하되, ReLU 대신에 Sigmoid 적용. 
+
+결과는 아래와 같다.
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift38.JPG)
+
+
+
+다음은 각 네트워크가 72.2%의 정확도에 도달할때까지 걸린 스텝수, 최고 검증셋 정확도를 나타낸다.
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift39.JPG)
+
+
+
+BN을 적용했을때가 그렇지 않을때보다 훨씬 학습 속도가 빠르다는 것을 알 수 있다. 그리고 BN을 적용하면 Sigmoid를 사용했을때 학습의 어려움을 커버할 수 있음을 알 수 있다. 
+
+
+
+#### Ensemble Classification
+
+저자들은 앙상블 모델을 구축하기 위해서 6개의 개별 네트워크를 사용했다. 각각은 BN-x30을 사용하되, 컨볼루션 계층에서는 가중치 초기값을 증가시켰고 Dropout을 적용했다(5% or 10%). 모델의, 컨볼루션이 아닌 마지막 히든 계층에서는 activation당 BN을 적용했다. 각 네트워크는 최고 정확도에 도달할때까지 6*10^6의 스텝만큼 걸렸다. 앙상블 모델의 예측 값은 각 모델의 클래스 확률의 산술 평균으로 정했다.  
+
+![](./Figure/Batch_Normalization_Accelerating_Deep_Network_Training_by_Reducing_Internal_Covariate_Shift40.JPG)
+
+
+
+## Conclusion
+
+저자들은 모델의 학습을 어렵게 하는 Internal covariate shift을 없애는 방법론을 제시했다. 이 방법론은 네트워크 자체에 삽입되어, 기존의 네트워크를 크게 바꾸지 않는 선에서 저자들의 가설을 입증했다. 정규화는 Stochastic optimization 방법에서 각 mini-batch마다 수행되었다. activation마다 오직 2개의 추가적인 파라미터를 통해 네트워크의 표현력을 보존하게 했다. 비선형성의 Saturation을 어느정도 해결할 수 있고 좀 더 큰 학습률에서 학습이 가능하면 Dropout 같은 추가적인 규제가 필요하지 않게 되었다. BN은 비선형성을 추가하기 전에 수행되었다. 
