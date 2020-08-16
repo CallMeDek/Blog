@@ -201,3 +201,110 @@ CNN을 탐지 목적에 맞게 조정하고 워프된 입력 이미지에 맞게
 #### Performance layer-by-layer, with fine-tuning
 
 이번에는 Fine-tuning을 하고 난 뒤의 CNN activation의 분석 결과이다. Fine-tuning을 했을 때 mAP는 8%가량 상승했다. 이런 개선 정도는 pool5보다 fc6와 fc7에서 크게 나타났다. 이것은 ImageNet에 Pre-trained된 pool5의 특징들은 좀 더 일반적이며 Fine-tuning을 통해서는 분류기의 상위 요소들이 Domain-specific하고 non-linear한 특징들을 학습한다는 것이다. 
+
+
+
+#### Comparison to recent feature learning methods
+
+특징을 학습하는 방법들과 R-CNN을 비교하기 위해 여기서는 두 가지 방법을 제시했다. 
+
+- DPM ST - J. J. Lim, C. L. Zitnick, and P. Dollar. Sketch tokens: A ´ learned mid-level representation for contour and object detection. In CVPR, 2013
+- DPM HSC - X. Ren and D. Ramanan. Histograms of sparse codes for object detection. In CVPR, 2013
+
+위의 테이블 2의 8-10행을 보면 R-CNN 계열 모델들이 위의 DPM 계열 알고리즘의 성능을 크게 넘어서는 것을 알 수 있다. 
+
+
+
+### Network architectures
+
+이 연구에서의 실험 결과는 대부분 Krizhevsky 등이 제시한 네트워크 아키텍처를 사용한 것인데 저자들은 네트워크 아키텍처를 선택하는 것이 R-CNN의 탐지 성능에 크게 영향을 끼친다는 것을 알아냈다. Table 3는 다음의 네트워크 아키텍처를 사용했을때의 결과를 나타낸 것이다.
+
+- K. Simonyan and A. Zisserman. Very Deep Convolutional Networks for Large-Scale Image Recognition. arXiv preprint, arXiv:1409.1556, 2014
+
+저자들은 OxfordNet을 O-Net으로, TorontoNet을 T-Net으로 불렀다. O-Net을 R-CNN에 적용하기 위해서 Caffe Model Zoo에서 Pre-training한 모델의 가중치를 다운 받아서 T-Net에서 했던 옵션을 적용해서 Fine-tuning 했다고 한다. 차이점은 GPU 메모리 용량에 맞추기 위해서 적은 양의 미니 배치 사이즈(24)를 적용했다는 것이다. R-CNN O-Net이 R-CNN T-Net을 mAP상으로는 압도했으나 순전파 시에 7배의 시간이 더 걸렸다고 한다. 
+
+
+
+### Detection error analyasis
+
+저자들은 탐지 과정의 분석을 위해서 Hoiem 등의 분석 도구를 이용했다. 그래서 R-CNN 방법론의 오류의 종류, Fine-tuning이 모델을 어떤식으로 바꾸는지, DPM과 비교해서 어떤 오류가 영향을 많이 끼치는지 등을 알아냈다. 
+
+![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation9.JPG)
+
+
+
+![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation10.JPG)
+
+
+
+### Bounding-box regression
+
+저자들은 오류 분석에 근거해서 위치 추정과 관련된 오류를 줄이기 위해서 간단한 바운딩 박스 회귀 방법을 고안했다. DPM에서 도입한 했던 방법으로, pool5에서 출력된 특징을 바탕으로 새로운 탐지 윈도우를 예측해서 Selective search를 수행할 때, 지역 후보를 생성하는 방식을 개선했다. Table1, 2, Figure 5에서 보여진대로 이 접근법은 많은 탐지 과정 중의 많은 잘못된 위치 추정을 바로잡았고 이를 통해 mAP가 3에서 4 정도 상승했다. 
+
+DPM에서 썼던 방법과의 차이점은 특징을 CNN으로 계산했다는 것이다. 여기서 N개의 훈련 셋 쌍은 다음과 같이 표현된다. 
+
+| N training pairs                                             | Proposal P                                                   | Ground-truth G                                               |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation11.JPG) | ![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation12.JPG) | ![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation13.JPG) |
+
+여기서 Px, Py, Pw, Ph는 각각 Proposal P의 중앙 x, y 좌표, 넓이, 높이이고 Gx, Gy, Gw, Gh는 Ground truth의 중앙 x, y 좌표, 넓이, 높이이다. 이 모델의 목적은 P를 G로 매핑하는 변환을 학습하는 것이다. 
+
+![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation14.JPG)
+
+저자들은 Proposal P에 대한 값을 인자로 하는 변환을 다음과 같이 함수로 만들었다. 앞의 두 개는 Scale-invariant하게 P 박스의 중앙 좌표 값을 변환하고 뒤의 두 개는 P 박스의 넓이와 높이를 log 값으로 변환한다. 위의 개념들을 이용해서 P를 이용해서 Ground-truth의 예측 값 G^hat을 다음과 같이 나타낼 수 있다. 
+
+![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation15.JPG)
+
+각각의 d\*(P)는 P의 pool5의 출력 특징에 대한 선형 함수로서 모델링할 수 있다. 여기서  pool5의 출력 특징을 다음과 같이 나타낸다.
+
+![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation16.JPG)
+
+(위의 값이 각 입력 이미지 데이터에 의존성이 있다는 것은 암묵적으로 추정한다.)
+
+따라서 d*(P)는 다음과 같이 나타낼 수 있다. 여기서 w\*는 학습이 가능한 파라미터의 벡터이다. 
+
+![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation17.JPG)
+
+w\*는 Ridge 회귀를 통해서 최적화 할 수 있다. 
+
+![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation18.JPG)
+
+위에서 훈련셋(P,G)에 대한 타겟 t\*는 다음과 같이 나타낼 수 있다.
+
+ ![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation19.JPG)
+
+저자들은 바운딩 박스 회귀 프로세스를 구현하면서 두 가지 이슈를 발견했다. 
+
+- 규제 정도의 중요성 - 검증 셋에 근거해서 λ를 1000으로 설정했다. 
+- (P, G) 설정의 중요성 - 만약에 P가 그 어떤 G와도 가까이 있지 않다면 P를 G로 근사화 시키는 것은 애초에 말이 안되는 작업이 된다. 따라서 P가 최소 하나의 G와 가까이 있을 때 P와 G를 묶었다. 가까움의 정도는 P가 G와의 IoU가 가장 높으면서 특정 임계값보다(검증 셋을 이용하여 0.6으로 설정) 높으면 그 P를 G와 묶었다. 나머지 G와 묶이지 않는 P는 버린다. 이 과정을 각 객체 클래스마다 한 번씩 수행했는데 이는 특정 틀래스에 특화된 바운딩 박스 회귀를 훈련시키기 위함이다. 
+
+테스트 시에는 이런 과정을 한 번씩만 수행했다. 여러번 수행할 수도 있으나 여러번 수행하는 것이 결과 개선에 효과가 없었다고 한다. 
+
+
+
+### Qualitative results
+
+ILSVRC2013 데이터셋에 대하여 질이 좋은 결과는 아래와 같다. 각 이미지는 val2 셋에서 무작위로 선정되었고 모든 결과는 정밀도가 0.5 이상인 것들이다. 
+
+(본문의 Figure8,9,10,11 참조)
+
+
+
+## The ILSVRC2013 detection dataset
+
+ILSVRC2013 탐지 셋은 PASCAL VOC 데이터셋보다 Less homogeneous하기 때문에 어떻게 사용할것인지가 중요하다고 한다. 
+
+
+
+### Dataset overview
+
+ILSVRC2013 탐지 셋이 어떻게 수집되었고 annotated되었는지는 다음을 참고
+
+- J. Deng, O. Russakovsky, J. Krause, M. Bernstein, A. C. Berg, and L. Fei-Fei. Scalable multi-label annotation. In CHI, 2014.
+- H. Su, J. Deng, and L. Fei-Fei. Crowdsourcing annotations for visual object detection. In AAAI Technical Report, 4th Human Computation Workshop, 2012
+
+val과 test 셋은 같은 이미지 분포에서 샘플링되었고 PASCAL VOC 이미지 셋과(이미지 안의 객체의 숫자, 클러터(레이더에서 지면, 해면, 빗방울 등으로부터 발생하는 불필요한 반사파에 의해 나타나는 반향(echo) 등의 반사 장애)의 정도, 객체 포즈의 변동성 등) 비슷하다. 그리고 이미지 안의 모든 객체(200 클래스)에 대해서 바운딩 박스가 레이블링되어 있다. 훈련셋은 ILSVRC2013 이미지 분류 과제의 분포를 따르며 이미지 안의 객체가 한쪽으로 치우쳐져 있는 듯 복잡하다. 이미지 안의 객체는 어노테이션이 되어 있을 수도 있고 되어 있지 않을 수 도 있다. 거기다 각 클래스마다 Negative한 이미지들이 포함되어 있는데 이는 검증 셋이 특정 클래스와 관련된 객체를 포함하고 있는지 아닌지를 수동적으로 판단하기 위해서 쓰인다. 이런 Negative한 이미지들은 이 연구에서 쓰이지 않았다. 
+
+이런 성질 때문에 이 데이터로 R-CNN을 훈련하는데에서 저자들은 많은 옵션을 고민했다. 예를 들어서 훈련 셋은 철저하게 어노테이션하지 않았기 떄무네 Hard negative mining 하는데 사용될 수 없었다. 또 훈련 셋은 검증+테스트 셋과 다른 통계치를 보였다(다른 분포).
+
+한 가지 방법은 검증 셋에 의존하고 몇 개의 훈련 셋을 Positive 데이터로 추가적으로 사용하는 것이다. 검증 셋을 훈련과 검증에 사용하기 위해서 같은 크기로 val1, val2로 나눴다. 몇몇 클래스는 검증 셋에 적게 나타나므로 데이터를 나눌때 균등하게 나누는것이 중요하다. 이를 위해서 먼저 숫자가 많은 클래스가 나눠지고 숫자가 적은 클래스의 이미지가 나눠졌다. 나눠질때는 검증 셋에 들어있는 클래스의 숫자를 특징으로 하는 방법으로 검증 셋을 클러스터링 하고 나서 분리할 때 균형을 개선하는 방법이 있다면 그 방법을 적용했다. 가장 불균형할때는 11%정도이고 불균형의 중위값은 4%이다.  
