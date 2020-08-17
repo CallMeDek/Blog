@@ -308,3 +308,97 @@ val과 test 셋은 같은 이미지 분포에서 샘플링되었고 PASCAL VOC �
 이런 성질 때문에 이 데이터로 R-CNN을 훈련하는데에서 저자들은 많은 옵션을 고민했다. 예를 들어서 훈련 셋은 철저하게 어노테이션하지 않았기 떄무네 Hard negative mining 하는데 사용될 수 없었다. 또 훈련 셋은 검증+테스트 셋과 다른 통계치를 보였다(다른 분포).
 
 한 가지 방법은 검증 셋에 의존하고 몇 개의 훈련 셋을 Positive 데이터로 추가적으로 사용하는 것이다. 검증 셋을 훈련과 검증에 사용하기 위해서 같은 크기로 val1, val2로 나눴다. 몇몇 클래스는 검증 셋에 적게 나타나므로 데이터를 나눌때 균등하게 나누는것이 중요하다. 이를 위해서 먼저 숫자가 많은 클래스가 나눠지고 숫자가 적은 클래스의 이미지가 나눠졌다. 나눠질때는 검증 셋에 들어있는 클래스의 숫자를 특징으로 하는 방법으로 검증 셋을 클러스터링 하고 나서 분리할 때 균형을 개선하는 방법이 있다면 그 방법을 적용했다. 가장 불균형할때는 11%정도이고 불균형의 중위값은 4%이다.  
+
+
+
+### Region proposals
+
+ILSVRC2013 데이터 셋에서도 PASCAL 탐지 셋에서 적용했던 지역 후보를 생성하는 접근법을 똑같이 적용했다. 즉,  Selective search를 val1, val2, test (훈련 셋 제외)에서 수행했다. 한 가지 고려해야할 사항은 Selective search가 크기와 무관하지 않아서 많은 지역들이 이미지의 해상도에 의존적이라는 것이다. ILSVRC 이미지는 매우 작은 크기부터 어떤 몇몇의 이미지는 아주 큰 크기를 가지기 때문에 Selective search를 수행하기 전에 고정된 넓이(500 필셀)로 이미지의 크기를 조정했다. val 셋에서 Selective search를 수행했을 때, IoU가 0.5 이상 되는 지역이 평균적으로 2403로 이미지당 91.6% 정도의 재현율을 보인다. 이는 PASCAL이 거의 98%인 것과는 대조적으로 낮은 수치이다. 
+
+
+
+### Trainging data
+
+네트워크를 훈련시키기 위한 데이터 셋으로는 val1에서 Selective search한 결과와 Ground-truth 박스들을 포함하는 박스 관련 정보와 그에 대응하는 이미지들 그리고 ILSVRC2013의 훈련 셋에서 최대 N개까지의 클래스 당 Ground-truth 박스들(만약에 훈련 셋에서 클래스가 N개보다 적은 Ground-truth 박스를 가지고 있다면 모두 사용해서)을 묶어서 구성했다. 저자들은 이를 val1+trainN이라고 불렀다. 
+
+훈련시키는동안 쓰이는 데이터는 R-CNN에서 세가지 처리가 필요했다.
+
+- CNN Fine-tuning
+- Detector SVM training
+- Bounding-box regressor training
+
+CNN Fine-tuning은 50k SGD의 Iteration 동안 PASACAL 데이터로 훈련시킬때와 똑같은 설정으로 val1+trainN 데이터로 수행되었다. Caffe를 이용해서 하나의 NVIDIA Tesla K20 GPU로 열 세시간동안 수행했다고 한다. SVM을 훈련시킬 때는 val1+trainN의 모든 Ground-truth 상자들은 해당하는 클래스에 대한 Positive example로서 사용되었다. Hard negative mining이 val1 데이터에서 무작위로 뽑은 5000장의 이미지 서브셋에서 수행되었다. 실험 초기에 val1의 모든 셋에서 mining negatives를 수행하는 것과 5000장의 서브셋(거의 전체의 절반)에서 mining negatives를 수행하는 것을 비교했는데, 5000장의 서브셋에서 수행하는 것이 mAP가 0.5%만 떨어지면서 SVM의 훈련 시간을 거의 반으로 줄였다.  ILSVRC2013의 훈련 셋에는 Negative 샘플을 뽑지 않았는데 앞에서 말한대로 모든 객체에 대해서 Annotation 되어 있지 않기 때문이다. 또 앞에서 말한대로 검증 셋이 특정 클래스와 관련된 객체를 포함하고 있는지 아닌지를 수동적으로 판단하기 위해서 쓰였던 Negative 이미지들 또한 사용되지 않았다. 바운딩 박스 Regressor는 val1으로 훈련되었다. 
+
+
+
+### Validation and evalutation
+
+저자들은 결과를 평가 서버에 제출하기 전에 실험에서 적용했던 데이터 사용 패턴과 Fine-tuning의 효과 그리고  바운딩 박스 회귀를 val2 셋으로 검증했다. 모든 하이퍼 파라미터(예를 들어 SVM의 C, 지역을 워프할 때의 패딩 픽셀 수, NMS 임계값, 바운딩 박스 회귀의 하이퍼파라미터 등)는 PASCAL에 사용했던 값을 그대로 사용했다. 비록 이 설정이 ILSVRC에 대해서 최적은 아니지만 저자들의 목적은 철저하게 데이터 셋으로 튜닝 하기전에 ILSVRC 데이터 셋에 대한 R-CNN의 결과를 만들어 내는 것이 목적이었다. val2에서 최적의 설정을 찾아낸 뒤에는 두 번 평가 서버에 결과를 제출했다. 한 번은 바운딩 박스 회귀 없이 그리고 다른 한 번은 바운딩 박스 회귀 적용했을 때이다. 이때 SVM과 바운딩 박스 회귀 훈련 셋을 각각 val+train1k, val까지 확장해서 사용했다. CNN은 Fine-tuning과 특징 계산을 다시 하는 것을 피하기 위해서 val1+train1k에서 훈련시킨 것을 사용했다. 
+
+
+
+### Ablation study
+
+![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation20.JPG)
+
+위의 테이블은 각 부분의 훈련 데이터의 양에 따른 결과를 나타낸 것이다. CNN fine-tuning set의 n/a는 ILSVRC2012 클래스 분류 데이터셋에서 Pre-trained된 상태에서 Fine-tuning을 하지 않은 상태이다. 
+
+
+
+### Relationship to OverFeat
+
+저자들에 의하면 OverFeat은 R-CNN의 어떤 특별 케이스라고 볼 수 있다고 한다. 만약에 Selective search에서 생성되는 지역을 Regular 정사각형 지역의 Multi-scale pyramid로 바꾸고 클래스당 바운딩 박스 회를 하나의 단일 바운딩 박스 회귀로 바꾼다면 시스템이 굉장히 유사해진다고 한다(훈련 과정에서 몇 가지 차이가 있다 - CNN의 Fine-tuning, SVM 사용 등). OverFeat은 R-CNN보다 9배 정도 속도가 빠르다고 한다. 이것은 OverFeat의 슬라이딩 윈도우가 이미지 단계에서 워프를 하지 않으므로 겹쳐지는 윈도우 사이에 쉽게 계산이 공유될 수 있다는 사실때문이다. 전체 네트워크를 임의의 입력 사이즈에 대해서 컨볼루션스러운 방법으로 프로세스를 수행한다. 
+
+
+
+## Semantic segmentation
+
+각 지역에 대한 분류는 Semantic segmentation에서 표준적인 기술이기 때문에, 저자들은 쉽게 R-CNN을 PASCAL VOC segmentation 과제에 적용할 수 있었다. O2P라고 하는 Second-oder pooling의 Semantic segmentation 시스템과 결과를 비교하기 위해서 저자들은 R-CNN을 O2P의 오픈 소스 프레임워크를 이용했다. O2P는 CPMC를 수행해서 각 이미지당 150의 지역 후보를 생성해내고, Support vector regression을 사용하여 각 클래스에 대한 각 지역의 퀼리티를 예측했다. 그 당시에 이 방법이 좋은 성능을 보일 수 있었던 이유는 CPMC로 생성된 지역들의 질이 좋았고 Multiple feature type의 강력한 Second-order pooling 때문이다. 
+
+저자들은 이 과제를 수행하기 위해서 다음의 두 개의 연구 방법을 따랐다.
+
+- P. Arbel´aez, B. Hariharan, C. Gu, S. Gupta, L. Bourdev, and J. Malik. Semantic segmentation using regions and parts. In CVPR, 2012
+- J. Carreira, R. Caseiro, J. Batista, and C. Sminchisescu. Semantic segmentation with second-order pooling. In ECCV, 2012
+
+그리고 PASCAL segmentation 훈련 셋을 다음의 방법을 통해 추가적인 Annotation을 포함할 수 있도록 했다. 
+
+- B. Hariharan, P. Arbel´aez, L. Bourdev, S. Maji, and J. Malik. Semantic contours from inverse detectors. In ICCV, 2011
+
+Design decision과 하이퍼파라미터는 VOC 2011 검증 셋에서 교차 검증되었고 마지막 테스트 결과는 한 번 평가되었다. 
+
+
+
+### CNN features for segmentation
+
+저자들은 CPMP에서 생성된 지역의 특징을 계산하기 위한 세가지 전략을 평가했다. 이 세가지 전략 모두 직사각형 윈도우를 227x227 크기의 지역으로 워프 하는 것부터 시작한다. 
+
+첫 번째 전략(full)은 생성된 지역의 모양을 무시하고 워프된 윈도우를 입력으로 해서 CNN에서 특징 벡터를 추출한 뒤에 탐지와 관련된 작업을 수행하는 것이다. 그러나 이런 특징들은 각 지역의 직사각형이 아닌 모양은 무시한다. 
+
+두 개의 지역이 그다지 겹치지 않으면서도 매우 유사한 바운딩 박스를 가질 수 있다. 그러므로 두 번째 전략(fg)는 지역의 전경 마스크에 대해서만 CNN의 작업을 수행해서 특징을 계산해낸다. 이때 배경은 입력 값의 평균으로 교체해서 평균을 빼는 전처리를 할 때 0이 될 수 있도록 한다. 
+
+세번째 전략(full+fg)는 단순히 첫번째와 두 번째 전략의 특징을 Concatenate하는 것이다. 
+
+
+
+### Results on VOC 2011 
+
+![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation21.JPG)
+
+위의 테이블은 O2P와 비교하여, VOC 2011 검증 셋에서의 R-CNN의 결과를 보여준다. 참고로 R-CNN의 full+fg 특징들로 한 개의 코어에서 훈련시켰을 때 1시간이 걸렸는데 O2P 특징들로 훈련시켰을때는 10시간 이상이 걸렸다고 한다. 
+
+![](./Figure/Rich_feature_hierarchies_for_accurate_object_detection_and_semantic_segmentation22.JPG)
+
+테이블 6에서는 저자들의 방법(fc6 + full + fg R-CNN)과 다른 두 개의 방법을 VOC 2011 테스트 셋에 대해서 수행했을 때 결과를 비교한 것이다. 
+
+
+
+## Conclusion
+
+저자들이 연구할 당시에 객체 탐지 분야의 기술들의 성과는 정체되어 있었다. 당시에 가장 좋은 성능을 보인 시스템들은 Object detectors와 Scene classifiers로 부터 여러 저차원의 이미지 특징들과 고차원의 문맥 정보를 결합한 복잡한 앙상블이었다. 이 연구에서는 간단하면서도 확장가능한 object dectection 알고리즘을 제시하는 것이었고 실제로 PASCAL VOC 2012 데이터 셋에서 가장 좋은 결과를 도출해냈다. 
+
+이 결과는 다음의 두 가지 키 포인트 때문에 가능했다.
+
+- 대용량의 CNN을 객체를 Localize하고 Segment하기 지역 후보에 상향식으로 적용하는 것
+- 대용량의 CNN을 훈련시키기 위한 레이블링된 데이터가 적음에도 불구하고 이를 훈련시키는 방법. 저자들은 다른 목적의 과제(이미지 분류 등)의 풍부한 데이터로 네트워크를 미리 학습시킨 후에 데이터가 부족한 타겟 도메인 작업으로(여기서는 탐지) Fine-tuning 하는 것이 꽤 효과적임을 보여줬다. 
+
+또 저자들은 이런 결과를 내는 데에 컴퓨터 비전에서의 고전적인 방법들과 딥러닝 방법들을 결합해서 사용하는 것이 중요하다고 했다. 
