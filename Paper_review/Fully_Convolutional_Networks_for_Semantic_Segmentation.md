@@ -47,3 +47,47 @@ Backwards convolution에 관한 내용
 저자들은 다음과 같이 ILSVRC Classifier들을 FCN에 맞게 변경했다. 
 
 ![](./Figure/Fully_Convolutional_Networks_for_Semantic_Segmentation9.JPG)
+
+
+
+또, Pixel-wise Dense prediction을 위해서 마지막 풀링 계층의 Coarse한 정보를 Upsampling하여 예측을 진행한 결과, 결과가 그렇게 좋지 못하다는 것을 확인한 저자들은 Upsampling한 정보와 Downsampling 과정 중의 좀 더 Fine한 정보를 더하는 방식의 Skip connection으로 결과를 개선함.
+
+![](./Figure/Fully_Convolutional_Networks_for_Semantic_Segmentation10.JPG)
+
+
+
+![](./Figure/Fully_Convolutional_Networks_for_Semantic_Segmentation11.JPG)
+
+
+
+![](./Figure/Fully_Convolutional_Networks_for_Semantic_Segmentation12.JPG)
+
+
+
+위의 표에서 사용한 각 Metric의 계산 방법은 다음과 같다.
+
+![](./Figure/Fully_Convolutional_Networks_for_Semantic_Segmentation13.JPG)
+
+
+
+PASCAL 2011, 2012 테스트 데이터 셋에서 다른 방법들과의 결과 비교
+
+![](./Figure/Fully_Convolutional_Networks_for_Semantic_Segmentation14.JPG)
+
+
+
+NYUDv2 데이터셋에서의 결과 비교
+
+![](./Figure/Fully_Convolutional_Networks_for_Semantic_Segmentation15.JPG)
+
+
+
+SIFT Flow 데이터셋에서의 결과 비교
+
+![](./Figure/Fully_Convolutional_Networks_for_Semantic_Segmentation16.JPG)
+
+
+
+PASCAL 데이터셋에서의 도출된 Pixel별 예측을 이미지화하여 나타낸 것.
+
+![](./Figure/Fully_Convolutional_Networks_for_Semantic_Segmentation17.JPG)
