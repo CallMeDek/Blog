@@ -84,5 +84,127 @@ Spatial pyramid pooling(Spatial pyramid matching)은 컴퓨터 비전 분야에�
 
 
 
+## SPP-Net for Image Classification 
+
+### Experiments on ImageNet 2012 Classification
+
+#### Baseline Network Architectures
+
+저자들이 SPP-Net의 효과를 검증하기 위해서 4개의  네트워크 아키텍처에 대해서 ImageNet 2012  Classification 과제로 실험을 진행했다. 이때 사용한 4개의 네트워크는 다음과 같다. 
+
+![](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition7.JPG)
+
+
+
+#### Multi-level Pooling Improves Accuracy
+
+기본 네트워크의 마지막 풀링 계층을 SPP-Layer로 바꾸고 실험을 했을 때 결과는 아래와 같다. 여기서는 {6x6, 3x3, 2,x2, 1x1}의 총 50개의 bins를 사용했다. 저자들이 주장하기를 이런 Multi-level의 Pooling이 정확도 향상에 도움이 된다고 하는데 이는 단순히 모델 파라미터가 더 많기 때문이 아니고 이미지 내의 객체의 변형이나 위치 변경에 영향을 덜 받기 때문이라고 한다(원본 이미지에 대해서 Standard 10 view - 센터, 4개의 코너, 위아래, 양옆을 크롭하여 사용). 이를 뒷받침하는 증거로 {4x4, 3x3, 2x2,x 1x1}의 30bins를 가지는 네트워크는 오히려 SPP가 없는 네트워크보다 파라미터 숫자가 적지만 50 bins일때 결과와 유사하다고 한다. 
+
+![](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition8.JPG)
+
+
+
+#### Multi-size Training Improves Accuracy
+
+Table 2에 의하면 Single-size로 훈련시킬때보다 Multi-size로 훈련시킬때가 성능이 더 좋다. Standard 10 view에 대한 예측값을 뽑아냈고,  180과 224 사이즈에서 균등하게 샘플을 뽑아서 실험을 진행했다. 
+
+
+
+#### Full-image Representations Improves Accuracy
+
+![](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition9.JPG)
+
+저자들은 모델을 훈련시킬때 정사각형 모양의 이미지로 훈련시켰더라도, 모델이 다른 종횡비의 이미지의 특징도 잘 뽑아낼 수 있다고 한다. Table2와 Table3를 보면 Multi-size로 훈련시킨 모델이 Single-size로 훈련시킨 모델보다 성능이 좋긴하나 Single-size로 훈련시킨 모델도 나름의 장점을 가지고 있다고 한다. 
+
+- 여러 View (이미지를 크롭한)와 관계 없이 전체 이미지와 이를 Flipping시킨 이미지를, 모델을 훈련시킬때 추가하면 성능이 더 좋아진다. 
+- 전체 이미지를 사용하는 것은 마찬가지로 전체 이미지를 사용하는 전통적인 방법(SIFT 등)과 어느정도 부합한다.
+- 이미지 검색 같은 다른 Application에서는 전체 이미지에 대한 특징이 필요할 수 있다. 
+
+
+
+#### Multi-view Testing on Feature Maps
+
+![](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition10.JPG)
+
+SPP가 입력 이미지에 상관 없이 동일한 크기의 특징 벡터를 뽑아낼 수 있다는 유연함 덕분에 위와 같이 전체 특징 맵이 아니라 특정 Window에 있는 특징으로 동일한 크기의 특징 벡터를 뽑아낼 수 있다. 그리고 저자들은 또 다른 실험에서 기존의 Standard 10-view 테스트가 아니라 18 view 테스트(단 224 사이즈의 이미지는 제외)를 진행했다고 한다.  이때 크기는 6개의 크기에 대해({224; 256; 300; 360; 448; 560}) 실험을 했다. 그래서 18x5 + 6 = 96 View에 대해서 실험을 했는데 이 방법으로 Top5 에러율이 10.95%에서 9.36%로 감소하기도 했다. 추가적으로 Full image view 2가지(Flipping 포함)를 추가 했을때는 9.14%까지 에러율이 감소했다. 
+
+
+
+#### Summary and Results for ILSVRC 2014
+
+![](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition11.JPG)
+
+
+
+![](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition12.JPG)
+
+
+
+### Experiments on VOC 2007 Classification
+
+### Experiments on Caltecth101
+
+![](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition13.JPG)
+
+
+
+![](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition14.JPG)
+
+
+
+## SPP-Net for Object Detection
+
+생성된 지역 약 2000개에 대해서 각각 CNN을 돌리는 R-CNN과는 달리 SPP-net은 여러 크기의 각 이미지에 대해 한 번 CNN을 돌려 특징 맵을 뽑아 낸 후에 각 Candidate window에 대해 고정된 길이의 특징 벡터를 도출해낸다. 
+
+![](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition10.JPG)
+
+CNN 연산이 전체 네트워크에서 시간을 소비하는 비중이 크기 때문에 R-CNN보다 훨씬 빠르게 Object-Detection을 수행할 수 있다고 한다. 
+
+
+
+### Detection Algorithm
+
+Candidate Windows를 생성하는 방법은 각 이미지에 대해서 Fast Selective search를 수행해서 2,000개의 Windows를 생성해낸다. 각 Candidate Windows에 대해서 4-level Spatial pyramid를 적용한다(1x1, 2x2, 3x3, 6x6으로 총 50 bins). 그래서 12,800 차원의 벡터가 만들어진다(256x50). 이 벡터들이 완전 연결 계층의 입력으로 들어가고 그래서 나온 결과로 각 카테고리에 대한 이진 SVM classifier를 훈련시킨다. SVM을 훈련시킬 때는 Ground-truth windows들을 Positive로, Positive window와 최대 30%로 겹치는 window는 Negative로 설정한다. Negative 샘플 중에서 다른 Negative 샘플과 70% 겹치는 window가 있다면 제거한다. 이렇게 만들어진 Negative 샘플에 대해 Hard negative mining을 수행한다. 이 과정은 1번 반복되는데 20 카테고리에 대해 SVM들을 훈련시키는데 1시간 정도 걸렸다고 한다. 테스트 시에는 훈련된 SVM 분류기들이 각 Candidate windows에 대해서 Scoring을 하는데 Scoring한 window들에 대해서 Non-maximum suppression(Threshold 0.3)을 수행한다. 
+
+저자들은 또, CNN에서 완전 연결 계층에 대해서만 Fine-tuning을 진행했다. Fine-tuning 동안에 Positive 샘플은 Ground-truth windows와 0.5\~1만큼 겹치는 샘플을, Negative 샘플은 0.1\~0.5미만으로 겹치는 샘플로 설정했다. 
+
+그리고 바운딩 박스 회귀도 수행했다. 회귀를 위해 사용된 특징은 마지막 컨볼루션 계층에서 도출된 특징들이고 회귀가 수행되는 windows들은 Groud-truth window와 적어도 0.5이상 겹치는 windows들이다.  
+
+저자들은 Candidate windows를 생성할 때 속도면에서 Selective search보다 EdgeBoxes가 더 빠를 수 있음을 시사했다. 
+
+
+
+### Detection Results
+
+![](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition15.JPG)
+
+(위에서 1-sc는 단일 스케일, 5-sc는 5개의 스케일을 의미한다.)
+
+
+
+![]()
+
+![Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition16](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition16.JPG)
+
+
+
+### Model Combination for Detection
+
+앙상블 같은 Model combination 기법들은 테스트 성능을 더 높이기도 한다. 저자들도 Detection에서의 Model combination을 시도했다. 두 가지 모델이 있을때, 각 모델의 결과로 테스트 이미지의 각 Candidate windows에 대해 Scoring을 하고 NMS을 두 결과에 대해서 수행한다. 
+
+![](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition17.JPG)
+
+
+
+### ILSVRC 2014 Detection
+
+![]()![Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition18](./Figure/Spatial_Pyramid_Pooling_in_Deep_Convolutional_Networks_for_Visual_Recognition18.JPG)
+
+
+
+## Conclusion
+
+SPP-layer를 통해서 입력 크기나 종횡비에 상관 없이 모델을 훈련시키는 방법을 제시함으로서 정확도와 속도 측면에서 기존의 방법보다 성능이 좋은 새로운 방법을 제시하고자 함.
+
 
 
