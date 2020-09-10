@@ -97,3 +97,114 @@ N은 매칭된 Default box의 숫자이다. 만약에 매칭된 박스가 없다
 Confidence loss 같은 경우에는 Positive box(GT와 매칭된 박스)와 Negative box(Background로 매칭된 박스)에 대한 Cross entropy의 합을 나타낸다. 
 
 ![](./Figure/SSD_Single_Shot_MultiBox_Detector10.JPG)
+
+
+
+#### Choosing scales and aspect ratios for default boxes
+
+많은 연구에서 High level의 계층에서 여러 컨볼루션을 거치면서 손실된 정보를 보충하기 위해서 Low level의 정보를 이용하는데 저자들도 이 방법을 적용하기로 했다. 
+
+
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector11.JPG)
+
+
+
+네트워크의 각 계층의 특징 맵의 크기가 다르므로 저자들은 각 계층에서 특정 크기의 객체를 전담하도록 네트워크를 디자인했다. 
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector12.JPG)
+
+Default box들의 크기를 전담할 Scale은 위와 같이 계산된다. 여기서 S_min = 0.2, S_max = 0.9인데 가장 낮은 레벨 계층의 Default box들은 Scale이 원래 크기의 0.2이고 가장 높은 레벨 계층의 box들은 원래 크기의 0.9배 라는 뜻이다. m은 아웃풋을 생성하는데 관여하는 특징 맵의 수이고, k는 각 특징 맵의 순서이다. 각 Default box에 곱해지는 Scale은 특징 맵의 수에 따라서 0.2에서 0.9 사이 구간을 고르게 나누는 수로 정해진다(예를 들어서 min이 1이고 max가 10인데 10개 Scale이 필요하다면 Scale은 1, 2, 3, ..., 10).
+
+또, Default box는 각기 다른 종횡비를 가질 수 있다. 그래서 저자들은 기본적으로 다음과 같이 Default box의 종횡 비를 설정했다. 
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector13.JPG)
+
+그리고 다음과 같이 Default box의 w, h를 계산한다. 
+
+| 넓이                                                         | 높이                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![](./Figure/SSD_Single_Shot_MultiBox_Detector14.JPG) | ![](./Figure/SSD_Single_Shot_MultiBox_Detector15.JPG) |
+
+예를 들어서 똑같은 Scale이라고 한다면 a_r이 1일때는 정사각형 box가 될 것이고 2라면 넓이가 높이보다 커질 것이다. 1/2라면 반대로 높이가 넓이보다 커질 것이다. 그리고 다음과 같은 Scale을 추가하는데
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector16.JPG)
+
+이때 a_r은 1로 고정이므로 스케일이 다른 정사각형 box가 2개가 된다. 따라서 기본적으로는 6개의 Default box가 특징 맵의 각 Cell마다 할당되게 된다(1(2), 2(1), ..., 1/3(1)). Default box가 4개인 특징 맵에서는 3, 1/3의 a_r을 버린다.
+
+Default box의 중심 좌료는 다음과 같이 계산한다.
+
+| 중심좌표                                                     | 분모                                                         | i, j                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![](./Figure/SSD_Single_Shot_MultiBox_Detector17.JPG) | ![](./Figure/SSD_Single_Shot_MultiBox_Detector18.JPG) | ![](./Figure/SSD_Single_Shot_MultiBox_Detector19.JPG) |
+
+이때 분모는 k번째 특징 맵의 크기이고 i, j는 k번째 특징 맵에서의 각 Cell의 인덱스를 나타낸다. 
+
+위의 Fig1을 보면 개의 GT와 매칭하는 Default box는 8x8의 특징 맵에서는 찾을 수 없다. 왜냐하면 Scale에 의해서 조정된 Default box가 개의 GT를 커버하기에는 크기가 충분히 크지 않기 때문이다. 이때 개의 위치와 관련된 Default box들은 모두 Negative로 설정된다. 
+
+
+
+#### Hard negative mining
+
+훈련 중에는 대부분의 Default box들은 Negative이다(각 특징 맵에서 GT와 매칭되기에는 너무 다른 스케일, 스케일은 비슷하더라도 Aspect ratio가 안 맞음). 이는 심각한 Positive와 Negative의 불균형을 야기한다. 이를 해결하기 위해서 Negative 박스들을 Confidence score의 내림차순으로 정렬하고(Negative 중에 그래도 최대한 Positive에 가까운 순으로) 그 중에서 몇 개를 골라내는데, Positive와 Negative의 숫자가 1:3이 되게 한다. 
+
+
+
+#### Data augmentation
+
+모델이 다양한 크기와 모양을 가진 객체를 탐지할 수 있게 하기 위해서 각 이미지에는 다음의 옵션을 랜덤하게 적용한다. 
+
+- 그냥 전체 원본 이미지 전체를 사용한다.
+- 최소 Jaccard overlap을 {0.1, 0.3, 0.5, 0.7. 0.9} 중에 하나로 설정하고 이를 충족하는 패치를 샘플링한다.
+- 그냥 랜덤하게 패치를 샘플링한다.
+
+샘플링된 패치의 크기는 원본 이미지의 [0.1, 1]이고 Aspect ratio는 1/2과 2 사이이이다. GT의 중심 값이 샘플링된 패치 안에 있다면 패치와 GT가 겹치는 부분을 주시한다. 위와 같은 샘플링 과정을 거치고 나서 각 패치들은 네트워크 입력 크기에 맞게 크기가 재조정 되고 0.5의 확률로 Horizontally flipped 된다. 거기다가 다음의 연구에서 묘사된 몇가지 Photo-metric distortion을 적용한다.
+
+- Howard, A.G.: Some improvements on deep convolutional neural network based image classification. arXiv preprint arXiv:1312.5402 (2013)
+
+
+
+## Experimental Results
+
+### Base network
+
+기본적으로 ILSVRC CLS-LOC 데이터셋에서 미리 훈련된 VGG16 네트워크를 실험에 이용한다. 완전연결계층 6, 7은 컨볼루션 계층으로 FC6과 7에서의 모델 파라미터 값을 몇개 가져와서 컨불루션 계층에 적용한다. pool5를 2x2 -s2를 3x3-s1으로 바꾸고 이때 발생하는 구멍에는 Atrous 알고리즘을 적용한다. 
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector20.JPG)
+
+[Sik-Ho Tsang - Review: SSD — Single Shot Detector (Object Detection)]( https://towardsdatascience.com/review-ssd-single-shot-detector-object-detection-851a94607d11)
+
+FC8과 Dropout은 제거하고 다 만들어진 모델은 배치 사이즈32, 0.0005 weight decay, Learning rate 10^-3, 0.9 momentum의 SGD로 Fine-tuning한다. 각 데이터셋마다 Learning rate decay 방법은 다르다. 
+
+
+
+### PASCAL VOC2007
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector21.JPG)
+
+
+
+SSD 모델의 성능을 자세히 이해하기 위해서 저자들은 다음 연구의 Dectction analysis tool을 사용했다.
+
+- Glorot, X., Bengio, Y.: Understanding the difficulty of training deep feedforward neural networks. In: AISTATS. (2010)
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector22.JPG)
+
+위 그림의 위쪽을 보면 대부분의 영역이 흰색이므로 Detection이 대부분 맞는 것을 확인할 수있다. 아래쪽 행을 보면 R-CNN과 비교했을 때 Localization과 관련된 에러가 더 적은 것을 확인할 수있다. 그런데 비슷한 객체 카테고리에 대한 혼동 에러가 더 많은데(특히 Animal) 이는 여러 카테고리에 대한 Location을 공유하기 때문이다. 
+
+
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector23.JPG)
+
+
+
+위 그림의 왼쪽은 SSD의 Bounding Box와 관련된 실험 결과를 보여주는데 SSD가 바운딩 박스 크기에 민감하다는 사실을 알 수 있다. 특히 크기가 작은 객체에 대한 탐지 성능이 크기가 큰 객체에 대한 탐지 성능보다 떨어지는데 이는 작은 객체들에 대한 정보가 고차원 계층에서는 소실되었을 가능성이 크기 때문이다. 
+
+
+
+### Model analysis
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector24.JPG)
+
+저자들은 Data augmentation을 적용했고 위의 표를 보면 이런 샘플링 방법이 mAP를 8.8% 더 개선시킬 수 있음을 확인 할 수 있다. 
+
