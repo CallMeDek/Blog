@@ -122,8 +122,8 @@ Default box들의 크기를 전담할 Scale은 위와 같이 계산된다. 여�
 
 그리고 다음과 같이 Default box의 w, h를 계산한다. 
 
-| 넓이                                                         | 높이                                                         |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 넓이                                                  | 높이                                                  |
+| ----------------------------------------------------- | ----------------------------------------------------- |
 | ![](./Figure/SSD_Single_Shot_MultiBox_Detector14.JPG) | ![](./Figure/SSD_Single_Shot_MultiBox_Detector15.JPG) |
 
 예를 들어서 똑같은 Scale이라고 한다면 a_r이 1일때는 정사각형 box가 될 것이고 2라면 넓이가 높이보다 커질 것이다. 1/2라면 반대로 높이가 넓이보다 커질 것이다. 그리고 다음과 같은 Scale을 추가하는데
@@ -134,8 +134,8 @@ Default box들의 크기를 전담할 Scale은 위와 같이 계산된다. 여�
 
 Default box의 중심 좌료는 다음과 같이 계산한다.
 
-| 중심좌표                                                     | 분모                                                         | i, j                                                         |
-| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 중심좌표                                              | 분모                                                  | i, j                                                  |
+| ----------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
 | ![](./Figure/SSD_Single_Shot_MultiBox_Detector17.JPG) | ![](./Figure/SSD_Single_Shot_MultiBox_Detector18.JPG) | ![](./Figure/SSD_Single_Shot_MultiBox_Detector19.JPG) |
 
 이때 분모는 k번째 특징 맵의 크기이고 i, j는 k번째 특징 맵에서의 각 Cell의 인덱스를 나타낸다. 
@@ -206,5 +206,63 @@ SSD 모델의 성능을 자세히 이해하기 위해서 저자들은 다음 연
 
 ![](./Figure/SSD_Single_Shot_MultiBox_Detector24.JPG)
 
+
+
+#### Data augmentation is crucial
+
 저자들은 Data augmentation을 적용했고 위의 표를 보면 이런 샘플링 방법이 mAP를 8.8% 더 개선시킬 수 있음을 확인 할 수 있다. 
+
+
+
+#### More default box shapes is better
+
+다양한 박스 Shape을 사용할수록 더 성능이 좋다.
+
+
+
+#### Atrous is faster
+
+저자들은 Atrous 알고리즘을 써서 완전 연결 계층의 모델 파라미터를 서브샘플링한 VGG16을 사용하는데 만약에 Atrous 알고리즘을 적용하지 않고 pool5를 2x2-s2로 유지하고 FC6, 7의 모델 파라미터를 서브샘플링하지 않고 conv5_3을 예측을 위해서 추가하면 전자와 결과는 비슷한데 속도는 20%가 더 느리다.
+
+
+
+#### Multiple output layers at different resolution is better
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector25.JPG)
+
+저자들은 다양한 스케일의 특징 맵과 Default box를 사용하는 것의 효과를 검증하기 위해서 계층을 하나씩 제거하는 실험을 진행했다. 명확하게 실험하기 위해서 계층을 제거해도 원래의 총 예측 상자 숫자(8732)와 동일하게 예측 상자 숫자를 유지했다. 하는 방법은 남아있는 계층에 좀 더 많은 스케일의 박스를 매핑(필요하면 이 박스들의 스케일도 조정) 한다. 다양한 스케일의 박스를 남아있는 계층에 매핑할때 많은 박스들이 이미지의 테두리에 걸쳐있는 경우가 있다. 만약에 테두리에 있는 박스를 무시할 경우, Coarse한 특징 맵에서는 성능이 큰 폭으로 하락하게 된다.  이유는 Coarse한 특징 맵에서 큰 사이즈의 객체를 탐지할 박스가 부족해지기 때문이다. 반대로 주로 Fine한 특징 맵에서는 성능이 늘어나기 시작하는데 이는 작은 크기의 객체를 탐지할만한 충분한 박스 숫자가 있기 때문이다. 
+
+그리고 각기 다른 스케일의 Default box들을 각 계층에 고루 분포하는 것이 중요하다.
+
+
+
+### PASCAL VOC2012
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector26.JPG)
+
+
+
+### COCO
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector27.JPG)
+
+
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector29.JPG)
+
+
+
+### Preliminary ILSVRC results
+
+저자들은 COCO에서 적용했던 같은 네트워크 아키텍처를 ILSVRC DET 데이터셋에도 적용해보았다. 그래서 43.4 mAP를 달성했는데, 이는 실시간으로 탐지한 결과이다. 
+
+
+
+### Data Augmentation for Small Object Accuracy
+
+SSD는 앞에서 언급한대로 크기가 작은 객체에 대해서는 탐지 성능이 좋지 않다. 위에서 언급한 Data augmentation 옵션들은 이를 개선하는데 큰 도움이 된다. 랜덤 크롭으로 생성된 패치 같은 경우에는 Zoom in operation으로 볼 수 있고 크기가 큰 샘플들을 만들어 낼 수 있다. 크기가 작은 객체에 대한 샘플을 생성하기 위한 Zoom out operation을 구현하기 위해서는 다음과 같은 방법을 쓴다. 원본 이미지의 16배 되는 캔버스에 이미지를 위치 시킨다. 이때 나머지는 이미지 값의 평균 값으로 채운다. 이렇게 훈련 샘플을 더 추가하면 훈련 Iteration도 더 늘려야한다. 이 전략으로 mAP 2-3% 정도 상승하고 특히 크기가 작은 객체에 대한 탐지 성능이 확실하게 개선된다. 
+
+![](./Figure/SSD_Single_Shot_MultiBox_Detector28.JPG)
+
+
 
