@@ -266,3 +266,23 @@ SSD는 앞에서 언급한대로 크기가 작은 객체에 대해서는 탐지 
 
 
 
+### Inference time
+
+SSD에서는 많은 양의 박스들이 만들어지기 때문에 추론시에 효율적으로 NMS를 수행하는 것이 필수적이다. Confidence threshold를 0.01로 하면 대부분의 박스를 걸러낼수 있다고 한다. 그리고 나서 클래스당 Best box와 jaccard overlap 0.45 이상인 것들만 남겨 놓고 상위 200개의 박스만 남겨 놓는다. 
+
+
+
+## Related Work
+
+원래는 객체 탐지 분야에서 슬라이딩 윈도우 방식과 지역 후보 생산 방식 두 개의 방법이 양립하고 있었는데 R-CNN 이후에는 지역 후보 생산 후에 CNN 연산을 진행하고 후처리하는 방식이 주류가 되었다고 한다. R-CNN의 단점 중 하나였던 이미지 크롭을 통한 지역 후보 생산을 해결하기 위해서 SPP net이 나왔고 Fast R-CNN은 이를 확장하여, 특징 추출부터 Class Classification, Bounding box regression 까지 End-to-End로 학습하고 모든 계층이 Fine-tuning이 가능하게 함으로서 속도와 정확도를 비약적으로 증대했다. Faster R-CNN은 지역 후보 생성을 RPN으로 하는 방식으로 함으로서 Selective search를 대체했다. 
+
+또 OverFeat나 YOLOv1에서는 아예 지역 후보를 생성하는 과정을 생략하고 특징 맵에서 Classification과 Localization을 진행했다. SSD는 다양한 크기의 특징 맵에서 다양한 크기와 종횡비의 Default box로 Object Detection을 수행한다.
+
+
+
+## Conclusions
+
+SSD의 키포인트는 " The use of multi-scale convolutional bounding box outputs attached to multiple feature maps at the top of the network"이다. 이렇게 함으로서 가능한 모든 박스들의 공간을 효율적으로 모델링 할 수 있게 되었다. 
+
+
+
