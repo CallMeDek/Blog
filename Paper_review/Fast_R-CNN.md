@@ -1,4 +1,4 @@
-# Fast R-CNN
+#  Fast R-CNN
 
 Ross Girshick(Microsoft Research)
 
@@ -85,3 +85,71 @@ RoI pooling에서는 지역에 있는 특징을 고정된 길이의 벡터로 �
 1. 마지막 Max pooling 계층은 RoI pooling 계층으로 대체된다. 
 2. 네트워크의 마지막 완전 연결 계층(Softmax 연산을 수행하는)은 앞에서 언급한 두가지 브랜치로 대체된다.
 3. 네트워크가 이미지 리스트와 각 이미지에 있는 ROI 리스트를 받을 수 있도록 변경된다.
+
+
+
+### Fine-tuning for detection
+
+SPP net이 역전파를 통해서 가중치 갱신을 하기 어려운 이유는 각 데이터 샘플이 다른 크기로 들어오기 때문에 이런 방식이 비효율적이라는데 있다. 어떤 ROI는 매우 커서 Receptive field가 거의 전체 이미지에 걸쳐 있는 경우가 있는데 이를 여러 레벨의 Spatial pyramid로 연산을 수행하면 연산량도 커지고 출력 용량이 커질 것이다. 
+
+Fast R-CNN에서는 SGD mini batch를 수행하는데 N 이미지를 샘플링하고 샘플링 한 이미지에서 R/N 만큼의 ROI를 샘플링한다. 같은 이미지에서 샘플링된 ROI들은 역전파, 순전파 간에 같은 연산 결과를 공유한다. 예를 들어서 N=2, R = 128이라면 2장의 이미지를 배치로 뽑고 각 이미지에서 64개의 ROI를 추출한다. 이것은 서로 다른 128개의 이미지에서 ROI 1개씩 뽑는 것보다 속도가 빠르다. 
+
+ROI가 같은 이미지에서 샘플링되었기 때문에 훈련 성능이 늦게 수렴할 수 있다는 우려가 있을 수 있는데 실제로 N=2, R=128로 했을 때 오히려 R-CNN보다 좋은 결과를 달성했기 때문에 걱정할 필요가 없다는 것을 저자들이 확인했다. 
+
+그리고 Fast R-CNN은 Softxmax classifier와 Bounding gox regressor를 동시에 최적화 한다. 
+
+
+
+#### Multi-task loss
+
+Fast R-CNN은 최종적으로 두가지 종류의 값을 출력한다. 
+
+| ROI의 K+1 카테고리에 대한 Softmax 확률 분포    | ROI의 k클래스 바운딩 박스 OFFSET               |
+| ---------------------------------------------- | ---------------------------------------------- |
+| ![](./Figure/Fast_R-CNN4.JPG) | ![](./Figure/Fast_R-CNN5.JPG) |
+
+각 훈련 ROI에는 GT class u와 GT bounding box regression target v가 매칭되어 있다. 이 연구에서는 다음과 같이 Classification과 Localization에 대한 Loss를 동시에 계산한다. 
+
+![](./Figure/Fast_R-CNN6.JPG)
+
+첫번째 항은 다음과 같이 소프트맥스에 의해 계산된 p에 대한 log loss 값을 계산한다.
+
+![](./Figure/Fast_R-CNN7.JPG)
+
+두번째 항은 다음과 같이 계산한다. 우선 클래스 u에 대한 GT box의 정보 v는 4개의 값의 튜플로 표현된다(v = (v_x, v_y, v_w, v_h)). 그리고 u 클래스에 대한 예측 박스의 정보는 위 표의 오른쪽과 같이 표현된다. [u >= 1]의 경우, 적어도 하나 맞는 클래스의 박스가 있으면 1, 아예 없으면 0이 된다. 그래서 모든 Background class에 대한 박스에 대해서는 u가 0이 된다. 그래서 위치 정보와 관련된 Loss는 무시된다. 
+
+![](./Figure/Fast_R-CNN8.JPG)
+
+Localization에 관한 손실은 x, y, w, h에 대한 GT 박스에 예측 박스의 Smooth l1 손실로 계산된다. 
+
+![](./Figure/Fast_R-CNN9.JPG)
+
+L1 손실이 L2 손실보다 Outliner에 대해서 덜 민감하다. 만약에 L2 손실로 훈련할 경우에는 Gradients exploding을 신경써서 Learning rate를 튜닝해야 한다. (3)식은 이런 민감도를 제거한다. 
+
+(1)번식을 보면 λ가 있는데 이는 두 종류의 Loss의 균형을 담당한다. 저자들은 GT v = (v_x, v_y, v_w, v_h)를 정규화하여 평균 0, Unit variance를 가젝 했다. 여기서 모든 실험은 λ = 1로 설정한다. 
+
+
+
+#### Mini-batch sampling
+
+Fine tuning 시에 각 객체 후보의 GT 박스와 IoU가 적어도 0.5되는 RoI가 전체의 25%정도 되고 이 RoI들은 그 클래스에 대한 Foreground object class로 레이블링 된다(u >= 1), 나머지 RoI들은 GT 박스와 IoU가 [0.1, 0.5) 정도 겹치고 이 샘플들은 Background object class로 레이블링 된다(u = 0). Hard example mining에서 0.1이 Threshold로 설정되었고 각 이미지는 훈련 간에 0.5의 확률로 횡으로 Flipping 될 수 있다. 다른 Data augmentation은 수행하지 않았다. 
+
+
+
+#### Back-propagation through RoI pooling layers
+
+![](./Figure/Fast_R-CNN10.JPG)
+
+[염창동형준킴 - 갈아먹는 Object Detection \[3\] Fast R-CNN](https://yeomko.tistory.com/15)
+
+
+
+![](./Figure/Fast_R-CNN11.JPG)
+
+
+
+이제 End-to-End의 Training을 위해서는 ROI Pooling layer에서 역전파를 수행하는 것을 구현해야 한다(SPP에서는 이 부분이 해결되지 않아서 완전 연결 계층까지만 가중치가 업데이트 되었고 컨볼루션 계층의 가중치가 업데이트 되지 않는 문제가 있었다). 위에서 x_i는 특징 맵에서 하나의 실수 값이다. 전체 Loss에 대한 이 x_i의 편미분 값을 구하게 되면 역전파 시에 이 x_i 값을 갱신할 수 있게 된다. y_rj는 이 계층의 r번째 ROI 출력의 j번째 값이다. 이 y_rj는 다음과 같이 계산된다.
+
+![](./Figure/Fast_R-CNN12.JPG)
+
+여기서 i*(r, j)는 ROI와 Sub Window index j가 주어져 있을 때(위에서 보면 RoI가 7x5이고 그리드의 크기가 2x2이면 7/2 = 3.5, 5/2 = 2.5이므로 각 Cell의 크기는 2x3, 2x4, 3x3, 3x4가 된다. 여기서 각 Cell을 Sub Window index라고 볼 수 있다.) Max pooling을 통해서 선택된 최대 값을 가진 특징 맵의 요소의 인덱스를 의미한다. 즉, RoI Pooling에서 선택된 값의 특징 맵에서의 인덱스를 의미한다. 역전파 시에 전체 Loss에 대한 이 요소의 편미분 값은 이미 계산되어져서 RoI Pooling 계층으로 들어오게 된다. 즉 위의 식에서 각 Cell에서 Max pooling의 결과로 선택된 특징 맵에서의 요소에 대해서, 대응되는 출력 값의 Loss에 대한 편미분 값으로 갱신할 수 있다는 말이 된다.  
