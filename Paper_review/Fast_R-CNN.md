@@ -153,3 +153,36 @@ Fine tuning 시에 각 객체 후보의 GT 박스와 IoU가 적어도 0.5되는 
 ![](./Figure/Fast_R-CNN12.JPG)
 
 여기서 i*(r, j)는 ROI와 Sub Window index j가 주어져 있을 때(위에서 보면 RoI가 7x5이고 그리드의 크기가 2x2이면 7/2 = 3.5, 5/2 = 2.5이므로 각 Cell의 크기는 2x3, 2x4, 3x3, 3x4가 된다. 여기서 각 Cell을 Sub Window index라고 볼 수 있다.) Max pooling을 통해서 선택된 최대 값을 가진 특징 맵의 요소의 인덱스를 의미한다. 즉, RoI Pooling에서 선택된 값의 특징 맵에서의 인덱스를 의미한다. 역전파 시에 전체 Loss에 대한 이 요소의 편미분 값은 이미 계산되어져서 RoI Pooling 계층으로 들어오게 된다. 즉 위의 식에서 각 Cell에서 Max pooling의 결과로 선택된 특징 맵에서의 요소에 대해서, 대응되는 출력 값의 Loss에 대한 편미분 값으로 갱신할 수 있다는 말이 된다.  
+
+
+
+### Scale invariance
+
+저자들은 객체의 스케일에 구애 받지 않고 객체 탐지를 하기 위해서 두 가지 방법을 실험했다.
+
+- Brute force - 각 이미지가 훈련 간이나 테스트 간에 정해진 크기로 재조정 된다. 
+- Multi-scale - Image pyramid를 통해서 훈련 간에 다양한 크기의 입력을 만들고 테스트 시에는 Image pyramid가 각 지역 후보를 Scale 정규화 한다. 
+
+
+
+## Fast R-CNN detection
+
+네트워크는 Image pyramid에 의해서 크기별로 인코딩된 Image 리스트나 혹은 이미지 하나 그리고 그에 따른 R개의 지역 리스트를 입력으로 받는다. 테스트 시에는 R이 거의 2000개 정도 된다. Image pyramid를 사용할 때는 각 ROI가 거의 224^2이 되도록 한다. 
+
+각 ROI가 테스트 될 때, 순전파를 하면 클래스 확률 분포 p와 ROI r과 관련된 바운딩 박스 오프셋 예측 값이 나온다(각 K 클래스가 재조정된 바운딩 박스 예측 값을 갖는다). 저자들은 r에 다음과 같은, 추정 확률 값을 계산하여 각 객체 클래스 k 마다  Detection confidence를 부여한다. 
+
+![](./Figure/Fast_R-CNN13.JPG)
+
+그러고 나서 NMS를 각 클래스마다 독립적으로 수행한다. 
+
+
+
+### Truncated SVD for faster detection
+
+![](./Figure/Fast_R-CNN14.JPG)
+
+Classification에서는 컨볼루션 계층 연산에서에 비해 완전 연결 계층 연산에 쓰는 시간이 작은데 Detection에서는, 각 ROI에 대해서 수행해야 하므로 거의 순전파 시간의 절반을 완전 연결 계층의 연산에 쓴다. 저자들은 완전 연결 계층을 Truncated SVD를 통해서 잘라내어 Detection에서 시간을 줄이려고 노력했다. 여기서는 완전 연결 계층의 weight matrix W(u x v 크기)가 다음과 같이 특이값 분해 될 수 있다. 
+
+![](./Figure/Fast_R-CNN15.JPG)
+
+U는 u x t 크기이며 W에서 t개의 left-singular한 벡터들로 구성되어 있고 Σ\_k는 t x t 크기의 Diagonal matrix이며 각 대각 원소는 W에서 Top k개의 Singular value이다. V는 v x t 크기의 행렬이고 W에서 t개의 right-singular 벡터로 이루어져 있다. Truncated SVD를 적용하며 uv개의 파라미터 수를 t(u + v)만큼 줄일 수 있는데 t가 min(u, v)보다도 작다면 상당히 많이 줄일 수 있다. 이렇게 완전 연결 계층을 분해해서 두개의 행렬을 각각 따로 가지는 계층으로 분해 하는데 이 계층 사이에는 비선형이 추가되지 않는다. 첫 번째 계층은 Σ\_kV^T의 가중치 행렬을 쓰고(Bias 없음) 두번째 계층은 U 가중치 행렬을 쓴다(원래 W일때 사용하던 Bias를 씀). 저자들은 이런 방법으로 ROI가 굉장히 많을때, 속도를 증가시켰다고 한다. 
