@@ -104,9 +104,9 @@ ROI가 같은 이미지에서 샘플링되었기 때문에 훈련 성능이 늦�
 
 Fast R-CNN은 최종적으로 두가지 종류의 값을 출력한다. 
 
-| ROI의 K+1 카테고리에 대한 Softmax 확률 분포    | ROI의 k클래스 바운딩 박스 OFFSET               |
-| ---------------------------------------------- | ---------------------------------------------- |
-| ![](./Figure/Fast_R-CNN4.JPG) | ![](./Figure/Fast_R-CNN5.JPG) |
+| ROI의 K+1 카테고리에 대한 Softmax 확률 분포 | ROI의 k클래스 바운딩 박스 OFFSET |
+| ------------------------------------------- | -------------------------------- |
+| ![](./Figure/Fast_R-CNN4.JPG)               | ![](./Figure/Fast_R-CNN5.JPG)    |
 
 각 훈련 ROI에는 GT class u와 GT bounding box regression target v가 매칭되어 있다. 이 연구에서는 다음과 같이 Classification과 Localization에 대한 Loss를 동시에 계산한다. 
 
@@ -186,3 +186,33 @@ Classification에서는 컨볼루션 계층 연산에서에 비해 완전 연결
 ![](./Figure/Fast_R-CNN15.JPG)
 
 U는 u x t 크기이며 W에서 t개의 left-singular한 벡터들로 구성되어 있고 Σ\_k는 t x t 크기의 Diagonal matrix이며 각 대각 원소는 W에서 Top k개의 Singular value이다. V는 v x t 크기의 행렬이고 W에서 t개의 right-singular 벡터로 이루어져 있다. Truncated SVD를 적용하며 uv개의 파라미터 수를 t(u + v)만큼 줄일 수 있는데 t가 min(u, v)보다도 작다면 상당히 많이 줄일 수 있다. 이렇게 완전 연결 계층을 분해해서 두개의 행렬을 각각 따로 가지는 계층으로 분해 하는데 이 계층 사이에는 비선형이 추가되지 않는다. 첫 번째 계층은 Σ\_kV^T의 가중치 행렬을 쓰고(Bias 없음) 두번째 계층은 U 가중치 행렬을 쓴다(원래 W일때 사용하던 Bias를 씀). 저자들은 이런 방법으로 ROI가 굉장히 많을때, 속도를 증가시켰다고 한다. 
+
+
+
+## Main results
+
+![](./Figure/Fast_R-CNN16.JPG)
+
+
+
+### Experimental setup
+
+이 연구에서 실험을 할 때 사용한 pre-trained on ImageNet datasets 모델은 세 가지이다.
+
+- R-CNN에서의 CaffeNet(AlexNet의 변경체). 이후 Small을 뜻하는 S로 부름.
+- S와 깊이는 같으나 더 넓은 VGG_CNN_M_1024. 이후 Medium을 뜻하는 M으로 부름.
+- Very deep VGG16. 이후 Largest를 뜻하는 L로 부름.
+
+모든 실험은 Singe-scale training and testing이 원칙이다. 
+
+
+
+### VOC 2010 and 2012 results
+
+한 가지 주목할 점은 VOC10에서는 SegDeepM이 Fast R-CNN보다 높은 mAP를 달성했다는 것이다(67.2 VS 66.1). SegDeepM은 R-CNN의 Detection에서 Markov random field를 적용하여 정확도를 개선시킬 수 있도록 디자인 되어 있는데 R-CNN 대신에 Fast R-CNN을 적용할 경우 68.8%까지 mAP가 올라간다(테이블2). 
+
+
+
+### VOC 2007 results
+
+여기서 대조군으로 선택된 SPPnet은 훈련과 테스트 간에 5 scale로 실험이 진행되었다. 그럼에도 불구하고 Single-scale의 Fast R-CNN의 성능이 더 좋다.
