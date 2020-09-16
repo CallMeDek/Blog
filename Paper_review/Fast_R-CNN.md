@@ -216,3 +216,60 @@ U는 u x t 크기이며 W에서 t개의 left-singular한 벡터들로 구성되�
 ### VOC 2007 results
 
 여기서 대조군으로 선택된 SPPnet은 훈련과 테스트 간에 5 scale로 실험이 진행되었다. 그럼에도 불구하고 Single-scale의 Fast R-CNN의 성능이 더 좋다.
+
+
+
+### Training and testing time
+
+Fast R-CNN은 훈련시간과 테스트 시간을 굉장히 줄인다. SVD를 적용하면 더 그렇다. 그리고 다른 방법들과는 다르게 Feature cache가 필요 없으므로 디스크에 데이터를 저장할 필요도 없다.
+
+![](./Figure/Fast_R-CNN17.JPG)
+
+(s/im -> seconds per image)
+
+
+
+#### Truncated SVD
+
+저자들에 의하면 Truncated SVD를 적용해서 탐지 시간을 30%정도 줄일 수 있다고 한다(0.3로 아주 적은 mAP 감소와 함께). 이 연산을 수행 후에는 추가적인 Fine-tuning이 필요하지 않다고 한다. 
+
+![](./Figure/Fast_R-CNN18.JPG)
+
+
+
+### Which layers to fine-tune?
+
+SPPnet에서는 완전 연결 계층만 Fine-tuning을 해도 충분하다고 했는데 저자들은 이 주장이 아주 깊은 네트워크에서는 맞지 않는다고 생각했다. 그래서 이를 검증하기 위해서 Fast R-CNN에서 컨볼루션 계층을 Freeze를 하고 완전 연결 계층만 Fine-tuning을 한 결과 mAP가 66.9%에서 61.4%로 하락했다. 
+
+![](./Figure/Fast_R-CNN19.JPG)
+
+S나 M 같이 상대적으로 작은 네트워크의 Conv1 같은 경우에는 도메인에 독립적이므로 Fine-tuning을 하던 말던 mAP에 의미 있는 효과가 없고 L 같은 경우에는 Conv3_1부터 위까지 Fine-tuning을 했을때 효과가 있는 것을 확인했다고 한다. 그래서 여기에서는 S, M의 경우 Conv2부터 위까지 Fine-tuning을 하고 L은 Conv3_1부터 위까지를 Fine-tuning한다. 
+
+
+
+## Design evaluation
+
+Fast R-CNN의 Design decision과 관련된 실험은 PASCAL VOC07 데이터셋으로 수행했다.
+
+
+
+### Does multi-task training help?
+
+End-to-End로 네트워크의 각 Component들을 동시에 학습하는 것이 효과적인지를 확인하기 위해서 저자들은 Loss에서 Classification loss만을 사용해서 baseline networks들을 학습시켰다. 그 결과는 다음 테이블의 첫 번째 열에 나와 있다. 
+
+![](./Figure/Fast_R-CNN20.JPG)
+
+두 번째 열에는 원래대로 Loss를 적용하되 Bounding box regression을 적용하지 않았을 때이다. 그 결과 Multi-task training이 Classification만 훈련시킬때보다 성능이 더 좋은 것으로 나타났다. 그 다음으로 Classification 훈련을 완료한 baseline network들에 Bounding box regression 계층을 붙이고 Loss에서 Localization loss만을 사용해 훈련시키는 Stage-wise training을 수행했더니 첫 번째 열보다는 성능이 좋으나 Multi-task training + Bounding box regression을 했을때(네 번째 열) 보다는 성능이 떨어졌다.
+
+
+
+### Scale invariance: to brute force or finesse?
+
+Scale invariant한 Object detection을 위해서 저자들은 두 가지 접근 방법을 검토했다. 여기서 s를 이미지의 짧은쪽 길이라고 정의한다. 
+
+- Brute-force learning(Single scale) -  s = 600으로 한다. s가 600보다 작을 때는 긴쪽이 1000이 되게 해서 종횡비를 유지하면서 캡처한다. PASCAL image들의 평균 크기는 384x473이기 때문에 1.6배 정도 Upsampling을 한다. 따라서 ROI pooling 계층의 평균적으로 효율적인 Stride는 대략 10픽셀 정도가 된다.
+- Image pyramids(Multi-scale) - s  ∈ {480, 576, 688, 864, 1200}으로 하고 GPU memory를 초과하는 것을 막기 위해서 긴쪽의 길이를 2000픽셀이 되게 캡처 한다. 
+
+![](./Figure/Fast_R-CNN21.JPG)
+
+Single-scale의 mAP가 Multi-scale의 mAP와 큰 차이가 없는 것을 확인할 수 있다. 저자들은 이를 통해서 아주 깊은 모델에서는 자연스럽게 네트워크가 Scale invariance를 학습한다고 주장했다. 처리 시간이 늘어나는 것에 비해 mAP가 아주 조금 늘어나기 때문에 저자들은 모든 실험에서 s=600 픽셀로 하는 Single-scale로 실험했다고 한다. 
