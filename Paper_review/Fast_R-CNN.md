@@ -273,3 +273,46 @@ Scale invariant한 Object detection을 위해서 저자들은 두 가지 접근 
 ![](./Figure/Fast_R-CNN21.JPG)
 
 Single-scale의 mAP가 Multi-scale의 mAP와 큰 차이가 없는 것을 확인할 수 있다. 저자들은 이를 통해서 아주 깊은 모델에서는 자연스럽게 네트워크가 Scale invariance를 학습한다고 주장했다. 처리 시간이 늘어나는 것에 비해 mAP가 아주 조금 늘어나기 때문에 저자들은 모든 실험에서 s=600 픽셀로 하는 Single-scale로 실험했다고 한다. 
+
+
+
+### Do we need more training data?
+
+저자들은 더 많은 데이터로 더 많은 데이터와 더 많은 Iteration으로 학습 했을때, mAP가 상승하는 것을 확인했다.
+
+
+
+### Do SVMs outperform softmax?
+
+저자들은 이진 SVM 대신에 Softmax를 적용한 것이 유효한지 검증 하기 위해서 Fast R-CNN에 Softmax 대신에 이진 SVM을 달아서 Hard negative mining을 적용한 SVM을 실험해 봤다. 결과는 Softmax가 조금 더 좋았다. 저자들이 주장하길, 그럼에도 불구하고 Softmax는 SVM과 다르게 End-to-End로 학습이 가능해서 더 좋다고 한다.
+
+![](./Figure/Fast_R-CNN22.JPG)
+
+
+
+### Are more proposals always better?
+
+저자들은 더 많은 Proposal이 더 좋은 성능을 보장하는 것은 아님을 입증하기 위한 실험을 했다. 
+
+![](./Figure/Fast_R-CNN23.JPG)
+
+- 파란색 실선을 보면 SS에서 Proposal 수를 늘리면 성능이 조금 오르다가 오히려 떨어지는 것을 알 수 있다.
+- Object proposal의 Quality를 측정하는 방법으로 Average Recall을 많이 사용한다. AR은 mAP와 Proposal의 수가 이미지 당 고정되어 있을 때, 상관 관계가 높은 것으로 알려져 있는데 Proposal의 수가 다양해짐에 따라 상관 관계가 거의 없는 것을 확인할 수 있다(붉은 실선과 파란색 선들의 추세).
+- 파란색 삼각형 부분을 보면 Selective search로 찾은 박스를 Densely generated box로 바꿨을 때(IoU가 SS box들과 높은 박스들) 약간의 성능 하락이 발생한 것을 볼 수 있다. 
+- 더 많은 Dense box들을 추가할 경우, SS box들을 사용할 때보다 성능이 많이 떨어지는 것을 알 수있다(파란색 점선).
+- Dense box만 사용한 Fast R-CNN의 성능은 파란색 다이아몬드로 확인할 수 있다.
+- SVM과 Hard-negative mining을 적용한 Fast R-CNN과 Dense box의 성능은 파란색 원으로 확인할 수 있다.
+
+
+
+### Preliminary MS COCO results
+
+MS COCO 데이터셋에 적용한 Fast R-CNN의 성능은 다음과 같다.
+
+- The PASCAL-style mAP is 35.9%; the new COCO-style AP, which also averages over IoU thresholds, is 19.7%.
+
+
+
+## Conclusion
+
+저자들은 R-CNN과 SPPnet에서의 업데이트 버전인 Fast R-CNN을 제시했다. 실험을 통해서 Sparse object proposal이 탐지 성능을 높이는데 더 좋음을 확인했다. 
