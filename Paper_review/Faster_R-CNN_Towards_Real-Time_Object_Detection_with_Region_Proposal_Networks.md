@@ -121,3 +121,38 @@ x, y, w, h는 각 box의 중앙 좌표, 넓이, 높이이고 x, xa, x\*는 각�
 RPN은 역전파와 SGD를 통해서 End-to-End로 학습이 가능했다. 하나의 이미지에서 여러 미니배치가 만들어지고(Receptive field 슬라이딩) 각 미니배치에는 Positive나 Negative한 Anchor들이 있다. 이 Anchor들을 모두 고려해서 Loss 줄여 최적화 할 수도 있지만 Negative가 압도적으로 많기 때문에 Negative에 의해서 편향될 가능성이 크다. 따라서 저자들은 256의 Anchor들을 샘플링할때 Negative와 Positive 거의 1:1로 샘플링한다(Positive가 적으면 나머지는 Negative로 채운다).
 
 Localization 계층들은 평균 0, 표준편차 0.01의 가우시안 분포를 따르는 랜덤 값으로 초기화 하고 Classification 계층들은 ImageNet classification Task에서 미리 학습한 가중치로 초기화 한다. ZF net은 모든 계층을 튜닝하고 VGG는 conv3_1부터 위까지 튜닝한다. PASCAL VOC 데이터셋에서 60k 미니 배치는 LR 0.001, 나머지 20k 미니배치는 0.0001로 학습시킨다. 모멘텀은 0.9, Weight decay는 0.0005를 적용한다. 
+
+
+
+### Sharing Features for RPN and Fast R-CNN
+
+RPN과 Fast R-CNN은 나름의 목적대로 Convolution 계층의 가중치를 갱신할 것이다. 그런데 각각 훈련을 진행하기보다는 하나의 통합된 네트워크로서 훈련시키기 위해 저자들은 다음과 같은 방법을 생각했다. 
+
+- Alternating Training - 먼저 RPN을 훈련시키고 여기서 생성된 Proposal을 Fast R-CNN을 훈련시키는데 사용한다. Fast R-CNN에 의해서 Tuning된 네트워크는 다음 Iteration에서 RPN을 초기화하는데 쓰이고 이런 과정이 반복된다. 이 연구에서 모든 실험은 이런 방식으로 진행되었다.
+- Approximate Joint Training - 훈련 과정부터 RPN과 Fast R-CNN을 합치는 방법. 순전파 시에 RPN에서 생성된 Proposal로 Fast R-CNN에서 Detection을 진행하고 역전파 시에 공유 계층에 대해서는 RPN에서의 Loss와 Fast R-CNN에서의 Loss가 합쳐진다. 그런데 첫번째 결과와 완전히 동일한 결과를 내는 것은 아니고 Proposal Boxes' Coordinates와 관련된 미분값은 무시하게 된다. 저자들이 확인하길 그래도 거의 첫번째 결과와 거의 동일한 결과를 내면서 25\-50% 더 훈련 시간을 줄일 수 있다고 한다.
+- Non\-approximate Joint Training - 이상적으로는 역전파 시에 Box coordinates에 대한 경사 하강도 진행되어야 한다. 그렇기 위해서는 RoI Pooling 계층에서도 Box coordinates에 대해서 미분 가능해져야 한다. 이런 문제는 RoI Warping 계층 이라는 것을 통해 해결이 가능하다.
+
+
+
+#### 4-Step Alternating Training
+
+저자들은 RPN과 Fast R-CNN의 공유 가중치를 학습시키는 과정을 Alternating Training 방법을 적용해서 사단계로 나타냈다. 
+
+1. RPN을 먼저 학습시킨다. ImageNet 데이터로 미리 학습이 완료된 가중치로 초기화된 모델이 있고  End-to-End로 Region Proposal Task에 맞게 Fine-tuning 시킨다.
+2. 첫번째 단계에서 학습한 RPN에서 생성한 Region proposal로 Fast R-CNN Detection network를 훈련시킨다. 이 Fast R-CNN 또한 ImageNet 데이터셋에서 미리 학습되었다. 여기까지는 두 네트워크가 Convolution 계층을 공유하지 않는다.
+3. Detector 네트워크를 RPN 훈련 과정에서 초기화하는데 이용한다. 그런데 공유 Convolution 계층은 고정을 시키고 RPN에 들어가는 계층들만 Fine-tuning 시킨다. 여기서부터 두 네트워크가 Convolution 계층을 공유하기 시작한다.
+4. 공유 Convolution 계층을 고정시키고 Fast R-CNN에 들어가는 계층들만 Fine-tuning시킨다. 
+
+
+
+### Implementation Details
+
+저자들은 훈련할때, 테스트할때의 Region Proposal과 Object Detection에서 모두 이미지의 단일 스케일에서 실험을 진행했다. 짧은쪽의 픽셀이 거의 600 픽셀이 되게 했다. 저자들이 생각하기에 다양한 스케일의 이미지를 사용하면 정확도는 좀 더 올라가겠지만 좋은 트레이드 오프(속도)를 보여주지는 못했다. ZF, VGG net에서 마지막 Convolution 계층에서의 총 Stride가 16이므로 PASCAL 이미지 데이터 셋에서(~500x375)에서 이미지의 크기를 재조정하지 않으면 마지막 Convolution 계층에서는 ~10 픽셀 정도 되었다.
+
+Anchor box의 경우 128^2, 256^2, 512^2의 스케일과 1:1, 1:2, 2:1의 종횡비를 조사했으며 하이퍼 파라미터는 최적화 하지는 않았다. 여기서 주목할 만한 점은 Box에 대한 예측 값이 Receptive field의 크기보다 커질 수 있다는 것이다(예를 들어서 이미지 안의 보이는 객체가 하나이고 정 중앙에 있을 때).
+
+![](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks5.JPG)
+
+이미지 테두리에 걸치는 Anchor box의 경우 훈련 시에는 무시하기 때문에 Loss에 관여하지 않는다. 1000 x  600의 이미지의 경우에 보통 20000 여개 정도의 Anchor Box가 생성되는데 이 중에서 테두리에 걸치는 Anchor box를 제거하면 이미지 당 6000개 Anchor box 정도만 사용하게 된다. 만약에 훈련 간에 이 Box들을 무시하지 않는다면 이 Box들로 인해서 Loss에서 (올바른 방향으로) 갱신하기 어려운 Box들이 생기기 때문에 훈련 성능이 수렴하지 않게 된다. 테스트 시에는 RPN에서 전체 이미지에 대해 Convolutional 연산만 수행하기 때문에 이미지 테두리에 맞는 Bounding box가 생성될 수 있다. 
+
+RPN에서 몇개의 Proposal들은 서로 매우 겹치는 것들이 있다. 이 숫자를 줄이기 위해서 그 박스들의 cls Score에 근거하여 Non-maximum suppression (NMS)을 수행한다.  NMS의 IoU Threshold 값을 0.7로 고정시키고 이미지당 약 2000개의 Proposal만 남겨둔다. 저자들이 확인한 바로는 NMS로 탐지 성능이 떨어지지 않고 오히려 Proposal의 숫자를 크게 줄인다고 한다.
