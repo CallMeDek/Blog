@@ -156,3 +156,27 @@ Anchor box의 경우 128^2, 256^2, 512^2의 스케일과 1:1, 1:2, 2:1의 종횡
 이미지 테두리에 걸치는 Anchor box의 경우 훈련 시에는 무시하기 때문에 Loss에 관여하지 않는다. 1000 x  600의 이미지의 경우에 보통 20000 여개 정도의 Anchor Box가 생성되는데 이 중에서 테두리에 걸치는 Anchor box를 제거하면 이미지 당 6000개 Anchor box 정도만 사용하게 된다. 만약에 훈련 간에 이 Box들을 무시하지 않는다면 이 Box들로 인해서 Loss에서 (올바른 방향으로) 갱신하기 어려운 Box들이 생기기 때문에 훈련 성능이 수렴하지 않게 된다. 테스트 시에는 RPN에서 전체 이미지에 대해 Convolutional 연산만 수행하기 때문에 이미지 테두리에 맞는 Bounding box가 생성될 수 있다. 
 
 RPN에서 몇개의 Proposal들은 서로 매우 겹치는 것들이 있다. 이 숫자를 줄이기 위해서 그 박스들의 cls Score에 근거하여 Non-maximum suppression (NMS)을 수행한다.  NMS의 IoU Threshold 값을 0.7로 고정시키고 이미지당 약 2000개의 Proposal만 남겨둔다. 저자들이 확인한 바로는 NMS로 탐지 성능이 떨어지지 않고 오히려 Proposal의 숫자를 크게 줄인다고 한다.
+
+
+
+## EXPERIMENTS
+
+### Experiments on PASCAL VOC
+
+저자들은 PASCAL VOC 2007 Detection Benchmark 데이터셋에서 저자들의 연구 방법을 실험했다. 
+
+![](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks6.JPG)
+
+Fast R-CNN에서 RPN을 적용하면 SS나 EB보다 시스템 속도는 빠르면서 mAP도 더 높은 것을 확인할 수 있다. 
+
+
+
+### Ablation Experiments on RPN
+
+RPN과 Fast R-CNN 사이에 이미지 특징을 추출하는 공유 Convolution Network의 효과를 입증하기 위해서 위에서 언급한 4-Step Training Process에서 두 번째 단계까지 진행하고 각 네트워크를 따로 사용했을 때 mAP가 살짝 줄어든 것을 확인할 수 있었다. 이는 세 번째 단계에서 Detector로 RPN을 Fine tuning할 시에 Proposal의 질이 더 개선되는 것으로 저자들은 결론내렸다. 
+
+다음으로 훈련간에 Fast R-CNN 탐지 네트워크를 훈련시키는데에 대한 RPN의 영향력을 제거하기 위해서 의도적으로 ZF net과 2000개의 SS Proposal로 Fast R-CNN을 훈련시켰다. 그런 다음 테스트 시에 Detector를 고정시키고, 생성되는 Proposal Region들을 바꾸면서 Detection mAP를 측정했다. 여기서 RPN은 Detector와 특징을 공유하지 않는다. 
+
+SS를 300개의 RPN Proposal로 바꿨을 때 mAP는 감소되었는데 이는 훈련과 테스트 사이의 Proposal이 일맥상통하지 않는 이유라고 저자들은 추측했다. 
+
+그럼에도 불구하고 Top-Ranked 100개의 RPN Proposal을 사용했을 때 어느정도 준수한 성능이 나오는데 이는 Top-Ranked RPN Proposal이 정확하다는 것을 가리킨다. 또, 극단적으로 Top-Ranked 6000 RPN Proposal을 사용했을때(NMS 적용하지 않음) 전자와 비슷한 성능이 나오는 것으로 보아 NMS는 Detection mAP에 해를 끼치지 않는 것으로 볼 수 있다.
