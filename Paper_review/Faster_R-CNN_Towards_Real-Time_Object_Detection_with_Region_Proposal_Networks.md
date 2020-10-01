@@ -191,16 +191,16 @@ RPN의 네트워크를 더 좋은(용량이 큰) 네트워크를 사용할 경�
 
 ### Performance of VGG-16
 
-![](C:\Users\LAB\Desktop\Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks7.JPG)
+![](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks7.JPG)
 
 
 
-![](C:\Users\LAB\Desktop\Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks8.JPG)
+![](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks8.JPG)
 
 
 
-![](C:\Users\LAB\Desktop\Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks9.JPG)
+![](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks9.JPG)
 
 
 
-![](C:\Users\LAB\Desktop\Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks10.JPG)
+![](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks10.JPG)
