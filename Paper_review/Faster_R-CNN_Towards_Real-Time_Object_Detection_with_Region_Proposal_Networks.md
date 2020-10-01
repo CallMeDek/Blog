@@ -180,3 +180,27 @@ RPN과 Fast R-CNN 사이에 이미지 특징을 추출하는 공유 Convolution 
 SS를 300개의 RPN Proposal로 바꿨을 때 mAP는 감소되었는데 이는 훈련과 테스트 사이의 Proposal이 일맥상통하지 않는 이유라고 저자들은 추측했다. 
 
 그럼에도 불구하고 Top-Ranked 100개의 RPN Proposal을 사용했을 때 어느정도 준수한 성능이 나오는데 이는 Top-Ranked RPN Proposal이 정확하다는 것을 가리킨다. 또, 극단적으로 Top-Ranked 6000 RPN Proposal을 사용했을때(NMS 적용하지 않음) 전자와 비슷한 성능이 나오는 것으로 보아 NMS는 Detection mAP에 해를 끼치지 않는 것으로 볼 수 있다.
+
+RPN에서 cls 브랜치 부분을 제거하여 NMS 혹은 Ranking을 사용하지 않았을 때, 랜덤하게 1000개의 Proposal을 샘플링했을 때는 mAP가 거의 변하지 않았는데 100개를 뽑았을때는 심하게 감소했다. 이를 통해서 cls 브랜치가 Highest Ranked Proposal을 정확하게 뽑는데 일조한다는 것을 알 수 있었다.
+
+RPN에서 reg 브랜치 부분을 제거하여 Anchor Box가 곧 Proposal이 될 때 역시 mAP가 감소했다. 이를 통해서 High quality Proposal은 Regressed된 Bounding Box에서 나온다는 것을 알수 있다. 즉, Multiple Scale과 Aspect Ratio로는 불충분하다는 말이 된다. 
+
+RPN의 네트워크를 더 좋은(용량이 큰) 네트워크를 사용할 경우 성능이 더 좋아졌다. 
+
+
+
+### Performance of VGG-16
+
+![](C:\Users\LAB\Desktop\Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks7.JPG)
+
+
+
+![](C:\Users\LAB\Desktop\Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks8.JPG)
+
+
+
+![](C:\Users\LAB\Desktop\Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks9.JPG)
+
+
+
+![](C:\Users\LAB\Desktop\Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks10.JPG)
