@@ -204,3 +204,57 @@ RPN의 네트워크를 더 좋은(용량이 큰) 네트워크를 사용할 경�
 
 
 ![](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks10.JPG)
+
+
+
+### Sensitivities to Hyper-parameters
+
+![](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks11.JPG)
+
+위의 테이블은 Anchor Box에 대해서 다른 셋팅을 했을때 결과를 보여준다. 각 위치에서 하나의 Anchor만을 사용하면 3\-4% 정도로 mAP가 크게 떨어진다. 1 Scale + 3 Ratios나 3 Scale + 1 Ratio나 크게 차이가 나지 않으며 성능이 나쁘지 않다. 여기서 이 두 옵션은 탐지 정확도에 있어서 서로 얽매여 있는 옵션은 아니지만 저자들은 시스템의 유연성을 위해서 이 두 옵션 모두 적용한다고 했다.
+
+![](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks12.JPG)
+
+위의 테이블은 Loss 계산식에서 Lambda의 값에 따른 mAP를 보여준다. Lambda가 10일때 mAP가 가장 높은 것으로 보아 두 Loss 사이의 밸런스를 가장 잘 유지하는 값임을 알 수 있다. 
+
+
+
+### Analysis of Recall-to-IoU
+
+저자들은 Proposal과 GT Box의 IoU 값에 따른 Recall 점수를 계산했다. 주의할 점은 이 Metric 같은 경우 탐지 정확도와는 크게 상관이 없고 오히려 Proposal Method를 진단하는 Metric이라는 것이다. 
+
+![Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks13](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks13.JPG)
+
+그래프를 보면 Proposal이 2000\->300으로 떨어질때 전체적인 그래프 값이 RPN보다 EB, SS보다 적게 떨어지는 것을 확인할 수 있다. 저자들은 이것이 RPN의 cls Term덕분이라고 했다. 
+
+
+
+###  One-Stage Detection vs Two-Stage Proposal + Detection
+
+![](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks14.JPG)
+
+
+
+### Experiments on MS COCO
+
+![](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks15.JPG)
+
+
+
+### Faster R-CNN in ILSVRC & COCO 2015 Competitions
+
+ResNet-101같이 아주 깊은 네트워크에서도 좋은 성능을 낼 수 있다고 한다.
+
+
+
+### From MS COCO to PASCAL VOC
+
+![](./Figure/Faster_R-CNN_Towards_Real-Time_Object_Detection_with_Region_Proposal_Networks16.JPG)
+
+
+
+
+
+## Conclusion
+
+RPN이라고 하는 Fully Convolution Layer로 이루어진 Region Proposal Generation Network 덕분에 Detection Network와 이미지의 특징을 추출하는 Convolution Layer들을 공유할 수 있게 되었고 그 덕분에 Region Proposal Generation Step에서 거의 비용을 줄 일 수 있게 되었다. 이런 특징은 Faster R-CNN을 하나의 통일된 딥러닝 기반의 네트워크로 만들었고 실시간에 가까운 Object Detection을 가능하게 했다. 
