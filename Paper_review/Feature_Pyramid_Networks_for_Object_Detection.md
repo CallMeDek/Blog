@@ -160,3 +160,69 @@ Pyramid의 모든 단계에서 공통의 Classifier/Regressor를 사용하기 �
 Backbone Architecture에서 연산을 수행하여 각 Stage별 Feature map을 생성해두고 Lateral Connection을 통해서 Merged Feature map을 만들어 내는데 이를 Intermediate Feature map이라고 한다. 원래의 FPN은 각기 다른 크기의 Anchor들을 Feature map에 적용하여 Head에서 결과를 뽑아내지만 FPN에서는 각 Stage의 Intermediate Feature map의 해상도가 다르므로 다른 크기의 Anchor들을 적용한 것으로 볼 수 있다. 따라서 각 Intermediate Feature map에서 단일 크기의 Anchor box에 대해서 Head를 적용해서 Proposal에 대한 손실을 계산한다. 상위 Feature map은 상대적으로 크기가 큰 물체에 대한 정보를 담고 있을 것으로 예상 가능하고 반대로 하위 Feature map은 작은 물체에 대한 정보를 담고 있을 것으로 예상할 수 있다. 각 단계별 Anchor 박스의 크기는 {P2, P3, P4, P5, P6}에 대해서 {32x32, 64x64, 128x128, 256x256, 512x512}로 하고 종횡비 {1:2, 1:1, 2:1}를 적용해서 총 15개의 Anchor 박스를 사용하게 된다. 
 
 저자들은 BB와 GT 박스의 IoU에 근거하여 각 Anchor에 레이블을 할당했다. 주의할 점은 GT 박스의 크기와 관련해서 각 Stage의 Anchor 박스에 GT를 할당한 것이 아니라 IoU에 근거하여 GT 박스를 각 Anchor에 할당했다는 점이다.  Head의 모든 가중치는 각 Stage별로 공유되는데 저자들이 확인하길 공유하지 않았을 때와 성능 차이가 크지 않았다. 이는 각 Pyramid 단계가 비슷한 Sementic 수준을 보유한다는 것을 반증하다고 주장했다. 이는 Image Pyramid에서 각 이미지 크기에 동일한 Head Classifier를 적용한 것과 맥락을 같이 한다. 
+
+
+
+### Feature Pyramid Networks for Fast R-CNN
+
+Fast R-CNN은 단일 크기 Feature map에 대해서 ROI를 뽑아내어 Pretrained된 모델의 Feature map에 투영시키는 방식으로 Detection을 진행하지만 FPN을 적용하면 여러 크기의 Feature map이 출력되므로 Head를 통해서 얻어낸 RoI들을 어떤 Feature map에 투영시킬지를 결정해야 하는 문제가 남았다. FPN에서 Pk 단계에서 출력되는 Feature map에 투영시킬 RoI를 다음과 같은 식으로 구한다.
+
+![](./Figure/Feature_Pyramid_Networks_for_Object_Detection8.JPG)
+
+여기서 224는 ImageNet에 Pretrained된 모델의 입력 사이즈이고 k0는 wxh = 224*224이 ROI가 투영되어야할 타겟 레벨을 의미한다. 이 연구에서는 4로 설정했다. 위의 식1은 직관적으로 생각해보면 만약에 ROI의 크기가 작다면 (224의 절반) 이 ROI는 고해상도 단계의 Feature map에 투영되어야 한다는 것이다(k=3). 512x512 짜리 ROI라면 4 + log2(2.28) = 5.11로 P5(저해상도 단계)에 투영된다. 이렇게 투영한 ROI에 Fast R-CNN의 Head를 붙인다. 이때 Head는 모든 ROI에 대해 가중치를 공유한다. 
+
+![](./Figure/Feature_Pyramid_Networks_for_Object_Detection9.JPG)
+
+[갈아먹는 Object Detection - 갈아먹는 Object Detection  Feature Pyramid Network]( https://yeomko.tistory.com/44)
+
+저자들은 ROI Pooling Layer를 통해서 7x7 Feature를 추출하고 1024차원의 완전 연결 계층을 연결한 뒤에(ReLU 활성화 함수, 랜덤 초기화, Pretrained되지 않음) 다음 최종 분류와 바운딩 박스 회귀 브랜치를 병렬로 연결했다. 
+
+
+
+## Experiments on Object Detection
+
+저자들은 80의 카테고리로 나누어져 있는 COCO detection 데이터셋으로 성능을 실험했다. 훈련용 이미지 80k와 검증용 이미지 중 일부인 35k를 합쳐서 모델 훈련을 진행했다. 그리고 검증용 이미지의 일부인 5k로 Ablation Study를 진행했다고 한다. 그리고 나서 레이블이 알려져 있지 않은 테스트 셋으로 최종 결과를 뽑아냈다. 
+
+ResNet-50과 101 모델을 ImageNet 1k 분류 셋으로 미리 훈련시키고 Detection 데이터 셋으로 Fine tuning했다. 
+
+
+
+### Region Proposal with RPN
+
+![](./Figure/Feature_Pyramid_Networks_for_Object_Detection10.JPG)
+
+COCO스타일의 AR 방식으로 평가했고 AR은 크기가 작은, 중간, 큰 객체에 대해 각각 구했다(ARs, ARm, ARl) 그리고 결과는 각 이미지 당 100개 그리고 1000개의 Proposal을 생성하여 AR을 계산했다(AR100, AR1K)
+
+
+
+#### Implementation details
+
+논문 참고
+
+
+
+#### Ablation Experiments
+
+##### Comparisons with baselines
+
+Table1의 b는 a에 비해 성능이 크게 차이가 나지 않는데 이를 통해서 알 수 있는 점은 높은 단계의 Feature map이라도 단일의 Feature map에 Detection을 수행하면(Anchor를 사용하여) 성능 개선에 효과가 없다는 것이다. 이것은 Coarser한 해상도와 Stronger한 Semantics 사이의 Trade-off 때문이다. 
+
+C에서 FPN을 적용했을때 단일 스케일보다 성능이 더 좋아진 것을 확인할 수 있다. 특히 작은 크기의 객체에 대해서 성능이 많이 개선되었다. 이것은 FPN이 객체 크기 변화에 강건하다는 것을 입증한다. 
+
+
+
+##### How important is top-down enrichment?
+
+Top-down Pathway를 제거했을 때는 기본 RPN의 성능과 별반 다를바 없다. 저자들은 이것이 ResNet과 같은 깊은 모델에서 Bottom-up Pathway의 큰 Semantics 격차 때문이라고 추측했다(Table1의 d). d에서 Head의 가중치를 공유하지 않고 각각 따로 Head를 만들어 평가했을때 비슷한 성능 저하를 보였다.
+
+
+
+##### How important are lateral connections?
+
+Table1의 e는 1x1 Lateral Connection이 없는 Top-down Pathway에서의 Feature들로 평가했을때 결과를 보여준다. Top-down Pathway는 강한 Semantics와 고해상도를 갖는다. 그러나 객체의 위치 정보가 정확하지 않다. 왜냐하면 Feature map이 Down sampling과 Up sampling을 여러번 했기 때문이다. 따라서 Lateral Connection을 통해서 객체의 정확한 위치 정보를 담고 있는 Feature를 합쳐주어야 한다. FPN의 AR1K의 성능이 Table1의 e보다 10포인트 더 높다. 
+
+
+
+##### How important are pyramid representations?
+
+그냥 단순히 P2(가장 고해상도의 Top-down Pathway의 Feature map)에 Anchor를 적용해서 마치 단일 스케일의 RPN처럼 해서 성능 평가를 해 볼 수도 있다. Table1의 f를 보면 기본 Fast R-CNN보다는 성능이 좋지만 FPN보다는 성능이 좋지 않다는 것을 볼 수 있다. 또 f를 보면 해상도가 높기 때문에 Anchor를 많이 적용해본 것을 확인할 수 있다. 하지만 이 때에도 성능을 개선하기에는 충분하지 않다.
