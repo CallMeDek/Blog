@@ -226,3 +226,23 @@ Table1의 e는 1x1 Lateral Connection이 없는 Top-down Pathway에서의 Featur
 ##### How important are pyramid representations?
 
 그냥 단순히 P2(가장 고해상도의 Top-down Pathway의 Feature map)에 Anchor를 적용해서 마치 단일 스케일의 RPN처럼 해서 성능 평가를 해 볼 수도 있다. Table1의 f를 보면 기본 Fast R-CNN보다는 성능이 좋지만 FPN보다는 성능이 좋지 않다는 것을 볼 수 있다. 또 f를 보면 해상도가 높기 때문에 Anchor를 많이 적용해본 것을 확인할 수 있다. 하지만 이 때에도 성능을 개선하기에는 충분하지 않다.
+
+
+
+### Object Detection with Fast/Faster R-CNN
+
+![](./Figure/Feature_Pyramid_Networks_for_Object_Detection11.JPG)
+
+저자들은 FPN을 Region-based Detector에 적용했을 때 성능을 평가했다. 평가 방식은 COCO-Style AP와 PASCAL-Style AP이다. 
+
+
+
+#### Fast R-CNN(on fixed proposals)
+
+FPN의 효과를 살펴보기 위해서 Fast R-CNN에 고정적인 Proposal 셋을 입력으로 주었다고 한다. 이때 Proposal은 FPN을 적용한 RPN에서 만들어진 것이다(Table1의 c의 경우). 또 실험을 복잡하게 만들지 않게 하기 위해서 특별한 경우를 제외하고는 Fast R-CNN와 RPN은 Feature를 공유하지 않았다고 한다.
+
+저자들은 14x14의 Feature를 출력하는 RoI Pooling Layer에 Head를 붙이는데 Conv5의 모든 계층을 Head의 Hidden Layer로 추가했다(Table2의 a). Table2의 b는 2개의 완전 연결 계층이 있는 Head를 적용했을 때 결과인데 Table2의 a의 성능이 더 좋은 것을 확인했다. 
+
+Table2의 c와 비교하면 c의 성능이 더 좋은 것을 확인할 수 있다(크기가 작은 물체에 대해서도). Table2의 d와 e는 각각 Top-down Pathway나 Lateral Connection을 제거했을 때의 성능을 나타내는데 확실히 성능이 떨어지는 것을 확인할 수 있다. 
+
+Table2의 f는 P2의 Feature map에서만 탐지를 수행한 결과인데 FPN을 적용했을때와 성능이 크게 차이가 나지는 않는다. 저자들은 이것이 ROI pooling의 Warping-like Operation이 Region의 크기에 좀 덜 민감해서라고 추측했다. 
