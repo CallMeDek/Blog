@@ -231,13 +231,13 @@ Table1의 e는 1x1 Lateral Connection이 없는 Top-down Pathway에서의 Featur
 
 ### Object Detection with Fast/Faster R-CNN
 
-![](./Figure/Feature_Pyramid_Networks_for_Object_Detection11.JPG)
-
 저자들은 FPN을 Region-based Detector에 적용했을 때 성능을 평가했다. 평가 방식은 COCO-Style AP와 PASCAL-Style AP이다. 
 
 
 
 #### Fast R-CNN(on fixed proposals)
+
+![](./Figure/Feature_Pyramid_Networks_for_Object_Detection11.JPG)
 
 FPN의 효과를 살펴보기 위해서 Fast R-CNN에 고정적인 Proposal 셋을 입력으로 주었다고 한다. 이때 Proposal은 FPN을 적용한 RPN에서 만들어진 것이다(Table1의 c의 경우). 또 실험을 복잡하게 만들지 않게 하기 위해서 특별한 경우를 제외하고는 Fast R-CNN와 RPN은 Feature를 공유하지 않았다고 한다.
 
@@ -246,3 +246,42 @@ FPN의 효과를 살펴보기 위해서 Fast R-CNN에 고정적인 Proposal 셋�
 Table2의 c와 비교하면 c의 성능이 더 좋은 것을 확인할 수 있다(크기가 작은 물체에 대해서도). Table2의 d와 e는 각각 Top-down Pathway나 Lateral Connection을 제거했을 때의 성능을 나타내는데 확실히 성능이 떨어지는 것을 확인할 수 있다. 
 
 Table2의 f는 P2의 Feature map에서만 탐지를 수행한 결과인데 FPN을 적용했을때와 성능이 크게 차이가 나지는 않는다. 저자들은 이것이 ROI pooling의 Warping-like Operation이 Region의 크기에 좀 덜 민감해서라고 추측했다. 
+
+
+
+#### Faster R-CNN (on consistent proposals)
+
+![](./Figure/Feature_Pyramid_Networks_for_Object_Detection12.JPG)
+
+Table3에서는 RPN과 Fast R-CNN Dector가 같은 Backbone Network를 공유할때 FPN과 다른 방법들의 성능을 비교한다. Table3의 c가 다른 방법들보다 성능이 더 좋다. 
+
+Table3의 a, b가 첫번째 행보다 성능이 더 좋다. 저자들이 생각한 차이는 다음과 같다.
+
+- 600 픽셀 짜리 대신에 800 피셀짜리 이미지 사용
+- 성능 수렴을 위해서 이미지 당 512 ROI 사용(원래는 64 ROI).
+- 원래 4개의 Anchor를 사용하는 것 대신에 32x32 짜리를 추가하여 5개의 Anchor 사용
+- 테스트 시에 원래 300 Proposal 사용하는 것 대신에 1000 Proposal 사용
+
+
+
+##### Sharing features
+
+![](./Figure/Feature_Pyramid_Networks_for_Object_Detection13.JPG)
+
+Table5에서는 Faster R-CNN의 4단계 훈련 방식을 따라서 RPN과 Fast R-CNN이 같은 Backbone Network를 공유하도록 해서 성능을 평가한 것이다. 같은 Backbone Network를 공유하게 되면 약간 성능이 더 좋아지고 테스트 시 걸리는 시간도 줄어들게 된다. 
+
+
+
+##### Running time
+
+FPN에서 기존에 없던 추가적인 계층에서의 추가적인 연산때문에 약간의 시간이 더 필요하지만 전체적으로 봤을때는 오히려 속도가 더 빨라지는 것을 저자들이 확인했다. 
+
+
+
+#### Comparing with COCO Competition Winners
+
+![](./Figure/Feature_Pyramid_Networks_for_Object_Detection14.JPG)
+
+저자들은 Table5에서 FPN을 적용한 ResNet101 모델이 Default Learning Rate Schedule 때문에 충분히 학습이 되지 않았다는 것을 발견했다. 그래서 Fast R-CNN을 훈련시킬 때마다 각 Learning Rate에서 미니 배치의 수를 2배까지 늘렸다. 이것은 같은 Backbone을 공유하는 것 없이도 테스트 데이터에서 성능 향상을 가져왔다. 이렇게 훈련된 모델이 COCO detection Leaderboard에 제출되었고 그 결과가 Table4에 나와있다. Backbone을 공유하는 방식은 약간 성능이 오르지만 시간 제한 때문에 평가하지 않았다. 
+
+저자들의 방법이 별다른 추가적인 개념 없이 다른 경쟁자들보다 성능이 더 좋았다. 주목할만한 점은 Image Pyramid 없이도 단일 스케일 이미지에서 크기가 작은 객체에 대해서 성능이 좋다는 것이다.  또 저자들은 Iterative Regression, Hard Negative Mining, Context Modeling, Stronger Data Augmentation 등을 적용하지 않았는데 이를 활용한다면 더 성능이 좋아질 것이라고 추측했다. 
