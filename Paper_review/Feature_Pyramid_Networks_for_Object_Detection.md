@@ -285,3 +285,27 @@ FPN에서 기존에 없던 추가적인 계층에서의 추가적인 연산때�
 저자들은 Table5에서 FPN을 적용한 ResNet101 모델이 Default Learning Rate Schedule 때문에 충분히 학습이 되지 않았다는 것을 발견했다. 그래서 Fast R-CNN을 훈련시킬 때마다 각 Learning Rate에서 미니 배치의 수를 2배까지 늘렸다. 이것은 같은 Backbone을 공유하는 것 없이도 테스트 데이터에서 성능 향상을 가져왔다. 이렇게 훈련된 모델이 COCO detection Leaderboard에 제출되었고 그 결과가 Table4에 나와있다. Backbone을 공유하는 방식은 약간 성능이 오르지만 시간 제한 때문에 평가하지 않았다. 
 
 저자들의 방법이 별다른 추가적인 개념 없이 다른 경쟁자들보다 성능이 더 좋았다. 주목할만한 점은 Image Pyramid 없이도 단일 스케일 이미지에서 크기가 작은 객체에 대해서 성능이 좋다는 것이다.  또 저자들은 Iterative Regression, Hard Negative Mining, Context Modeling, Stronger Data Augmentation 등을 적용하지 않았는데 이를 활용한다면 더 성능이 좋아질 것이라고 추측했다. 
+
+
+
+## Extensions: Segmentation Proposals
+
+본문 참조
+
+
+
+### Segmentation Proposal Results
+
+본문 참조
+
+
+
+## Conclusion
+
+저자들은 이 연구에서 Deep CNN에서 간단하고 명료하게 Feature Pyramid를 구축하는 방법을 제안했다. 기존의(당시) SOTA Method들의 성능을 개선시키거나 뛰어넘는 것을 확인했다. 따라서 저자들은 Image Pyramid 대신 여러 연구나 서비스에서 실용적인 대안이 될 것으로 기대했다. 저자들이 주장하길 Deep CNN의 Strong Representational Power나 Robustness to Scale Variation에도 불구하고 명시적으로 Pyramid Representations를 이용하여 Multi-Scale 문제를 해결하는 것이 중요하다고 한다. 
+
+
+
+## Implementation of Segmentation Proposals
+
+본문 참조
