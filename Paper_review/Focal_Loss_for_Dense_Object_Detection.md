@@ -33,3 +33,111 @@ Two-stage Detector에서는 클래스 불균형 문제를 Two-stage Cascade와 S
 저자들은 Focal Loss의 효율성을 입증하기 위해서 RetinaNet이라고 하는 간단한 One Stage Object Detector를 디자인했는데 네트워크 안에서 Feature Pyramid를 적용했고 Anchor Box 개념을 도입했다. ResNet-101-FPN Backbone을 사용한 RetinaNet 모델은 COCO test-dev 셋에서 AP 39.1, 5 Fps의 성능을 달성했다고 한다. 
 
  ![](./Figure/Focal_Loss_for_Dense_Object_Detection2.JPG)
+
+
+
+## Related Work
+
+### Classic Object Detectors
+
+이미지 격자에 촘촘하게 분류기를 적용하는 Sliding-window 방식은 꽤 오랫동안 연구가 수행되었다. 
+
+- LeCun 등은 숫자 필기체를 인식하기 위해서 CNN을 적용했다.
+  - Y. LeCun, B. Boser, J. S. Denker, D. Henderson, R. E. Howard, W. Hubbard, and L. D. Jackel. Backpropagation applied to handwritten zip code recognition. Neural computation 1989
+  - R. Vaillant, C. Monrocq, and Y. LeCun. Original approach for the localisation of objects in images. IEE Proc. on Vision, Image, and Signal Processing, 1994
+- Viola 와 Jones는 사람의 얼굴을 탐지하는데 Boosted Object Detector를 사용했다. 
+  - P. Viola and M. Jones. Rapid object detection using a boosted cascade of simple features. In CVPR, 2001
+- HOG와 Integral Channel Features는 보행자 탐지 영역에 효율적인 방법이 되었다. 
+  - N. Dalal and B. Triggs. Histograms of oriented gradients for human detection. In CVPR, 2005
+  - P. Doll´ar, Z. Tu, P. Perona, and S. Belongie. Integral channel features. In BMVC, 2009
+- DPMs는 Dense Detector를 좀 더 광범위하게 Object 카테고리를 탐지할 수 있도록 했고 PASCAL에서 오랫동안 좋은 성능을 보였다.
+  - P. F. Felzenszwalb, R. B. Girshick, and D. McAllester. Cascade object detection with deformable part models. In CVPR, 2010
+  - M. Everingham, L. Van Gool, C. K. Williams, J. Winn, and A. Zisserman. The PASCAL Visual Object Classes (VOC) Challenge. IJCV, 2010
+
+딥 러닝 붐이 다시 일어나기 시작하면서 Sliding-window 방식이 고전적인  컴퓨터 비전의 탐지 분야를 이끌다시피 했다. 
+
+
+
+### Two-stage Detectors
+
+당시에 주된 Object Detector 방법은 Two-stage Detection 방법이었다. 
+
+- 첫 번째 단계에서 Selective Search와 같은 방법을 이용해서 객체가 포함되어 있을 법한 지역 후보를 생성하고 대다수의 Negative 샘플을 필터링한다. 그리고 나서 두 번째 단계에서 각 지역을 Foreground class나 Background로 분류한다. 
+
+  - J. R. Uijlings, K. E. van de Sande, T. Gevers, and A. W. Smeulders. Selective search for object recognition. IJCV, 2013
+
+- R-CNN은 두 번째 단계에서 분류기를 Convolution Network로 구성해서 큰 정확도를 얻었다. 
+
+  - R. Girshick, J. Donahue, T. Darrell, and J. Malik. Rich feature hierarchies for accurate object detection and semantic segmentation. In CVPR, 2014
+
+- R-CNN은 속도적인 측면에서 다음의 연구를 통해서 업그레이드되었다.
+
+  - K. He, X. Zhang, S. Ren, and J. Sun. Spatial pyramid pooling in deep convolutional networks for visual recognition. In ECCV. 2014
+  - R. Girshick. Fast R-CNN. In ICCV, 2015
+
+- 또 R-CNN은 다음과 같이 객체 후보 생성에서도 학습이 가능한 방법을 적용해서 이점을 얻었다. 
+
+  - D. Erhan, C. Szegedy, A. Toshev, and D. Anguelov. Scalable object detection using deep neural networks. In CVPR, 2014
+  - P. O. Pinheiro, R. Collobert, and P. Dollar. Learning to segment object candidates. In NIPS, 2015
+  - S. Ren, K. He, R. Girshick, and J. Sun. Faster R-CNN: Towards real-time object detection with region proposal networks. In NIPS, 2015
+
+  특히 RPN은 지역 후보 생성 과정을 두 번째 분류기에 통합시켜서 Faster R-CNN Framework를 구성했다. 
+
+- Faster R-CNN framework를 업그레이드 할 수 있도록 후속 연구들이 제안되었다. 
+
+  - T.-Y. Lin, P. Doll´ar, R. Girshick, K. He, B. Hariharan, and S. Belongie. Feature pyramid networks for object detection. In CVPR, 2017
+  - A. Shrivastava, A. Gupta, and R. Girshick. Training region based object detectors with online hard example mining. In CVPR, 2016
+  - A. Shrivastava, R. Sukthankar, J. Malik, and A. Gupta. Beyond skip connections: Top-down modulation for object detection. arXiv:1612.06851, 2016
+  - K. He, X. Zhang, S. Ren, and J. Sun. Deep residual learning for image recognition. In CVPR, 2016
+  - K. He, G. Gkioxari, P. Doll´ar, and R. Girshick. Mask RCNN. In ICCV, 2017
+
+
+
+### One-stage Detectors
+
+- OverFeat은 딥러닝 네트워크에 기반한 초기 One-stage Object Detector 중 하나이다. 
+  - P. Sermanet, D. Eigen, X. Zhang, M. Mathieu, R. Fergus, and Y. LeCun. Overfeat: Integrated recognition, localization and detection using convolutional networks. In ICLR, 2014
+- SSD, YOLO는 속도에서는 강점을 보이지만 정확도는 Two-stage Detector를 따라가는 실정이다. 
+  - W. Liu, D. Anguelov, D. Erhan, C. Szegedy, and S. Reed. SSD: Single shot multibox detector. In ECCV, 2016
+  - C.-Y. Fu,W. Liu, A. Ranga, A. Tyagi, and A. C. Berg. DSSD: Deconvolutional single shot detector. arXiv:1701.06659, 2016
+  - J. Redmon, S. Divvala, R. Girshick, and A. Farhadi. You only look once: Unified, real-time object detection. In CVPR, 2016
+  - J. Redmon and A. Farhadi. YOLO9000: Better, faster, stronger. In CVPR, 2017
+- Two-stage Detector의 입력 이미지 해상도를 줄이고 지역 후보 숫자를 줄이면 단순히 빠르게 만들 수는 있는데 반해 One-stage Detector는 훨씬 많은 Computing budget에도 불구하고 정확도 면에서 Two-stage를 따라가는 형국이라고 한다. 
+  - J. Huang, V. Rathod, C. Sun, M. Zhu, A. Korattikara, A. Fathi, I. Fischer, Z. Wojna, Y. Song, S. Guadarrama, and K. Murphy. Speed/accuracy trade-offs for modern convolutional object detectors. In CVPR, 2017
+- RetinaNet 디자인의 경우 기존의 Dense Detector의 특징과 유사하게 진행했다. 
+  - RPN의 Anchor 개념 도입 : S. Ren, K. He, R. Girshick, and J. Sun. Faster R-CNN: Towards real-time object detection with region proposal networks. In NIPS, 2015
+  - SSD와 같이 Feature Pyramids 적용: W. Liu, D. Anguelov, D. Erhan, C. Szegedy, and S. Reed. SSD: Single shot multibox detector. In ECCV, 2016
+  - FPN: T.-Y. Lin, P. Doll´ar, R. Girshick, K. He, B. Hariharan, and S. Belongie. Feature pyramid networks for object detection. In CVPR, 2017
+
+
+
+### Class Imabalance
+
+Boosted Detector, DPMs, SSD 같은 One-stage Object Detection 방법들은 훈련 간에 큰 클래스 불균형 문제에 직면할 수 밖에 없다. 이런 탐지 방법들은 이미지 당 10^4-10^5개의 지역 후보를 검증하는데 그 중 소수만이 실제로 객체를 포함하고 있다. 이런 불균형은 두 가지 문제를 일으킨다. 
+
+- 대부분의 Easy Negatives들은 학습에 그다지 도움이 되지 않음에도 불구하고 지역 후보의 상당 비중을 차지하기 때문에 훈련 방식이 비효율적이다. 
+- Easy Negatives들이 손실에서 다른 손실을 압도해버리기 때문에 오히려 모델 성능을 떨어뜨린다. 
+
+보통 해결 방법은 훈련 과정 중에 Hard Negative Mining을 수행하거나
+
+- K.-K. Sung and T. Poggio. Learning and Example Selection for Object and Pattern Detection. In MIT A.I. Memo No. 1521, 1994
+- P. Viola and M. Jones. Rapid object detection using a boosted cascade of simple features. In CVPR, 2001
+- P. F. Felzenszwalb, R. B. Girshick, and D. McAllester. Cascade object detection with deformable part models. In CVPR, 2010
+- A. Shrivastava, A. Gupta, and R. Girshick. Training regionbased object detectors with online hard example mining. In CVPR, 2016
+- W. Liu, D. Anguelov, D. Erhan, C. Szegedy, and S. Reed. SSD: Single shot multibox detector. In ECCV, 2016
+
+더 복잡한 Sampling/Reweighing 방법을 적용하는 것이다.
+
+- S. R. Bulo, G. Neuhold, and P. Kontschieder. Loss maxpooling for semantic image segmentation. In CVPR, 2017
+
+저자들은 이런 문제를 해결하면서 위와 같이 별도의 방법을 적용하는 것이 아니라 손실을 계산하는 방식을 바꿔서 클래스 불균형 문제를 해결하고자 했다.
+
+
+
+### Robust Estimation
+
+이상치가 손실에서 큰 비중을 차지 않도록 하는 Robust Loss Function을 제시한 연구도 있었다. 
+
+- T. Hastie, R. Tibshirani, and J. Friedman. The elements of statistical learning. Springer series in statistics Springer, Berlin, 2008
+
+그러나 이 연구에서는 이상치가 아니라 수는 많지만 쓸모 없는 Inliers가 손실에서 차지하는 비중을 줄이는 방식에 초점을 두었다. 
