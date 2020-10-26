@@ -141,3 +141,67 @@ Boosted Detector, DPMs, SSD 같은 One-stage Object Detection 방법들은 훈�
 - T. Hastie, R. Tibshirani, and J. Friedman. The elements of statistical learning. Springer series in statistics Springer, Berlin, 2008
 
 그러나 이 연구에서는 이상치가 아니라 수는 많지만 쓸모 없는 Inliers가 손실에서 차지하는 비중을 줄이는 방식에 초점을 두었다. 
+
+
+
+## Focal Loss
+
+![](./Figure/Focal_Loss_for_Dense_Object_Detection3.JPG)
+
+위의 Binary Cross Entropy Loss Function에서 y는 1, -1의 값을 갖는데 1은 Ground-truth class, -1은 그 밖의 class를 나타낸다. p는 0과 1사이의 값을 갖는데 y=1일때(즉, Ground-truth class일때) 모델이 측정한 그 클래스일 것 같은 확률을 나타낸다. 저자들은 위의 식은 표기 상의 편의를 위해서 아래와 같이 Pt를 정의하고 CE의 표기를 바꿨다. 
+
+![](./Figure/Focal_Loss_for_Dense_Object_Detection4.JPG)
+
+
+
+![](./Figure/Focal_Loss_for_Dense_Object_Detection5.JPG)
+
+
+
+표준 CE Loss는 Figure 1에서 가장 위의 파란색 곡선으로 볼 수 있다. 이 표준 CE Loss의 한가지 특징은 Easy Sample(Pt > 0.5)이라도 무시할수 없는 규모의 손실을 일으킨다는 것이다. 이 작은 규모의 손실을 전체 Easy Sample의 갯수만큼 곱한다면 상대적으로 Rare Sample에 대한 손실을 압도해버릴 것이다. 
+
+
+
+### Balanced Cross Entropy
+
+클래스 불균형 문제를 처리하는 한 가지 방법은 class 1에 대해서 0과 1 사이의 값을 갖는 α라는 Weighting Factor를 도입하는 것이다(class -1에 대해서는 1 - α). 실제로 적용할 때 α는 클래스 객체 출현 빈도와 반대로 설정하거나 Cross validation에 의해 결정되는 Hyperparameter로서 설정할 수 있다. 저자들은 α-Balanced CE Loss를 다음과 같이 정의했다. 
+
+![](./Figure/Focal_Loss_for_Dense_Object_Detection6.JPG)
+
+
+
+### Focal Loss Definition
+
+α가 Positive/Negative Example 사이의 중요도 밸런스를 조절할 수 있기는 하지만 Easy/Hard Example를 구분할 수는 없다. 그래서 저자즐은 Modulating Factor를 추가해서 Focal Loss를 정의했다. 
+
+![](./Figure/Focal_Loss_for_Dense_Object_Detection7.JPG)
+
+여기서 γ는 0보다 크거나 같다. Figure 1에 γ값이 0과 5 사이에 있을때 Focal Loss가 나타나 있다. 저자들은 Focal Loss의 두 가지 특성을 발견했다. 
+
+- Example이 잘못 분류되었고 Pt가 작을때, Modulating Factor는 거의 1이 되기 때문에 Loss는 이 요소에 거의 영향을 받지 않는다. Pt가 1로 갈수록 Factor는 거의 0이 되기 떄문에 이미 잘 분류된 Sample에 대한 Loss는 Down-weighted된다. 
+- Focusing Parameter γ는 Easy Sample이 Down-weighted될때 비율을 부드럽게 조정한다. γ=0일 때는 FL의 CE와 같다. γ가 증가할수록 Modulating Factor의 효과가 증가한다. 저자들은 γ=2일때 실험에서 가장 좋은 결과를 얻었다고 한다.
+
+γ=2일 때 Pt=0.9로 분류된 Example은 CE와 비교해서 거의 100배 낮은 손실을 일으키고 거의 0.968일 때는 1000배 낮은 손실을 일으킨다. 
+
+저자들은 다음과 같은 α-Balanced variant of the Focal Loss를 사용했다고 한다. 
+
+![](./Figure/Focal_Loss_for_Dense_Object_Detection8.JPG)
+
+a-Balanced가 그렇지 않을때보다 정확도가 약간 더 개선되었다고 한다. 그런데 Focal Loss의 정확한 형태는 그다지 중요한 것은 아니라고 한다. 
+
+
+
+### Class Imbalance and Model Initialization
+
+이진 분류 모델은 기본적으로 y가 -1 혹은 1이 되도록 출력하는 확률을 동일하도록 초기화된다. 이런 초기화 셋팅에서, 클래스 불균형이 존재할 경우 더 많은 클래스에 의한 손실이 전체 손실에서 비중을 많이 차지하기 때문에 초기 훈련 과정이 불안정하다. 그래서 저자들은 훈련 초기에 상대적으로 드물게 존재하는 Foreground 클래스에 대해 모델이 측정하는 p value에 대해서 Prior라는 개념을 도입했다고 한다. Prior를 π로 표시하고 모델이 측정한, Rare class Example를 위한 p를 낮게 한다(예를 들어 0.01정도). 이것은 손실 함수가 아니라 모델 초기화 설정에서의 변화이다. 저자들은 아주 심한 클래스 불균형이 있을때 Focal Loss나 Cross Entropy에 대한 훈련 안정성을 개선시켰다고 한다. 
+
+
+
+### Class Imbalance and Two-stage Detectors
+
+Two-stage Detector에서는 a-Balancing이나 Focal Loss가 없는 Cross Entropy Loss로 모델을 훈련시킨다. 대신에 클래스 불균형 문제를 두가지 방법으로 해결한다. 
+
+- Two-stage cascade: First cascade stage에서는 거의 무한한 객체 후보 영역을 1~2k정도로 줄인다. 이때 선택되는 영역은 랜덤하게 선택되는 것이 아니라 정말로 객체가 있를법한 지역이 선택되는데 이때 대부분의 Easy Negative들이 필터링된다. 
+- Biased minibatch sampling: Second Stage에서는 예를 들어 1:3의 비율로 Positive와 Negative Sample이 하나의 Minibatch를 형성하도록 Biased Sampling이 수행된다. 이것은 암시적으로 Sampling으로 구현된 α-Balancing Factor라고 볼 수 있다. 
+
+저자들의 손실 함수는 One-stage Detection System에서 직접적으로 이런 매커니즘을 다루는 것이라고 한다. 
