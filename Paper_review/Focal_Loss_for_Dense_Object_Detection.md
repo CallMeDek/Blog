@@ -205,3 +205,31 @@ Two-stage Detector에서는 a-Balancing이나 Focal Loss가 없는 Cross Entropy
 - Biased minibatch sampling: Second Stage에서는 예를 들어 1:3의 비율로 Positive와 Negative Sample이 하나의 Minibatch를 형성하도록 Biased Sampling이 수행된다. 이것은 암시적으로 Sampling으로 구현된 α-Balancing Factor라고 볼 수 있다. 
 
 저자들의 손실 함수는 One-stage Detection System에서 직접적으로 이런 매커니즘을 다루는 것이라고 한다. 
+
+
+
+## RetinaNet Detector
+
+![](./Figure/Focal_Loss_for_Dense_Object_Detection9.JPG)
+
+RetinaNet은 단일의 통합된 네트워크이고 Backbone, Two Task-specific Subnetworks로 구성되어 있다. Backbone은 전체 이미지에서 Feature map을 계산하며 전체가 컨볼루션 네트워크이다. First Subnet은 Backbone의 출력 값에서 Object Classification을 수행한다. Second Subnet은 Backbone의 출력 값에서 Bounding Box Regression을 수행한다. 저자들은 두 Subnetworks를 One-stage, Dense Detection 방식으로 수행하기 위해서 최대한 간단하게 디자인했다고 한다(Two-stage Detector의 경우 여러가지 컴포넌트로 구성되어 있고 훈련도 복잡). 실험에서 보여준 것처럼 어떤 예측 값을 뽑아낼때 Design Parameter에는 그렇게 예민하지는 않다고 한다. 
+
+
+
+### Feature Pyramid Network Backbone
+
+저자들은 Backbone에 Feature Pyramid Network를 도입했다(Figure 3 a-b). FPN을 이용하면 단일 해상도 이미지에서, Top-down Pathway + Lateral Connection으로 Rich Semantics, Multi-scale Features를 얻을 수 있다. FPN에서 각 Stage는 다른 크기의 객체를 탐지하는 책임을 맡게 된다. FPN은 Fully Convolutional Networks이고 Multi-scale Prediction을 수행한다. 
+
+저자들은 FPN을 ResNet 아키텍처에 적용했는데 P3부터 P7까지 Pyramid를 만들었다고 한다(각 Stage Pl은 입력 대비 2^l만큼 낮은 해상도를 갖는다). 모든 Pyramid Stage의 채널은 256이고 나머지 기존 FPN과의 차이점은 다음을 참고한다. 
+
+ ![](./Figure/Focal_Loss_for_Dense_Object_Detection10.JPG)
+
+저자들은 ResNet의 마지막 계층의 출력 값으로도 실험을 해봤는데 AP가 낮았다고 한다. 
+
+
+
+### Anchors
+
+저자들은 Translation-invariant Anchor box를 도입했다. Anchors는 P3부터 P7에서 32^2에서512^2의  크기를 갖는다. 각 Stage에서는 세 개의 종횡비를 고려한다({1:2, 1:1, 2:1}). 저자들은 여기에, 원래의 FPN보다 더 Denser Scale Coverage를 위해서 세 개의 종횡비 옵션에 각 Stage의 Anchors의 스케일과 관련되 옵션({2^0, 2^(1/3), 2^(2/3)} 배)을 추가했다. 그래서 각 Stage 마다 9개의 Anchors가 존재하고 입력 이미지에 대해서 총 32 - 813 pixels 범위를 커버한다. 
+
+각 Anchor에는 K개의 Classification과 관련된 One-hot vector와 Box Regression과 관련된 4-Vector가 할당된다(여기서 K개는 클래스 숫자). 기본적으로 RPN에서의 Assignment Rule을 적용했지만 Multi-class Detection에 대해서는 Threshold를 조정했다. Ground-truth box와 IoU 0.5이상인 박스들을 그 객체 GT Box에 할당했고 0이상 0.4미만일 경우에는 Background로 할당했다. 각 Anchor는 최대 1개의 GT Box에 할당했고 K Label Vector에서 할당된 Label은 1 나머지는 0으로 설정했다. 만약에 Anchor가 0.4이상 0.5 미만이라 어디에도 할당되지 않는다면 그 Anchor는 훈련 간에 무시한다. Box regression은 각 Anchor와 할당된 Object Box 사이의 Offset을 계산하고 할당되지 않으면 무시한다.  
