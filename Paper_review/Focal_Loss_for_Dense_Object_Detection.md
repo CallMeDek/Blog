@@ -233,3 +233,43 @@ RetinaNet은 단일의 통합된 네트워크이고 Backbone, Two Task-specific 
 저자들은 Translation-invariant Anchor box를 도입했다. Anchors는 P3부터 P7에서 32^2에서512^2의  크기를 갖는다. 각 Stage에서는 세 개의 종횡비를 고려한다({1:2, 1:1, 2:1}). 저자들은 여기에, 원래의 FPN보다 더 Denser Scale Coverage를 위해서 세 개의 종횡비 옵션에 각 Stage의 Anchors의 스케일과 관련되 옵션({2^0, 2^(1/3), 2^(2/3)} 배)을 추가했다. 그래서 각 Stage 마다 9개의 Anchors가 존재하고 입력 이미지에 대해서 총 32 - 813 pixels 범위를 커버한다. 
 
 각 Anchor에는 K개의 Classification과 관련된 One-hot vector와 Box Regression과 관련된 4-Vector가 할당된다(여기서 K개는 클래스 숫자). 기본적으로 RPN에서의 Assignment Rule을 적용했지만 Multi-class Detection에 대해서는 Threshold를 조정했다. Ground-truth box와 IoU 0.5이상인 박스들을 그 객체 GT Box에 할당했고 0이상 0.4미만일 경우에는 Background로 할당했다. 각 Anchor는 최대 1개의 GT Box에 할당했고 K Label Vector에서 할당된 Label은 1 나머지는 0으로 설정했다. 만약에 Anchor가 0.4이상 0.5 미만이라 어디에도 할당되지 않는다면 그 Anchor는 훈련 간에 무시한다. Box regression은 각 Anchor와 할당된 Object Box 사이의 Offset을 계산하고 할당되지 않으면 무시한다.  
+
+
+
+### Classification Subnet
+
+Classification subnet은 K Object class에 대해서 각 Spatial position의 A Anchor 옵션을 고려하여 객체 존재 여부의 확률을 예측한다(각 Anchor box마다 K class의 객체가 있는지 없는지). Fully Convolutional Network이며 FPN의 각 Stage에 연결되어 있다. 모든 Stage는 이 Subnet을 공유한다. 각 Pyramid Stage에서 C Channel의 Feature map을 입력으로 받아서 3x3xC의 필터를 가지는 Convolution 계층을 통과시킨다. 이때 각 Convolution 계층에는 ReLU 비선형성이 추가된다. 마지막에는 3x3xKA의 필터를 가지는 Convolution 계층에서 연산을 수행하고 각 위치마다 K A의 binary prediction이 Sigmoid Activation을 통해서 수행된다.  저자들은 모든 실험에서 C=256, A=9를 적용했다고 한다. 
+
+RPN과는 대조적으로 Object classification subnet이 더 깊고 3x3짜리 필터만 사용하며 Box regression subnet과 가중치를 공유하지 않는다. 
+
+
+
+### Box Regression Subnet
+
+Classification subnet과 병렬적으로 FPN의 각 Stage에는 FCN으로 구성되어 있는 Box regression subnet이 달려있다. 여기에서는 각 Anchor box에 GT box가 할당되어 있다면 Anchor box와 GT box 사이의 4가지 Offset에 대한 Regression을 수행한다. 구조는 Classification subnet과 상당히 유사한데 마지막에 Spatial location당 4A Linear output이 출력된다는 것만 다르다. 저자들은 다른 연구와는 다르게 Class-agnostic(클래스를 상관하지 않는) Bounding box regressor를 사용했는데 더 적은 파라미터를 가지면서 그렇지 않은 regressor와 동일하게 효과가 있다고 주장한다. 
+
+
+
+### Interface and Training
+
+#### Inference
+
+RetinaNet은 Figure 3와 같이 하나의 단일한 FCN으로 구성되어 있다. 그렇기 때문에 추론시에는 단순히 이미지를 Forwading 하기만 하면 된다. 속도를 개선하기 위해서 이때는 Detector Confidence Threshold 0.05를 기준으로 각 FPN Stage에서 가장 점수가 높은 1k의 box prediction만 수행했다. 이 Prediction들을 모아서 NMS Threshod 0.5를 수행해서 최종 탐지 결과를 도출한다. 
+
+
+
+#### Focal Loss
+
+저자들은 Focal Loss를 Classification subnet의 출력의 Loss로서 적용했다. γ=2일때 제일 성능이 좋지만 0.5이상 5이하일때도 준수한 성능을 보인다. RetinaNet을 훈련시킬때 각 샘플 이미지당 100k에서 모든 Anchor에 Focal Loss가 적용되는데 이는 기존의 Heuristic Sampling이나 Hard Example Mining이 각 MiniBtach마다 Anchor를 선택한 것과는 대조적이다. 이미지 당 총 Focal Loss는 Anchor 박스의 모든 Loss를 합한다음 GT box가 할당된 Anchor 박스 숫자로 정규화한다. 총 Anchor 박스 숫자로 정규화하지 않는 이유는 여기서 발생되는 Loss는 보잘것 없는 Loss이기 때문이다(Easy Sample). Rare class의 비중을 위한 α의 경우 γ를 고려하여 선택해야 한다(Table 1 a, b 참조).  γ가 증가하면 α는 약간 감소하는 형태가 좋다(γ = 2, α = 0.25가 베스트).
+
+
+
+#### Initialization
+
+저자들은 실험을 진행할때 ResNet50-FPN과 ResNet101-FPN backbone을 사용했다. 각 backbone은 ImageNet 1k에서 미리 훈련된 모델을 사용했다. FPN을 위해서 새롭게 추가된 계층은 오리지널 FPN 연구에서와 같이 초기화 되었다. RetinaNet의 Subnet에서 마지막 계층을 제외하고 나머지 계층은 bias b = 0, Gaussian weight σ = 0.01의 분포를 따르는 값으로 초기화 되었다. Classification subnet의 마지막 계층의 bias b는 다음과 같은 식으로 최기화 되었다.
+
+![](./Figure/Focal_Loss_for_Dense_Object_Detection11.JPG)
+
+ 
+
+여기서 π는, 훈련을 시작할 때, 모든 Anchor가 Foreground class에 대한 Confidence ~π로 레이블링 되어야 하는데 이때 쓰는 값이다. 저자들은 실험에서 π = 0.01로 설정했다.  이런 초기화 방법이 훈련을 시작할때 훈련을 불안정하게 만드는 많은 Background Anchor에 의한 큰 손실 값을 억제한다. 
