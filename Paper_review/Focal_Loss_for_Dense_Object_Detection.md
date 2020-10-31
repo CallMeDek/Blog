@@ -273,3 +273,69 @@ RetinaNet은 Figure 3와 같이 하나의 단일한 FCN으로 구성되어 있�
  
 
 여기서 π는, 훈련을 시작할 때, 모든 Anchor가 Foreground class에 대한 Confidence ~π로 레이블링 되어야 하는데 이때 쓰는 값이다. 저자들은 실험에서 π = 0.01로 설정했다.  이런 초기화 방법이 훈련을 시작할때 훈련을 불안정하게 만드는 많은 Background Anchor에 의한 큰 손실 값을 억제한다. 
+
+
+
+#### Optimization
+
+RetinaNet을 훈련시킬때 Synchronized SGD로 훈련시켰는데 8대의 GPU에 대해 GPU당 이미지 2장을 해서 미니배치당 총 16장의 이미지를 훈련시켰다. 특별히 언급하지 않는 이상 모든 모델은 Learning Rate 0.01에서 시작해서 90k iteration만큼 훈련이 진행되는데 60k에서 10으로 나눠지고 80k에서 다시 한번 나눠진다. Horizontal flipping을 데이터 어그멘테이션을 위해 적용했다. Weight decay는 0.0001, momentum은 0.9를 적용했다. Box regression의 손실 계산에서는 Focal Loss와 Standard Smooth L1 Loss의 합을 이용했다. 훈련 시간은 10\~35시간 정도 걸린다.
+
+
+
+## Experiments
+
+![](./Figure/Focal_Loss_for_Dense_Object_Detection12.JPG)
+
+저자들은 COCO benchmark로 Bounding box detection의 실험 결과를 제시했다. 훈련 과정에서는 COCO trainval35k(80k의 train + 40k 중 35k의 랜덤 부분 집합의 val)를 사용했고 검증에는 minval(val의 남아있는 5k)를 사용했으며 최종 결과를 도출할떄는 test-dev를 사용했다. 
+
+
+
+### Training Dense Detection
+
+ 저자들은 여러 Optimization strategies와 Focal Loss 간의 상관 관계에 대한 실험을 진행했다. 모든 실험에는 ResNet50 or ResNet101에 FPN을 적용한 Backbone을 사용했고 훈련과 테스트 시에 600 pixels의 이미지를 사용했다. 
+
+
+
+#### Network Initialization
+
+저자들이 했던 첫 번쨰 실험은 Standard Cross Entropy(CE)만 적용하고 다른 전략은 사용하지 않는 것이었다. 이렇게 했더니 훈련 간에 빠르게 성능이 분화하면서 실패했다. 그러나 단순히 네트워크의 마지막 계층을 초기화 해서 object를 탐지하는 선행 확률 (모든 Anchor가 Foreground class에 대한 Confidence ~π로 레이블링 되어야 하는데 이때 쓰는 값이다.) π = 0.01로 하기만 해도 비교적 효과적인 학습이 가능했다고 한다. ResNet-50을 쓴 RestinaNet의 이 방법에서는 COCO 30.2 AP의 성능을 보였고 π에 성능이 민감하지 않았으므로 저자들은 모든 실험에서 π = 0.01를 적용한다. 
+
+
+
+#### Balanced Cross Entropy
+
+다음으로 저자들은 α-balanced CE Loss를 적용한 실험을 했는데 각 α에 대한 결과는 Table 1 a에 나와 있다. α = 0.75가 AP를 0.9 올려줘서 가장 좋은 성능 향상을 보였다고 한다. 
+
+
+
+#### Focal Loss
+
+Focal Loss를 사용한 결과는 Table 1 b에 나와 있다. γ는 Modulating term의 강도를 조절하는데 0이 되면 CE Loss와 같아진다.  Figure 1에 나와 있는 것처럼 γ가 증가할수록 Easy example의 Loss가 더 적어지게 된다. 저자들은 γ = 2일때 α-balanced CE Loss에 비해 2.9 AP 향상됨을 확인했다. 
+
+Table 1 b에 각 γ에 대해서 가장 좋은 α 값이 무엇인지 나와 있다. 저자들은 높은 γ에 대해서 낮은 α가 어울리는 것을 확인했다(Easy sample들의 비중이 적어질수록 Positive 샘플에 대한 강조를 덜 할 필요가 있음). 전체적으로 γ가 변하는 정도에 따른 이점이 훨씬 큰 것을 확인했다. α 값을 0.01이상 0.999이하에서 테스트했을때 0.25이상 0.75이하의 범위의 성능이 준수했다. 저자들은 모든 실험에서 γ = 2.0에 α = 0.25로 실험을 진행했다. 
+
+
+
+#### Analysis of the Focal Loss
+
+Focal Loss를 더 상세히 분석하기 위해서 저자들은 성능이 수렴한 모델을 대상으로 이 모델의 손실에 대한 Empirical Distribution을 분석했다. 이를 위해서 ResNet-101 600-pixel 모델을 γ = 2로 훈련시켰다(36.0 AP). 많은 수의 랜덤 이미지에 대해서 10^7까지의 Negative windows와 10^5까지의 Positive windows에 대한 예측 확률들을 샘플링했다. 그리고 나서 각각 이 샘플들에 대한 Focal Loss를 계산하고 합이 1이 되도록 정규화 했다. 정규화된 손실에 대해서는 각기 다른 γ에 대해서(비록 2로 훈련시키기는 했어도) Postive, Negative에 대한 Loss를 오름차순으로 정렬하여 누적 분포 함수를 그렸다. 누적 분포 함수는 아래와 같다. 
+
+![](./Figure/Focal_Loss_for_Dense_Object_Detection13.JPG)
+
+Positive sample의 경우 γ 값의 따른 변화가 그리 크지 않음을 확인할 수 있다. 예를 들어서 대락 20%의 Hardest positive sample들이 Positive Loss의 거의 절반을 차지하는데  γ가 증가할수록 이 20%에 Loss가 더 집중되기는 하지만 효과는 미미하다. 
+
+그러나 Negative sample에 대한 γ 값의 효과는 확연히 다르다. γ = 0일떄는 Positive일때와 비슷하지만 γ가 증가할수록 Hard negative example들이 확연히 많은 비중을 차지한다. γ = 2일때(기본 셋팅) 많은 손실이 전체 샘플의 적은 부분에서 기인한다. 이를 통해서 알 수 있는 점은 Focal Loss가 Easy Negative의 효과를 줄이고 Hard Negative에 초점을 두게 한다는 것이다. 
+
+
+
+#### Online Hard Example Mining (OHEM)
+
+OHEM은 Two-stage Detector를 훈련시키는 방식을 개선하기 위해서 제안되었는데 High-loss example들로 미니배치를 구성한다. OHEM은 각 샘플들을 손실에 따라 점수를 부과하고 NMS을 적용한다. 그러면 미니배치는 High-loss의 샘플들로 구성되게 된다. NMS Threshold와 배치 사이즈는 조정가능한 매개변수이다. Focal Loss와 비슷하게 OHEM도 Misclassified Example를 좀 더 강조하지만 차이점이 있다. OHEM은 Easy Sample들을 그냥 버린다. 저자들은 SSD에서 OHEM의 변형체를 구현했다. NMS를 적용한 뒤에 Positive와 Negative의 비율을 1:3이 되도록 미니배치를 구성했다. 
+
+저자들은 원래의 OHEM과 OHEM의 변형체를 저자들의 One-stage detection 셋팅에도 적용했는데 큰 클래스 불균형을 보였다. 이 두 전략에 대해서 배치 사이즈와 NMS Threshold 값의 변화에 대한 결과는 Table 1 d에 나와 있다. ResNet 101에서 실험을 진행했는데 Focal Loss로 진행했을때는 36.0 AP를 보였고 가장 좋은 성능의 OHEM(1:3 비율 없이, 배치 사이즈 128, NMS 0.5)은 32.8 AP를 보였다. 저자들이 주장하길 이는 Focal Loss가 OHEM보다 Dense Detector를 훈련시키는데는 더 효율적임을 입증하는 것이라고 한다. 
+
+
+
+#### Hinge Loss
+
+마지막으로 저자들은 실험 초기에 pt에 대해서 Hinge Loss를 적용하여 실험을 시도했다. 이는 pt의 특정 값 이상에는 Loss를 0으로 만드는 것이다. 그러나 저자들이 말하길 이 방식은 훈련 과정이 불안정하고 의미 있는 결과를 얻지 못했다고 한다. 
