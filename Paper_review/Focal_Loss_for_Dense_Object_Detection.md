@@ -339,3 +339,40 @@ OHEM은 Two-stage Detector를 훈련시키는 방식을 개선하기 위해서 �
 #### Hinge Loss
 
 마지막으로 저자들은 실험 초기에 pt에 대해서 Hinge Loss를 적용하여 실험을 시도했다. 이는 pt의 특정 값 이상에는 Loss를 0으로 만드는 것이다. 그러나 저자들이 말하길 이 방식은 훈련 과정이 불안정하고 의미 있는 결과를 얻지 못했다고 한다. 
+
+
+
+### Model Architecture Design
+
+![](./Figure/Focal_Loss_for_Dense_Object_Detection14.JPG)
+
+
+
+#### Anchor Density
+
+One-stage detection 시스템에서 중요하게 생각해봐야할 점은 어떻게 가능한 이미지 공간을 촘촘하게 다루를 것인가이다. Two-stage detector들은 Region Pooling Operation을 통해서 이미지 내 임의의 위치의 다양한 크기와 종횡비에서의 상자를 분류할 수 있다. 반대로, One-stage detector들은 고정된 숫자의 샘플링 격자를 사용하기 때문에 이를 위해서 여러 Anchor 박스를 사용하는 접근법을 쓴다. 
+
+저자들은 FPN의 각 Stage의 이미지의 각 위치에서 사용되는 Anchor의 크기와 종횡비의 옵션 숫자를 살펴봤다.  각위치에서 단일 옵션을 사용할 때와 4개의 스케일과 3개의 종횡비를 사용하여 총 12개의 옵션을 사용했을때의 경우를 살펴봤다. ResNet50을 사용한 결과가 Table 1 c에 나와 있다. 단일 옵션도 좋은 성능을 내지만 3개의 스케일과 3개의 종횡비를 사용할때 4 point 정도 성능이 개선되었다. 저자들은 모든 실험에서 이 옵션 방법을 적용했다고 한다.  
+
+6-9개 이상의 Anchor 박스를 사용하는 것은 큰 효과를 보지 못했다. 
+
+
+
+#### Speed versus Accuracy
+
+큰 Backbone은 더 높은 정확도를 보이지만 추론 속도가 더 느리다. 입력 이미지 크기도 마찬가지이다. Table 1에 앞의 두 요소에 대한 실험 결과가 나와 있다. Figure 2를 보면 RetinaNet과 Focal Loss가 당시 현존하는 모든 방법보다 성능이 좋은 것을 학인할 수 있다. 저자들은 더 큰 스케일을 사용해도 RetinaNet이 모든 Two-stage 방식을 정확도에서 압도하고 속도도 빠르다고 주장했다. 
+
+
+
+### Comparison to State of the Art
+
+COCO dataset의 test-dev 셋으로 실험한 결과는 RetinaNet-101-800 모델(Scale jittering 적용)의 경우 Table 2에나와 있고 1.5배 정도 더 긴 모델은 Table 1 e에 나와 있다.  
+
+
+
+## Conclusion
+
+저자들은 One-stage Detection 방법에서 클래스 불균형 문제가 성능을 내는데 큰 문제임을 확인했다. 이 문제를 해결하기 위해서 Hard Negative 샘플들에 집중하기 위한, CE Loss에 Modulating Term을 적용해서 저자들이 새롭게 고안해낸 Focal Loss를 제인했다. 저자들이 이 개념의 효율성을 증명하기 위해서 FCN으로 되어 있는 One-stage detector를 디자인하고 여러 실험을 실시했다. 
+
+
+
