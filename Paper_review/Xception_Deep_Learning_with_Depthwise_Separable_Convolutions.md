@@ -47,7 +47,25 @@ Inception 스타일의 기본적인 빌딩 블록은 Inception module이고 몇 
 
 Inception modlue에 내재되어 있는 아이디어는 Cross-channel correlations와 Spatial correlations를 독립적으로 살펴보도록 명시적으로 과정을 나누는 것이다. 구체적으로 보통의 Inception module은 먼저 1x1 컨볼루션의 Pointwise 컨볼루션을 통해 Cross-channel correlations을 살펴본다. 그리고 원래 공간보다 크기가 더 작은 독립적인 공간 그룹으로 관련 있는 입력 데이터 부분을 매핑한다. 그리고 나서 3x3이나 5x5 같은 보통의 컨볼루션 연산으로 이 3D 공간을 매핑한다 (Figure 1 참조).  Inception의 근본적인 가정은 Cross-channel correlations와 Spatial correlations을 동시에 매핑하는 것이 좋지 않기 때문에 Decoupling 하는 것이 좋다는 것이다. 
 
+![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions2.JPG)
+
+저자들에 의하면 위와 같이, 3x3처럼 한 가지 사이즈의 컨볼루션 연산만 진행하고 Pooling 계층을 포함하지 않는 단순한 Inception module의 경우 아래와 같이, 하나의 많은 output channel 수를 가진 1x1 컨볼루션 연산을 수행한 뒤에 각각 겹치는 부분이 없는 Spatial 컨볼루션을 수행하는 모듈로 재구성될수 있다고 한다. 
+
+![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions3.JPG)
+
+저자들이 궁금했던 건 위와 같은 구조가 원래의 Inception module과 달리 Cross-channel correlations와 Spatial correlations를 각각 매핑하여 더 강력한 성능을 내는가였다. 
 
 
 
+### The continuum between convolutions and separable convolutions
 
+![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions4.JPG)
+
+극단적으로 저자들의 가설에서 매 Output channel마다 Spatial correlations를 매핑하는 구조가 위 그림의 구조이다 (Extreme version of Inception module). 저자들은 이런 Extreme한 구조가 거의 Depthwise separable convolution(Separable convolution)과 동일하다고 주장한다.  
+
+이런 Separable convolution은 입력 데이터의 각 채널마다 독립적으로 수행되는 Spatial convolution인 Depthwise convolution, 그리고 뒤에,  Depthwise convolution 수행 후에 새로운 Channel 공간으로 데이터를 Projection하는 1x1 Convoltion인 Pointwise convolution으로 구성되어 있다. 
+
+Extreme한 버전의 Incetipn과 Depthwise separable convolution의 두 가지 사소한 차이점은 아래와 같다. 
+
+- 연산 순서: Depthwise separable convolution의 경우 채널 별 Spatial convolution을 수행하고 나서 Pointwise convolution을 수행하는데 반해 Extreme은 Pointwise convolution을 먼저 수행한다.
+- 첫 번째 연산 수행 후에 비선형성의 존재 유무: Extreme은 첫 번째 연산 수행 후에 ReLU 비선형성이 추가되지만 Depthwise의 경우 보통 비선형성이 추가되지 않는다.  
