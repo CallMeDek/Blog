@@ -69,3 +69,33 @@ Extreme한 버전의 Incetipn과 Depthwise separable convolution의 두 가지 �
 
 - 연산 순서: Depthwise separable convolution의 경우 채널 별 Spatial convolution을 수행하고 나서 Pointwise convolution을 수행하는데 반해 Extreme은 Pointwise convolution을 먼저 수행한다.
 - 첫 번째 연산 수행 후에 비선형성의 존재 유무: Extreme은 첫 번째 연산 수행 후에 ReLU 비선형성이 추가되지만 Depthwise의 경우 보통 비선형성이 추가되지 않는다.  
+
+저자들이 주장하길 첫 번째 차이는 그다지 중요하지 않고 두 번째 차이가 큰 영향을 줄 수 있다고 한다.
+
+또 저자들은 원래의 Inception module과 Depthwise separable convolutions 사이에 중간 형태의 Inception module도 가능하다고 한다. 이때 각각의 경우의 차이를 만들어내는 매개변수는 Spatial convolution를 적용하는 독립적인 Channel-space segment의 수이다. 원래의 Inception module과 Depthwise separable convolutions 사이에는 이산적인 스펙트럼이 존재한다. Inception module은 이 스펙트럼의 한 극단이고 Single-segment의 경우에 해당한다(Figure 1). Depthwise separable convolutions는 다른 극단이고 채널당 하나의 Segement이 존재한다(Figure 4). 그 사이에 수백개의 Channel을 3, 4개의 Segment 그룹으로 나누는 Inception module이 존재한다 (Figure 3). 
+
+저자들은 이런 현상을 관찰하고 Inception계의 아키텍처에서 Inception module을 Depthwise separable convolution으로 교체하면 성능이 좋아질수 있다는 생각을 하게 되었다. 
+
+
+
+## Prior work
+
+이 연구 결과는 다음의 선행 연구에 크게 영향을 받았다고 한다.
+
+- VGG16 - 도식적으로 저자들이 제안하는 아키텍처와 유사하다.
+- 채널 별로 수행하고 난 다음에 공간 별로 연속적으로 수행하는, 컨볼루션을 여러 브랜치로 나누는 것의 이점을 입증한 Inception 아키텍처 계열의 네트워크들.
+- Depthwise separable convolution - 이 연구에 지대한 영향을 끼쳤다고 한다. 2012년부터 공간적인 Separable convolutions은 사용되어왔지만 Depthwise 버전은 이 연구가 수행될 당시에 멀지 않은 시간부터 사용되었다고 한다. Laurent Sifre가 2013년 Google Brain에서 인턴을 하고 있을때 개발했다고 한다. AlexNet에 적용하여 정확도는 조금 향상되었지만 성능 수렴 속도나 모델 사이즈를 크게 줄이는데에는 크게 일조했다고 한다. 그의 연구는 Sifre and Mallat의 transformation-invariant scattering에 관한 선행 연구에서 영감을 받았다고 한다. Depthwise separable convolution은 이후에 Inception V1과 V2의 첫번째 계층으로 사용되었다. Google에서 Andrew Howard가 Depthwise separable convolution을 사용한 효율적인 mobile 모델인 MobileNet을 발표했다. 
+
+- Residual connection - Xception 아키텍처에 광범위하게 사용된다. 
+
+
+
+## The Xception architecture
+
+저자들은 Depthwise separable convolution 계층에 완전히 근거한 CNN 아키텍처를 제안했다. 그들은 CNN의 Feature map들의 Cross-channel correlation과 Spatial correlation의 매핑을 완전히 분리 할 수 있다는 가설을 세웠다. 그래서 그들은 Extreme Inception의 줄임말인 Xception으로 그들의 아키텍처의 이름을 붙였다. 
+
+![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions5.JPG)
+
+전체적인 구조는 위의 Figure5와 같다. Xception 아키텍처는 36개의 컨볼루션 계층이 있는데 네트워크의 Feature extraction을 담당하는 base이다. 저자들은 Image classification에 대해서 성능에 대한 조사를 했기 때문에 Base CNN 후에 Logistic regression 계층을 붙였다고 한다. 선택적으로 실험 단계에서 Logistic regression 전에 완전 연결 계층들이 삽입 될 수 있다(밑에 Figure 7, 8). 36개의 컨볼루션 계층은 14개의 Module로 구성되어 있고 처음과 마지막 Module을 제외한 나머지는 Linear residual connection이 적용된다. 
+
+요약하자면 Xception 아키텍처는 Residual connection으로 연결되어 있는 Depthwise separable convolution 게층들의 Linear stack이다. 
