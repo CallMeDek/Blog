@@ -99,3 +99,43 @@ Extreme한 버전의 Incetipn과 Depthwise separable convolution의 두 가지 �
 전체적인 구조는 위의 Figure5와 같다. Xception 아키텍처는 36개의 컨볼루션 계층이 있는데 네트워크의 Feature extraction을 담당하는 base이다. 저자들은 Image classification에 대해서 성능에 대한 조사를 했기 때문에 Base CNN 후에 Logistic regression 계층을 붙였다고 한다. 선택적으로 실험 단계에서 Logistic regression 전에 완전 연결 계층들이 삽입 될 수 있다(밑에 Figure 7, 8). 36개의 컨볼루션 계층은 14개의 Module로 구성되어 있고 처음과 마지막 Module을 제외한 나머지는 Linear residual connection이 적용된다. 
 
 요약하자면 Xception 아키텍처는 Residual connection으로 연결되어 있는 Depthwise separable convolution 게층들의 Linear stack이다. 
+
+
+
+## Experimental evaluation
+
+저자들은 Xceptin과 Inception V3을 비교했다. 두 아키텍처는 거의 같은 수의 모델 파라미터를 가지기 때문에 용량이 비슷하다고 할 수 있다. 따라서 어떤 성능 상의 차이가 존재한다면 네트워크 용량의 차이라고 할 수 없다. 저자들은 먼저 ImageNet으로 단순 분류를 실시했고 17,000 클래스의 JFT 데이터셋으로는 객체 탐지를 실시했다. 
+
+
+
+### The JFT dataset
+
+JFT 데이터셋은 Goole의 내부 데이터셋으로 Hinton 등의 연구에서 처음 소개되었다. 데이터는 350 백만의 고해상도 이미지이며 17,000 여 클래스로 나눠지는 객체들이 Annotation되어 있다. JFT 데이터셋으로 훈련된 모델을 평가하기 위해서 FastEval14k 데이터셋으로 성능 평가를 했다. 
+
+FastEval14k는 6,000개의 클래스로 나눠지는 객체들이 조밀하게 붙어 있는 14,000 이미지이다(이미지당 평균적으로 36.5의 객체가 존재). 이 데이터셋으로 성능이 가장 잘 나온 100개의 예측 값의 mAP를 구해서 성능을 평가했고 이 예측 값에 자주 나오는 클래스에 대해서는 좀 더 비중을 뒀다. 클래스는 Social meida 이미지에 있는 클래스이다. 이런 방법이 중요한 이유는 Google에서 서비스나 제품을 만들때 중요한 의미를 가지기 때문이다. 
+
+
+
+### Optimization configuration
+
+ImageNet: SGD, Momentum 0.9, Initial learning rate 0.045, Learning rate decay of rate 0.94 every 2 epochs
+
+JFT: RMSprop, Momentum 0.9, Initial learning rate 0.001, Learning rate decay of rate 0.9 every 3,000,000 samples
+
+모든 모델은 추론 시에 Polyak averaging을 사용해서 평가되었다. 
+
+
+
+### Regularization configuration
+
+Weight decay: Inception V3 모델은 Weight decay (L2 regularization) rate 4e-5를 적용했는데 이는 ImageNet에서의 성능을 위해 최대한 최적화 시킨 것이다. 그런데 Xception은 이 rate가 맞지 않아서 1e-5로 설정했다. Weight decay에 대해서는 엄밀한 연구를 하지 않았으며 ImageNet과 JFT 실험에서 동일하게 적용했다. 
+
+Dropout: ImageNet에 대해서는 Logistic regression 계층 전에 0.5 rate의 Dropout을 적용했고 JFT에 대해서는 적용하지 않았다. JFT는 데이터셋의 크기가 크기 때문에 과적합 하려는 경향이 적었다. 
+
+Auxiliary loss tower: Inception v3 아키텍처에서는 추가적인 Regularization 매커니즘 역할을 하는 추가적인 Loss tower를 네트워크 초반부에 더해서 Classification 손실이 역전파 할 수 있게 할 수 있다. 단순명료함을 위해서 이 연구에서는 추가하지 않았다. 
+
+
+
+### Training infrastureture
+
+ImageNet 실험에서는 Parallelism + synchronous gradient descent를 적용했고 JFT 실험에서는 Asynchronous gradient descent를 적용해서 훈련 속도를 높였다. JFT 모델의 성능을 끝까지 수렴시키려면 시간이 오래 걸리기 때문에 그렇게 하지 않았다. 
