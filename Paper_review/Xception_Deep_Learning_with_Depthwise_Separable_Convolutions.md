@@ -139,3 +139,30 @@ Auxiliary loss tower: Inception v3 아키텍처에서는 추가적인 Regulariza
 ### Training infrastureture
 
 ImageNet 실험에서는 Parallelism + synchronous gradient descent를 적용했고 JFT 실험에서는 Asynchronous gradient descent를 적용해서 훈련 속도를 높였다. JFT 모델의 성능을 끝까지 수렴시키려면 시간이 오래 걸리기 때문에 그렇게 하지 않았다. 
+
+
+
+### Comparison with Inception V3
+
+#### Classification performance
+
+모든 평가는 Single model에서 입력 이미지들의 Single crop으로 수행되었다. ImageNet 결과는 테스트 셋보다는 검증 셋에서 수행한 결과이다(ILSVRC 2012의 검증셋 중에서 블랙리스트에 있지 않은 이미지). JFT 결과는 완전한 성능 수렴보다는 30 백만의 Iteration을 수행한 결과이다. JFT의 경우 완전 연결 계층이 없는 버전과 Logistic regression 계층 전에 4096개의 Unit을 가진 두 개의 완전 연결 계층이 있는 버전에서 실험을 수행했다. 
+
+![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions5.JPG)
+
+ImageNet에서는 Xception이 Inception v3보다 좋은 성능을 보였다. JFT 데이터셋에서는 FastEval14k mAP@100 Metric으로 상대적으로 4.3%의 개선을 보였다. Xception 아키텍처가 ImageNet보다 JFT 데이터셋에서 더 큰 성능 향상을 보인 이유를 저자들은 Inception v3의 경우 ImageNet에 맞게 디자인을 맞췄기 때문이라고 생각했다.  
+
+![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions6.JPG)
+
+| ImageNet                                                     | JFT                                                          |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions7.JPG) | ![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions8.JPG) |
+| ![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions10.JPG) | ![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions9.JPG) |
+
+
+
+#### Size and speed
+
+![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions11.JPG)
+
+Table3에서 저자들은 Inception V3와 Xception의 크기와 속도를 비교했다. 두 아키텍처는 거의 같은 사이즈(3.5% 이내로)를 가지는데 Xception이 약간 더 느리다. 저자들은 Xception의 정확도 측면에서의 성능 개선이 추가적인 모델 용량이 아니라 모델 파라미터를 어떻게 효율적으로 사용했는가 때문이라고 주장한다. 
