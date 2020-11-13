@@ -158,6 +158,7 @@ ImageNet에서는 Xception이 Inception v3보다 좋은 성능을 보였다. JFT
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | ![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions7.JPG) | ![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions8.JPG) |
 | ![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions10.JPG) | ![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions9.JPG) |
+| ![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions12.JPG) |                                                              |
 
 
 
@@ -166,3 +167,32 @@ ImageNet에서는 Xception이 Inception v3보다 좋은 성능을 보였다. JFT
 ![](./Figure/Xception_Deep_Learning_with_Depthwise_Separable_Convolutions11.JPG)
 
 Table3에서 저자들은 Inception V3와 Xception의 크기와 속도를 비교했다. 두 아키텍처는 거의 같은 사이즈(3.5% 이내로)를 가지는데 Xception이 약간 더 느리다. 저자들은 Xception의 정확도 측면에서의 성능 개선이 추가적인 모델 용량이 아니라 모델 파라미터를 어떻게 효율적으로 사용했는가 때문이라고 주장한다. 
+
+
+
+### Effect of the residual connections
+
+저자들은 Xception에서 Residual connection의 효과를 알아보기 위해서 ImageNet으로 Residual connection이 없는 Xception 아키텍처를 실험해봤는데 위의 Figure 9에 그 결과가 나와 있다. 확실히 모델 성능 수렴 시기, 속도, 최종 분류 정확도 면에서 Residual connection이 있는 버전이 낫다는 것을 확인할 수 있다.
+
+한 가지 주의할 점은 모델에서 Residual connection이 중요하다는 것이지 Depthwise separable convolution을 만들때 Residual connection이 없으면 안된다는 것이 아니라는 점이다. 
+
+
+
+### Effect of an intermediate activation after pointwise convolutions
+
+저자들은 Inception module과 Depthwise separable convolution의 유사성 때문에 Depthwise separable convolution의 Depthwise convolution과 Pointwise convolution 사이에 비선형성이 추가될 수 있지 않을까하는 생각을 하게 되었다. Figure 10에는 ReLU와 ELU을 추가했을때의 결과를 나타낸다. 그래프를 보면 비선형성을 추가하지 않았을때가 성능 수렴 속도나 정확도면에서 더 뛰어난 것을 알 수 있다. 
+
+저자들이 추측하길 Inception module같이 Deep feature spaces(여러 채널에 대해서 Spatial convolution 수행)에는 비선형성이 도움이 되지만 Shallow feature space(단일 채널에 대해서 Spatial convolution 수행)에는 오히려 정보의 손실 때문에 해가 되기 때문이라고 한다. 
+
+
+
+## Future directions
+
+Extreme 버전의 Inception module과 Depthwise separable convolution 사이의 무수히 많은 Discrete spectrum(독립적인, 채널 공간의 Segment의 수로 결정되는)에서 최적의 Intermediate point가 존재할수도 있다. 
+
+
+
+## Conclusions
+
+저자들은 일반적인 Inception module, Extreme Inception module, Depthwise separable convolution가 Discrete spectrum에서 어떤 위치에 있는지 보였다. 저자들은 Inception module을 Depthwise separable convolution으로 바꾸는 아이디어에서 Xception이라는 아키텍처를 발명하게 되었다. Inception V3와 비교해서 비슷한 용량을 가지나 ImageNet에서는 근소하게 분류 정확도면에서 우위를 가져가고 JFT에서는 크게 우위를 가져갔다. 
+
