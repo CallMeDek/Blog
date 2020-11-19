@@ -73,3 +73,35 @@ K_hat은 DK x DK x M 크기의 커널이다. m번째 필터는 입력 F의 m번�
 ![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision10.JPG)
 
 MobileNet에서는 3x3짜리 Depthwise separable convolution을 사용했으므로 본래의 컨볼루션보다 8-9배 적은 연산량을 가지면서 아주 적은 정도의 성능 하락을 보인다. 
+
+
+
+### Network Structure and Training
+
+MobileNet은 첫 번째 계층만 원래의 Convolution이고 나머지는 Deptheise separable convolution으로 구축되었다. 
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision11.JPG)
+
+위의 첫번째 계층을 제외한 모든 Convolution 계층에는 아래와 같이 Batch normalization과 ReLU를 적용했다. 
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision12.JPG)
+
+Down sampling은 첫 번째 계층과 Depth wise convolution의 Stride에 의해서 조절되었다. 마지막에 Average pooling은 Spatial resolution을 1로 줄여버린다. Depthwise와 Pointwise를 별개의 계층으로 쳤을때 MobileNet은 28개의 계층으로 이루어져 있다. 
+
+저자들이 말하기 단순히 적은 수의 Mult-Adds 연산만이 중요한 것이 아니라 이 연산들이 어떻게 효율적으로 구현되는지가 중요하다고 한다. 예를 들어서 정형화 되어 있지 않은 희소 행렬 연산은 보통 매우 높은 수준의 희소 정도가 아니면 밀집 행렬보다 빠르지 않다. 이 연구에서의 모델 구조는 거의 모든 연산을 밀집한 Pointwise convolution으로 수행한다고 하는데 이는 Highly optimized general matrix mulitply(GEMM) function 덕분이라고 한다. GEMM은 최적화된 선형 대수 알고리즘 중 하나이다. MobileNet은 95%의 연산 시간을 Pointwise convolution에 쓰고 있는데 전체 파라미터 수의 75%가 여기에 속해 있다. 그 다음에 추가적인 파라미터는 거의 완전 연결 계층에 속해 있다. 
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision13.JPG)
+
+MobileNet 모델은 RMSprop optimizer strategy로 Asynchronous gradient descent로 훈련되었다. 그러나 용량이 큰 모델을 훈련시킬때와는 달리 더 적은 Regularization과 Data augmentation을 적용했는데 MobileNet같이 작은 모델은 과적합 같은 문제에 덜 민감하기 때문이다. 또, Inception V3와 같이 Side head, Label smoothing, 이미지 크롭의 사이즈를 제한함으로써 이미지 왜곡 정도를 줄이는 기법 등을 적용하지 않았다. 또 Depthwise convolution 계층의 필터에는 거의 Weight decay를 사용하지 않는 것이 중요하다 왜냐하면 채널마다 하나의 필터가 할당되기 때문에 보통의 컨볼루션 필터와 비교했을때 파라미터 수가 적기 때문이다. 
+
+
+
+### Width Multiplier: Thinner Models
+
+이미 MobileNet 모델 자체가 충분히 작고 Latency가 작긴 하지만 어떤 경우에는 모델이 좀 더 작고 빨라야 하는 경우도 있다. 이런 경우를 대비해서 저자들은 Width multiplier 라고 불리우는 α 파라미터를 도입했다. 이 파라미터의 역할은 모든 계층에 균일하게 적용해서 네트워크를 전체적으로 얇게 만드는 것이다. 
+
+예를 들어서 어떤 계층과 α 있을 때 입력 채널 수는 αM이 되고 출력 채널 수는 αN이 된다. 따라서 α를 적용한 Depthwise separable convolution의 연산량은 다음과 같다. 
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision14.JPG)
+
+α 는 (0, 1]의 수를 갖는데 보통 1, 0.75, 0.5, 0.25로 셋팅된다 1일때는 보통의 MobileNet이고 1보다 작을 때는 크기가 줄어든 MobileNet이 된다. Width multiplier의 효과는 거의 α^2만큼 모델 파라미터의 수와 연산량을 줄이는것이다. Width multiplier를 적용하면 사용 목적에 맞게 Accuracy, Latency, Size 간의 Trade off를 결정할 수 있다. 또 From scratch부터 훈련시킬 필요가 있는 모델에도 적용 가능하다. 
