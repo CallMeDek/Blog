@@ -105,3 +105,59 @@ MobileNet 모델은 RMSprop optimizer strategy로 Asynchronous gradient descent�
 ![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision14.JPG)
 
 α 는 (0, 1]의 수를 갖는데 보통 1, 0.75, 0.5, 0.25로 셋팅된다 1일때는 보통의 MobileNet이고 1보다 작을 때는 크기가 줄어든 MobileNet이 된다. Width multiplier의 효과는 거의 α^2만큼 모델 파라미터의 수와 연산량을 줄이는것이다. Width multiplier를 적용하면 사용 목적에 맞게 Accuracy, Latency, Size 간의 Trade off를 결정할 수 있다. 또 From scratch부터 훈련시킬 필요가 있는 모델에도 적용 가능하다. 
+
+
+
+## Experiments
+
+### Model Choices
+
+저자들은 MobileNet에서 Depthwise separable convolution으로 구축했을 때와 원래의 Convolution으로 구축했을때를 비교했다. 
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision15.JPG)
+
+Table 4를 보면 Depthwise separable covolution이 정확도가 1% 밖에 안떨어지면서 많은 양의 Mult-adds와 모델 파라미터 수를 줄이는 것을 확인할 수 있다. 
+
+다음으로 Width multiplier로 얇아진 모델의 결과와 계층을 줄여 짧아진 모델의 결과를 비교했다. 모델을 짧게 만들기 위해서 Table 1에서 Feature map 크기가 14 x 14 x 512인 Separable 필터의 5개의 계층을 제거했다. 
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision16.JPG)
+
+Table 5를 보면 연산량과 파라미터 수는 비슷하면서 얇아진 모델의 정확도가 약 3% 더 정확하다는 것을 볼 수 있다.
+
+
+
+### Model Shrinking Hyper-parameters
+
+![MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision17](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision17.JPG)
+
+Table 6을 보면 α = 0.25일때 아키텍처가 너무 작아지기 전까지는 연산량과 파라미터가 줄어들면서 정확도가 Smoothly 떨어지는 것을 알 수 있다. 
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision18.JPG)
+
+Table 7을 보면 Resolution multiploier에 의해서 입력 Resolution이 감소될때 Smoothly 정확도와 연산량이 떨어지는 것을 볼 수 있다.
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision19.JPG)
+
+Figure 4는 Width multiplier α 가 {1, 0.75, 0.5, 0.25}의 원소 일때, Resolution이 {224, 192, 160, 128}일때의 16가지 경우의 모델의 정확도와 연산의 관계를 보여준다. α = 0.25일때 매우 작은 모델때 확 달라지는 것 빼고는 log linear의 형태를 보인다. 
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision20.JPG)
+
+Figure 5는 Width multiplier α 가 {1, 0.75, 0.5, 0.25}의 원소 일때, Resolution이 {224, 192, 160, 128}일때의 16가지 경우의 모델의 정확도와 파라미터 수의 관계를 보여준다.
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision21.JPG)
+
+Table 8은 α = 1, Resolution 224의 MobileNet과 GooleNet 그리고 VGG16를 비교한 표이다. MobileNet이 거의 VGG16만큼 정확하면서 32배 정도 작으면서 27배 연산량이 적은 것을 알 수 있다. 또 거의 GoogleNet보다 더 정확하면서 더 크기가 작고 2.5배 연산량이 적은 것을 확인할 수 있다. 
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision22.JPG)
+
+Table 9는 α = 0.5에 Resolution 160과 다른 모델을 비교한 표이다. 얇아진 MobileNet은 AlexNet보다 4% 정도 정확하면서 45배 더 작고 9.4배 적은 연산량을 보인다. 또 같은 크기일때 4% Squeezenet보다 정확하고 22배 연산량이 더 적다. 
+
+
+
+### Fine Grained Recognition
+
+저자들은 Fine grained recognition을 위해서 Stanford Dogs 데이터셋으로 MobileNet을 훈련시켰다. 저자들은 Noisy가 있는 웹 데이터로 먼저 모델을 학습시키고 Stanford Dogs 데이터셋으로 Fine tuning시켰다. 
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision23.JPG)
+
+Table 10을 보면 MobileNet이 줄어든 연산량과 모델 크기와 함께 최고의 성능을 보임을 확인할 수 있다. 
