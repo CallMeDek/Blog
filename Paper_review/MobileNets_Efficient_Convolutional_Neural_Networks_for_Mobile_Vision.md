@@ -161,3 +161,44 @@ Table 9는 α = 0.5에 Resolution 160과 다른 모델을 비교한 표이다. �
 ![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision23.JPG)
 
 Table 10을 보면 MobileNet이 줄어든 연산량과 모델 크기와 함께 최고의 성능을 보임을 확인할 수 있다. 
+
+
+
+### Large Scale Geolocalization
+
+PlaNet는 사진이 지구상의 어디에서 찍혔는지를 분류 문제로 접근하는 작업을 수행했다. 이에 대해서는 본문 참조.
+
+
+
+### Face Attributes
+
+MobileNet과 Distillation으로 Face attribute 분류 문제를 다룬 연구는 본문 참조.
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision24.JPG)
+
+
+
+### Object Detection
+
+MobileNet을 Object Detection에 적용한 실험은 본문 참조.
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision25.JPG)
+
+
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision26.JPG)
+
+
+
+### Face Embeddings
+
+FaceNet은 Face recognition 모델인데 여기에 MobileNet을 적용한 연구 결과는 본문 참조.
+
+![](./Figure/MobileNets_Efficient_Convolutional_Neural_Networks_for_Mobile_Vision27.JPG)
+
+
+
+## Conclusion
+
+- Depthwise separable convolution에 근거한 MobileNet 아키텍처 발표
+- 모델 정확도와 크기 그리고 지연 속도에 대한 Trade off를 결정하기 위해서 MobileNet에서는 모델의 입력과 출력 채널의 수를 조절하는 Width multiplier와 입력 Resolution을 파라미터로 설정함.
