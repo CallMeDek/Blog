@@ -68,3 +68,47 @@ Depthwise separable convolution은 Standard convolution과 거의 같은 작업�
 - ReLU가 입력 Manifold에 관한 정보를 완전하게 보존하는 경우는 입력 Manifold가 입력 특징 공간의 저차원 서브 공간에 있을때 이다. 
 
 위 두가지 시사점을 바탕으로 저자들은, 현존하는 신경망 아키텍처를 최적화하는 방향에 대한 통찰을 얻게 되었다. Manifold of interest가 저차원 공간에 있다고 가정하고 Convolution 블럭 안에 Linear bottleneck 계층들을 삽입하는 것이다. Linear 계층이 중요한 이유를 저자들은 실험을 통해서 경험적으로 알아내었는데, 비선형성이 너무 많은 정보를 파괴하는 것을 막는다. 저자들은 Bottlenect 안의 비선형 계층이 성능을 해친다는 가정을 세웠고 실험을 통해 이를 검증했다. 
+
+
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks6.JPG)
+
+
+
+### Inverted residuals
+
+언뜻 보기에 Bottleneck 블럭과 Residual 블럭이, 각 블럭이 입력, 몇몇의 Bottleneck 그리고 Expansion으로 이루어졌다는 것에 의해 비슷해 보인다. 그러나 Bottleneck은 모든 필요한 정보를 담고 있고 Expansion Layer는 단지 텐서에 비선형 연산을 수행한다는 사실에, 저자들은  Bottleneck 블럭 사이에 직접적으로 Shortcut을 적용하도록 구현했다. 
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks7.JPG)
+
+저자들이 Shortcut을 적용하기로 한 계기는 ResNet에서와 마찬가지로 모든 계층에 그래디언트가 (소실 혹은 폭파 없이) 골고루 전파 될 수 있도록 하기 위함이었다. 그렇지만 저자들이 고안한 Inverted 디자인이 메모리 사용에서 더 효율적이고 본 연구의 실험에서도 더 좋은 성능을 냈다. 
+
+
+
+#### Running time and parameter count for bottleneck convolution
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks8.JPG)
+
+블럭의 입력 Feature map 사이즈가 h x w이고 Expansion factor가 t이며 Kernel 사이즈가 k이고 입력 채널 크기가 d'이고 출력 채널 크기가 d"일때 이 블럭의 총 Multi add 숫자는 h x w x d' x t(d' + k^2 + d")이다. Depthwise separable convolution의 연산량과 비교했을때 여분의 1x1 Convolution이 추가되어 있다. 그렇긴 하지만 Expansion factor t에 의해서 입력과 출력 차원수가 더 줄어들 수 있다. Table 3에서 저자들은 MobileNetV1, V2와 ShuffleNet에서 각 해상도별로 필요한 크기를 비교했다.
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks10.JPG)
+
+
+
+### Information flow interpretation
+
+저자들인 말하는 본 연구의 아키텍처의 성질 중 하나는 블럭의(Bottleneck layers) 입력과 출력 도메인이 분리된다는 것과 입력을 출력으로 바꿀때 추가되는 비선형 변환 함수가 있다는 것이다. 전자는 각 계층에서 모델의 Capacity라고 볼 수 있고 후자는 Expressiveness라고 볼 수 있다. 이는 본래의 Convolution과 Separable Convolution의 Expressiveness와 Capacity가 엉켜 있다는 것과는 대조적이다. 특히 저자들이 고안한 블럭의 경우 깊이가 0일때 Shortcut connection 덕분이 Convolution이 Identity function이 된다. Expansion ratio가 1보다 작을때 이것은 Classical한 Residual convolution block이 된다. 하지만 저자들은 실험에서 Expansion ratio가 1보다 큰 것이 더 유용함을 보였다. 이런 해석이 저자들로 하여금 모델의 Capacity와 Expressiveness를 구별해서 보게했다. 
+
+
+
+## Model Architecture
+
+앞서 언급한대로 MobileNetV2의 기본 블럭은 Residual 개념이 적용된 Bottleneck Depth separable convolution이다. 이 구조는 Table 1에 자세하게 나와 있다. 가장 처음에 32개의 커널을 가진 원래의 Convolution이 있고 그 뒤로 Table 2에서 나와 있는 것과 같이 19개의 Residual Bottleneck 계층들이 있다. 저자들은 ReLU6를 비선형 함수로 사용했는데 Low precision computation에도 강인하기 때문이다. 3x3 커널을 사용했고 훈련 간에는 Dropout과 Batch normalization을 적용했다. 첫 번째 계층을 제외하고는 Expansion rate 상수를 전체 네트워크에 적용했다. 실험적으로 이 값이 5에서 10일때는 성능이 거의 동일하다는 것을 확인했다. 상대적으로 작은 네트워크에는 이 값이 작은 게 좋고 큰 네트워크에는 이 값이 큰 게 좋다. 저자들은 실험에서 이 값을 6으로 설정했다. 예를 들어서 64 채널의 입력을 받고 128 채널을 출력하는 Bottleneck이라면 중간 Expansion 계층의 채널의 64 x 6 = 384이다. 
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks9.JPG)
+
+
+
+### Trade-off hyperparameters
+
+저자들은 MobileNetV1과 같이 도메인에 따른 Accuracy나  Performance Trade-off를 조절할 수 있도록 입력 이미지 Resolution과 Width multiplier를 조절 가능한 하이퍼 파마리터로 설정했다. 저자들이 본 연구에서 주로 사용한 설정은 Width multiplier 1, 224 x 224이다. 이때 연산량은 300 million의 Multiply-adds이고 파라미터 수는 3.4 million이다. 저자들은 입력 Resolution을 96에서 224까지, Width multiplier를 0.35에서 1.4까지 설정해서 성능을 실험했다. 연산량은 7에서 585M 정도로 나왔고 모델 사이즈는 1.7 에서 6.9M의 파라미터 수가 나왔다. MobileNetV1 때와 다른 점은 Width multiplier가 1보다 작을 경우 마지막 Convolution 계층에는 적용하지 않았는데 이는 크기가 작은 모델에서는 성능이 개선되는 효과를 보였다. 
