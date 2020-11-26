@@ -112,3 +112,51 @@ Depthwise separable convolution은 Standard convolution과 거의 같은 작업�
 ### Trade-off hyperparameters
 
 저자들은 MobileNetV1과 같이 도메인에 따른 Accuracy나  Performance Trade-off를 조절할 수 있도록 입력 이미지 Resolution과 Width multiplier를 조절 가능한 하이퍼 파마리터로 설정했다. 저자들이 본 연구에서 주로 사용한 설정은 Width multiplier 1, 224 x 224이다. 이때 연산량은 300 million의 Multiply-adds이고 파라미터 수는 3.4 million이다. 저자들은 입력 Resolution을 96에서 224까지, Width multiplier를 0.35에서 1.4까지 설정해서 성능을 실험했다. 연산량은 7에서 585M 정도로 나왔고 모델 사이즈는 1.7 에서 6.9M의 파라미터 수가 나왔다. MobileNetV1 때와 다른 점은 Width multiplier가 1보다 작을 경우 마지막 Convolution 계층에는 적용하지 않았는데 이는 크기가 작은 모델에서는 성능이 개선되는 효과를 보였다. 
+
+
+
+## Implementation Notes
+
+### Memory efficient inference
+
+Inverted residual bottleneck 계층은 특히 모바일 애플리케이션에 중요한, 효율적인 메모리 사용을 가능하게 한다. Tensorflow나 Caffe로 구현한 구현체의 경우에 Directed acyclic computer hypergraph G를 구축한다. 연산을 나타내는 엣지와 중간 연산 결과를 나타내는 텐서로 이루어져 있다. 이때 게싼은 메모리에 있어야할 텐서의 총량을 최소화 하기 위해서 스케쥴링된다. 대부분의 경우 합리적인 연산 순서인 G의 Summation을 찾게 되고 그 중에서 다음을 최소화 하는 순서를 고른다. 
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks10.JPG)
+
+R(i, π, G)는 중간 계산 결과인 텐서의 리스트이고 각 노드에 연결되어 있다. |A|는 텐서 A의 크기이고 size(i)는 Operation i를 수행하는데 내부적으로 필요한 메모리의 총량이다. Residual connection과 같이 중요하지 않은 병렬 구조만 있는 그래프에서는 오직 한가지의 실현 가능한 계산 순서만이 있다. 그렇기 때문에 그래프 G를 계산할때 추론 과정ㅇ에서 필요한 메모리의 한계와 총량은 다음과 같이 나타낼 수 있다. 
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks11.JPG)
+
+이것은 메모리의 총량이 단순히, 모든 연산의 관련된 입력과 출력의 총 크기를 극대화 하는 것을 의미한다. 만약에 하나의 Bottleneck residual 블럭을 하나의 단일 연산으로 취급한다면 메모리 총 사용량은 Bottleneck의 내부로 들어가는 텐서보다는(입력 텐서) Bottleneck 자체의 텐서의 크기에 의해 좌우된다. 
+
+
+
+### Bottleneck Residual Block
+
+Figure 3b에 나와 있는 Bottleneck 블럭 Operation F(x)는 다음과 같이 표현 가능하다. 
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks12.JPG)
+
+| Linear transformation                                        | Non-linear per-channel transformation                        | Linear transformation                                        |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks13.JPG) | ![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks14.JPG) | ![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks15.JPG) |
+
+본 연구에서 N은 다음과 같다.
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks16.JPG)
+
+|x|는 입력의 크기고 |y|는 출력의 크기라고 할 때, F(x)를 계산하는 필요한 메모리 량은 다음과 같다.
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks17.JPG)
+
+Inner tensor I는 t개의, 크기가 n/t인 텐서들의 Concatenation이고 F(x)는 다음과 같다. 
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks18.JPG)
+
+훈련 시간 동안 매 타임 마다 크기가 n/t인 Intermediate 블럭 하나만이 메모리에 있어도 연산이 가능하도록 저자들이 구현했고 F(x)는 이를 Summation 한 것이다. n = t라면 매 타임마다 Intermediate representation 중 하나의 채널만이 메모리에 유지된다. 저자들이 이런 방법을 고안해 낸 것은 두 가지 제약조건 때문이다.
+
+- 비선형성이나 Depthwise 같은 Inner transformation이 채널 단위로 수행된다.
+- 채널 단위가 아닌, 연속적인 연산들이 상당한 비중을 차지한다. 
+
+단 기존의 신경망에서는 이런 구현이 성능 상에 큰 이점을 보지는 못한다.  주의할 점은 F(x)를 계산하는데 필요한 Multiply-add 연산량이 t-way split으로 구현해도 t와는 상관이 없다는 것이다. 또 저자들은 하나의 행렬 곱 연산을 몇개의 작은 연산(t-way split)으로 대체하면 증가하는 캐시 미스때문에 오히려 런타임 성능이 떨어지는 것을 발견했다. 저자들은 경험에 의해서 t가 2-5 정도가 적당하다는 것을 알았다.  
+
