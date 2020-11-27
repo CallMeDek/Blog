@@ -160,3 +160,45 @@ Inner tensor I는 t개의, 크기가 n/t인 텐서들의 Concatenation이고 F(x
 
 단 기존의 신경망에서는 이런 구현이 성능 상에 큰 이점을 보지는 못한다.  주의할 점은 F(x)를 계산하는데 필요한 Multiply-add 연산량이 t-way split으로 구현해도 t와는 상관이 없다는 것이다. 또 저자들은 하나의 행렬 곱 연산을 몇개의 작은 연산(t-way split)으로 대체하면 증가하는 캐시 미스때문에 오히려 런타임 성능이 떨어지는 것을 발견했다. 저자들은 경험에 의해서 t가 2-5 정도가 적당하다는 것을 알았다.  
 
+
+
+## Experiments
+
+### ImageNet Classification
+
+#### Training setup
+
+저자들은 RMSProp의 기본 셋팅에 Decay와 Momentum을 0.9로 셋팅했다. 매 계층마다 Batch normalization을 적용했고 Weight decay를 0.00004로 셋팅했다. MovileNetV1의 셋팅을 따라서 초기 Learning rate 값은 0.045로 지정하고 에폭마다 0.98씩 줄어들도록 했다. 16 GPU에서 비동기적으로 작업을 수행하도록 구현했고 배치 사이즈는 96이다. 
+
+
+
+#### Results
+
+저자들은  결과를 MobileNetV1, ShuffleNet, NASNet-A 모델과 비교했다. 
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks19.JPG)
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks20.JPG)
+
+
+
+### Object Detection
+
+저자들은 COCO 데이터셋으로 SSD을 수정한 버전에서 MobileNetV1과 V2를 Feature extractor로 사용했을때 결과를 비교했다. 또 VGG16 네트워크를 사용하는 YOLOv2와 SSD의 성능도 비교했다. 관심 있는 분야과 Mobile과 Real-time 모델이었기 때문에 Faster R-CNN, R-FCN과 같은 아키텍처와는 성능 비교를 하지 않았다.
+
+#### SSDLite
+
+저자들은 SSD의 Prediction 하는 계층의 모든 Regular convolution은 Depthwise separable convolution으로 바꿨다. 원래의 SSD와 비교했을 때, SSDLite는 파라미터 수와 연산량이 급격하게 줄었다. 
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks21.JPG)
+
+MobileNetV1을 아키텍처로 한 버전은 아래 연구의 셋팅을 따랐다.
+
+- Jonathan Huang, Vivek Rathod, Chen Sun, Menglong Zhu, Anoop Korattikara, Alireza Fathi, Ian Fischer, Zbigniew Wojna, Yang Song, Sergio Guadarrama, et al. Speed/accuracy trade-offs for modern convolutional object detectors. In CVPR, 2017
+
+V2이 경우에 SSDLite의 첫번째 계층은 Layer 15(네트워크 입력과 비교했을때 출력 Stride는 16)의 Expansion 계층에 붙였다. 두번째부터 나머지 계층은 마지막 Feature extractor 계층에 붙였다(네트워크 입력과 비교했을 때 Stride는 32). 이 셋팅 법은 MobileNetV1에서의 셋팅법과 일맥상통한다. 
+
+두 MobieNet 버전의 네트워크 입력 Resolution은 320x320이다. COCO Challenge metric으로 mAP를 비교했고 파라미터 수와 Multiply-Add 숫자를 비교했다. 
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks22.JPG)
+
