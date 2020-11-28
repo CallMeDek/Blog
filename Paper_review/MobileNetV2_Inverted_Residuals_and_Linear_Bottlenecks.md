@@ -202,3 +202,55 @@ V2이 경우에 SSDLite의 첫번째 계층은 Layer 15(네트워크 입력과 �
 
 ![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks22.JPG)
 
+
+
+### Semantic Segmentation
+
+저자들은 Semantic segmentation을 위한 DeepLabv3에서 MobileNetV1, V2를 Feature extractor로서 사용했을때 성능을 비교했다. DeepLabv3의 경우 Atrous convolution을 도입했는데 이는 계산되는 Feature map의 Resolution을 명시적으로 조절하는 도구로서 쓰인다. 또 DeepLabv3는 5개의 병렬구조의 Head를 구축했다. 
+
+- Atrous Spatial Pyramid Pooling module(ASPP), 각기 다른 Atrous rate의 세 개의 3x3 convolution
+- 1x1 Convolution 
+- Image-level featuers
+
+Output_stride는 입력 이미지의 Spatial Resolution에서 최종 출력 Resolution으로의 비율을 나타내는데 이는 Atrous convolution에 의해서 조절된다. 저자들은 Output_stride를 16 혹은 8로 설정해서 Denser한 Feature map이 출력될 수 있도록했다. 저자들은 이 실험을 PASCAL VOC2012 데이터셋과 여분의 Annotated 이미지들로 수행했고 평가 척도는 mIOU로 정했다. 
+
+저자들은 세 개의 디자인 옵션을 적용했다.
+
+- 다른 Feature extractor
+- 빠른 연산을 위한 DeepLabv3 Head의 간소화
+- 성능 향상을 위한 추론 전략
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks23.JPG)
+
+저자들의 통찰은 다음과 같다.
+
+- 여러 추론 전략들, 예를 들어 Multi-scale Inputs, Left-right flipped images는 MAdd의 수를 상당히 늘리기 때문에 On-device 환경에는 잘 맞지 않는다.
+- Output_stride 16이 8보다 더 효율적이다.
+- MobileNetV1이 이미 ResNet-101보다 4.9-5.7배 더 적은 MAdd 수만 요구하기 때문에 Feature extractor로서 효율적이다(mIOU 78.56 vs 82.70이지만 MAdd가 941.9B vs 4870.6B이다). 
+- DeepLabv3의 Heads를 원래대로 마지막 계층의 Feature map으로 수행하는 것보다는 MobileNetV2의 끝에서 두번째 계층의 Feature map으로 수행하는 것이 효율적이다. 그 이유는  끝에서 두번째 계층부터 마지막 계층까지 Feature map의 채널수가 1280개 대신에 320인데 이는 MobileNetV1 버전과 비슷한 성능을 얻으면서 2.5배 적은 Operation을 수행하는 것이기 때문이다.
+- DeepLabv3 heads는 연산량에서 많은 비중을 차지하고 ASPP 모듈을 제거하는 것은 약간의 성능 저하를 가져오지만 상당한 야의 MAdds를 줄일 수 있다. 
+
+### 
+
+### Ablation study
+
+![](./Figure/MobileNetV2_Inverted_Residuals_and_Linear_Bottlenecks24.JPG)
+
+
+
+#### Inverted residual connections
+
+bottleneck을 연결하는 Shortcut은 Expanded 계층을 연결하는 Shortcut보다 더 성능이 좋은 것으로 나왔다. Figure 6 b 참조.
+
+
+
+#### Importance of linear bottlenecks
+
+Linear bottlecks은 비선형이 저차원 공간에서 파괴하는 정보를 어느정도 보완해줄 수 있으므로 성능이 향상된다. Figure 6 a 참조.
+
+
+
+## Conclusions and future work
+
+저자들은 모바일 환경에서 효율적으로 최적의 성능을 보일 수 있는 모델의 아키텍처를 제시했다. 
+
