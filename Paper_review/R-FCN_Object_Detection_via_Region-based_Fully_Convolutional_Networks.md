@@ -82,4 +82,23 @@ r_c(i, j)는 c번째 카테고리에 대한 (i, j)번째 빈에서의 Pooled res
 
 ![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks10.JPG)
 
-Position-sensitive ROI pooling 연산은 Figure 1에서 묘사되어 있는데 각 색깔은 (i, j)의 쌍을 나타낸다. 여기서는 Average pooling 연산을 수행했지만 Max pooling 연산도 가능하다. 
+Position-sensitive ROI pooling 연산은 Figure 1에서 묘사되어 있는데 각 색깔은 (i, j)의 쌍을 나타낸다. 여기서는 Average pooling 연산을 수행했지만 Max pooling 연산도 가능하다.  그 다음으로 k^2 Position-sensitive score는 각 RoI에 대해서 각 클래스인지 아닌지를 결정한다. 이 논문에서는 단순히 Score들을 평균낸 값으로 결정해서 각 ROI 마다 다음과 같디 (C + 1) 차원의 벡터를 만든다. 
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks11.JPG)
+
+그리고 Softmax 함수를 적용해서 카테고리에 대한 확률 분포를 만들어 낸다.
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks12.JPG)
+
+이 결과는 훈련간 Cross entropy 손실을 계산하거나 추론 시에 ROI들의 순위를 매기는데 사용된다. 
+
+바운딩 박스 회귀는 R CNN과 비슷한 방법으로 수행한다. 위에서의 k^2(C + 1)와 관계 없이 저자들은 4K^2차원(출력 채널 차원 수)의 컨볼루션 계층을 바운딩 박스 회귀를 위해 추가했다. Position-sensitive ROI Pooling이 계층의 출력 map들에 적용되고, 각 ROI에 대해 4k^2 차원의 벡터를 만들어낸다.  이 벡터들의 평균 값이 집계되어서 4차원의 벡터가 만들어진다. 이 4차원 벡터는 바운딩 박스와 관련된 t = (t_x, t_y, t_w, t_h) 값이다. 여기서는 클래스와 상관 없는 바운딩 박스 회귀를 수행했지만 클래스와 관련 있는 바운딩 박스 회귀도 가능하다(4k^2C 차원).
+
+Position-sensitive score map은 FCN에서 Instance semantic segmentation을 수행한 것에 영감을 받았다. 여기에 저자들은 Object detection을 위해 학습이 가능한 Score map 개념을 도입해서 Positive-sensitive ROI Pooling layer를 추가했다. ROI 계층 후에 학습이 가능한 계층은 없기 때문에 R CNN 계열과 비교해서 Region wise computation이 없기 때문에 훈련과 추론 간의 속도가 빠르다. 
+
+
+
+### Training
+
+###  
+
