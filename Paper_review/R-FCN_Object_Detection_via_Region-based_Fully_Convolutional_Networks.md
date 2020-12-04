@@ -100,5 +100,49 @@ Position-sensitive score map은 FCN에서 Instance semantic segmentation을 수�
 
 ### Training
 
-###  
+R FCN에서 손실 함수는 각 ROI에 대한 Cross entropy 손실과 Box regression 손실을 합친 것이다.
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks13.JPG)
+
+여기서 c*는 ROI의 GT label이다(배경은 0). 
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks14.JPG)
+
+L_cls는 Categorical crossentropy이고 L_reg는 Smooth L1 손실이다. t\*는 GT 상자의 값을 나타낸다. [c\* > 0]의 경우 t 상자가 t* 박스를 담당하면 1이고 그렇지 않으면 0이 된다. λ는 손실 간의 비중을 조절하는 파라미터인데 여기서는 1로 설정했다. 저자들은 GT와 IOU가 적어도 0.5 이상인 ROI들을 Positive로 그렇지 않으면 Negative로 설정했다.
+
+저자들에 의하면 ROI에 수행하는 연산량이 거의 무시할 정도이기 때문에 Online hard example mining을 쉽게 적용할 수 있게 한다고 한다. 이미지당 N개의 Proposal이 있다고 가정할 때, 순전파시에 N Proposal의 손실을 평가한다. 그리고 나서 Positive와 Negative의 손실 값에 따라 정렬하고 B개의 가장 높은 손실을 보이는 ROI를 선택한다. 역전파는 선택된 B개의 ROI를 대상으로 수행된다. ROI에 수행하는 연산량이 거의 무시할 수 있을 정도 이기 때문에 순전파 시간은 N에 영향을 받지 않는다.
+
+저자들은 Weight decay 0.0005, Momentum 0.9를 적용했고 기본적으로는 Single scale의 이미지로 훈련시켰다. 이때 이미지는 짧은 쪽이 600 pixel이 되도록 크기가 재조정되었다. 각 GPU는 1개의 이미지에서 B=128의 ROI를 역전파를 위해서 선택했다. 8개의 GPU를 사용했기 때문에 효율적인 미니 배치 사이즈는 8의 배수이다. R FCN은 20K 미니 배치동안 Learning rate 0.001로 10K 미니 배치동안은 0.001로 해서 VOC 데이터로 Fine tuning 했다. Figure 2처럼 RPN과 이미지 특징을 공유하기 위해서 Faster R CNN에서의 4-step alternating training 방법을 적용했다(RPN과 R FCN 사이).
+
+
+
+### Inference
+
+Figure 2에서와 같이 RPN과 R-FCN은 Base network에서 계산한 이미지 특징을 공유한다(Single scale 짧은 쪽 600 pixel). 그러고 나서 RPN은 ROI를 제안하고 R-FCN에서는 ROI를 보고 Category-wise score를 계산하고 Bounding box 회귀를 수행한다. 추론 시에는 300 ROI를 평가한다. NMS는 Threshold 0.3으로 수행한다. 
+
+
+
+### À trous and stride
+
+R FCN에서는 FCN과 같이 ResNet-101의 최종 입력과 conv5 출력 사이의 Stride를 32에서 16으로 줄여서 Score map의 Resolution을 증가시킨다. conv4(Stride = 16) 이전의 모든 계층은 바뀌지 않고 conv5 블럭의 Stride=2인 연산들은 Stride=1로 바꾼다. 그리고 conv5 블럭의 모든 커볼루션 필터들은 줄어든 Stride 덕분에 Hole algorithm(À trous 알고리즘)을 적용할 수 있게 된다. RPN은 conv4 블럭에서 출력된 특징맵으로 계산하기 때문에 À trous 알고리즘의 영향을 받지 않는다. 아래의 Table은 R FCN(k x k = 7 x 7, Hard example mining 없음)에 À trous 알고리즘에 대한 Ablation 결과를 보여주는데 À trous 알고리즘에 의해서 mAP 2.6 포인트 상승 한 것을 확인할 수 있다. 
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks15.JPG)
+
+
+
+### Visualization
+
+아래의 Figure 3, 4는 k x k = 3 x 3 일때 R FCN의해서 학습된 Position-sensitive score map을 시각화 한 것이다.
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks16.JPG)
+
+
+
+## Related Work
+
+R-CNN은 Deep network에 Region proposal 개념을 도입했을 때 효율적일 수 있음을 보였다. R-CNN은 크롭되거나 워프된 Region에 CNN 연산을 수행하는데 이때 각 Region 사이에 연산은 공유되지 않는다. SPPnet, Fast R-CNN, Faster R-CNN에서는, 한 브랜치에서는 전체 이미지에 대해 공유되는 연산을 수행하고 다른 브랜치에서는 각 Region마다 연산을 수행하므로 Semi-convolutional하다. 
+
+Object detection 중에는 Fully convolutional model이라고 할 만한 알고리즘들이 있다. OverFeat은 공유되는 CNN Feature map에 여러 크기의 Window들을 슬라이딩해서 객체를 탐지한다. 이와 비슷하긴 하지만 Fast R-CNN에서는 슬라이딩 하는 Window가 Region proposal로 대체된다. 이때 단일 크기의 슬라이딩 윈도우의 역할을 단일 컨볼루션 계층이 대신하는 것으로 생각할 수 있다. Faster R-CNN에서의 RPN은 여러 크기의 앵커 박스와 관련된 Bounding box를 예측하는 Fully convolutional detector이다. 원래의 RPN은 클래스에 상관 없이 예측을 수행하지만 클래스와 상관이 있도록 하는 버전도 가능하므로 본 연구에서 저자들은 이를 검증했다. 
+
+
 
