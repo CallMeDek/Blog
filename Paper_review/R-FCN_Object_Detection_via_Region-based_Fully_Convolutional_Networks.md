@@ -146,3 +146,88 @@ Object detection 중에는 Fully convolutional model이라고 할 만한 알고�
 
 
 
+## Experiments
+
+### Experiments on PASCAL VOC
+
+저자들은 20개의 카테고리가 있는 PASCAL VOC 데이터로 실험을 수행했다. VOC 2007 + 2012 trainval 셋으로 모델을 훈련시켰고 VOC 2007 테스트 셋으로 검증했다. Object detection 정확도는 mAP로 측정했다. 
+
+#### Comparisons with Other Fully Convolutional Strategies
+
+저자들은 다음과 같이 ResNet-101 베이스의 거의 Convolutional한 모델들(ROI당 수행하는, 하나의 Classifier 역할의 완전 연결 계층)을 조사했다.
+
+- Naïve Faster R-CNN: 서론에서 언급한 것처럼 공유되는 Feature map을 만들어 내기 위해서 ResNet-101의 모든 계층이 컨볼루션 계층이다. Conv5 블럭 다음(마지막 컨볼루션 계층)에 ROI Pooling 계층을 덧붙였다. 그리고 각 ROI에서 분류 작업을 수행하는 21-class 완전 연결 계층이 추가된다. à trous trick이 적용되었다.
+- Class-specific RPN: 여기서는 Faster R-CNN을 거의 따르지만 RPN에서 클래스와 상관 없이 분류 작업을 수행하는 것 대신(객체인지 아닌지) 21개의 클래스에 대해서 분류를 수행하는 컨볼루션 Classifier 계층이 대체된다. 역시 마찬가지지로 ResNet-101의 Conv5 블럭의 위에 덧붙였고 à trous trick을 적용했다.
+- R-FCN without position-sensitivity: k = 1로 셋팅해서 Position-sensitivity를 제거한 경우이다. 이때는 각 ROI에 Global pooling을 적용한 것과 같은 경우이다. 
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks17.JPG)
+
+그림 2에서 Naïve Faster R-CNN이 원래의 Faster R-CNN(Table 3 참고)보다 급격하게 성능이 떨어지는 것을 확인할 수 있다. 원래의 R-CNN은 Conv5 블럭 이후가 아니고 Conv4와 Conv5 블럭 사이에 ROI Pooling 계층을 삽입하는데 이는 Faster R-CNN에서는 계층 간에 ROI Pooling 계층을 삽입해서 공간 정보를 Respecting 하는 것이 중요한 것임을 알 수 있는 대목이다. 
+
+Class-specific RPN은 Dense sliding window를 Proposal로서 사용하는 Fast R-CNN의 특이 케이스인데 상당한 성능 하락을 보인다.
+
+원래의 R-FCN은 표준  Faster R-CNN과 성능이 유사하다. 이는 Position-sensitivity 전략이 ROI Pooling 계층 후에 학습 계층 없이도 객체의 공간 정보를 인코딩하는 것을 잘 해낸다는 것을 알 수 있는 대목이다. k=1일때는 ROI 안에서 공간 정보를 캐치할 수 없다. naïve Faster R-CNNㅇ의 경우는 ROI Pooling의 Resolution이 1x1일때의 결과가 나오긴 하지만 성능이 상당히 하락한다. 
+
+
+
+#### Comparison with Faster R-CNN Using ResNet-101
+
+다음으로 저자들은 표준 Faster R-CNN + ResNet-101 모델과 성능을 비교했다. R-FCN의 경우 k x k = 7x7을 적용했다. 
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks18.JPG)
+
+Faster R-CNN에서 Subnetwork의 층이 10개인 모델에서 성능과 R-FCN의 성능이 비슷하지만 R-FCN은 거의 Region당 연산하느라 발생하는 Cost가 없다. 테스트 시에 300 ROI를 조사할때 Faster R-CNN은 2.5배 더 느리다. R-FCN이 훈련시에도 더 빠르다. 거기다 OHEM 시에 발생하는 Cost도 R-FCN은 거의 없다. 2000ROI를 조사할때는 R-FCN이 6배 정도 더 빠르다. 그렇지만 2000 ROI가 성능 향상에 크게 기여를 못하므로 저자들은 이 논문에서 300 ROI를 조사했다. 
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks19.JPG)
+
+저자들은 훈련 간 이미지의 크기를 다르게 해서 이미지의 크기가 각 Itration 마다 랜덤으로 {400, 500, 600, 700, 800} pixel이 되도록 해서 훈련시키고 테스트 시에는 600 pixel로 훈련하는 실험을 진행했다. 이때 mAP 80.5%였다. 추가적으로 모델을 MS COCO trainval 세트에서 훈련시키고 PASCAL VOC 셋으로 Fine-tuning 했다. 
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks20.JPG)
+
+이때 R-FCN의 mAP는 Faster R-CNN +++의 성능과 유사하다. 그런데 Faster R-CNN +++이 Iterative box regression, context, multi-scale testing을 포함하면서 R-FCN보다 속도가 약 20배 느려진다. 이런 결과 추세는 Table 5에서도 확인할 수 있다.
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks21.JPG)
+
+
+
+#### On the Impact of Depth
+
+저자들은 ResNet의 깊이에 따른 R-FCN의 성능을 확인했는데 50에서 101로 늘렸을때는 성능이 향상되지만 152에는 그다지 개선되지 않았다.
+
+![R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks22](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks22.JPG)
+
+
+
+#### On the Impact of Region Proposals
+
+저자들은 ROI를 생성하는데 여러 방법들을 적용하는 실험을 진행했다. 
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks23.JPG)
+
+
+
+### Experiments on MS COCO
+
+다음으로 저자들은 80개의 카테고리를 가진 MS COCO 데이터셋에서 평가를 실시했다. 실험 데이터는 80K 훈련 셋, 40K 검증 셋, 20K 테스트 셋으로 구성되어 있다. Learning rate는 90k 동안은 0.001로, 30k는 0.0001로 설정했고 배치 사이즈는 8이다. 저자들은 Faster R-CNN에서의 4-step alternating training을 5-step으로 확장했다(RPN training step을 한 번 더 수행하고 멈춤). Feature가 공유될때 이 데이터셋에서 5-step training은 정확도를 조금 향상시켰다. 저자들은 또 2-step training을 수행했는데 비교적 좋은 정확도를 보이긴 했지만 Feature는 공유되지 않는다. 
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks24.JPG)
+
+Single-scale으로 훈련된 R-FCN baseline은 Faster R-CNN baseline의 정확도와 견줄만한데 테스트 시에 속도가 2.5배 더 빠르다. 눈 여겨볼만한 점은 R-FCN이 작은 물체에 대한 탐지 성능이 더 낫다는 것이다. COCO의 객체의 사이즈 범위가 넓다는 것을 고려하여 저자들은 R-FCN을 Multi-scale 테스팅을 실시 했다. 테스트 크기는 {200, 400, 600, 800, 1000}이다. 이때 결과는 MS COCO 2015 Competition에서 1등을 차지한 Faster R-CNN +++ with ResNet-101와 근접했다. 성능이 근접함에도 불구하고 R-FCN은 특별한 개념 추가 없이도(No bells and whistles) 훈련과 테스트 시에 속도가 빠르다. 
+
+
+
+## Conclusion and Future Work
+
+저자들은 Region-based Fully Convolutional Networks라고 하는 Object detection 프레임워크를 발표했다. 모든 네트워크는 컨볼루션 계층으로 이루어져 있고 종단 간 학습이 가능하며 통합되어 있기 때문에 속도가 다른 Two stage 알고리즘보다 빠르다. 
+
+
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks25.JPG)
+
+
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks26.JPG)
+
+
+
+![](./Figure/R-FCN_Object_Detection_via_Region-based_Fully_Convolutional_Networks27.JPG)
