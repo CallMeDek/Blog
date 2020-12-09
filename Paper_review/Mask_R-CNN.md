@@ -41,3 +41,118 @@ R-CNN 계열 알고리즘은 객체 탐지를 위한 Bounding box를 위해서 �
 ### Instance Segmentation
 
 본문 참조
+
+
+
+## Mask R-CNN
+
+Mask R-CNN에서 Mask 브랜치는 다른 두 브랜치와는 다르게 객체의 Finer spatial layout을 필요로 한다. 이를 위해서 Pixel-Pixel alignment가 추가되었다. 
+
+
+
+#### Faster R-CNN
+
+Faster R-CNN에서 첫 번째 Stage는 Region Proposal Network로 Bounding box candidate를 제안한다. 두 번째 Stage는 ROI Pool 연산으로 각 ROI에서 특징을 추출해서 Classification과 Bounding-box regression을 수행한다. 두 단계에서 사용되는 특징은 공유될 수 있다. 
+
+
+
+#### Mask R-CNN
+
+Mask R-CNN에서는 Faster R-CNN의 두 단계를 그대로 가져왔다. 다만 두 번째 Stage에서 Class과 Box offset을 예측하는것과 동시에 ROI에 대한 Binary mask도 출력한다. 
+
+훈련 간에 각 ROI에 대한 Multi-task Loss는 다음과 같이 계산한다.
+
+![](./Figure/Mask_R-CNN3.JPG)
+
+Classification Loss와 Bounding-box Loss는 기존과 유사하다. Mask 브랜치는 각 ROI에 대해서 Km^2 차원의 결과를 출력한다. 이것은 m x m 해상도에 대한 K개 클래스에 대한 Binary mask 정보이다. 이를 위해서 픽셀 당 시그모이드 함수를 적용하기 때문에 Mask Loss는 평균 이진 크로스 엔트로피 Loss로 정의된다. k GT 클래스와 관련된 ROI에 대하서만 Mask Loss가 정의된다. 다른 Mask는 Loss에 기여하지 않는다. 
+
+![](./Figure/Mask_R-CNN4.JPG)
+
+[Taeoh Kim - PR-057: Mask R-CNN](https://www.youtube.com/watch?v=RtSZALC9DlU)
+
+이때 Mask Loss는 클래스 간의 Competition으로 정의되는 것이 아니고 모든 클래스에 대해서 해당 클래스에 대한  객체인가 아닌가를 조사하게 된다. 이게 가능한 이유는 Classification 브랜치에서 이미 해당 박스에 대한 분류를 수행하기 때문이다. 
+
+
+
+#### Mask Representation
+
+Mask는 객체의 Spatial layout 정보를 인코딩한다. Classification 브랜치나 Box regression 브랜치에서 완전 연결 계층에 의해서 필연적으로 정보가 짧은 출력 벡터로 Collapsed되는 것과 달리 Mask 브랜치에서는 컨볼루션 계층만 존재하므로 Pixel-to-Piexel의 Correspondence가 가능하다. 
+
+특히 Mask R-CNN에서는 각 ROI에 FCN을 이용하여 m x m mask를 예측한다. 이것은 Mask 브랜치의 각 계층이 Object spatial layout을 벡터로 변환할 필요 없이 m x m 형태로 유지할 수 있도록 한다(벡터로 변환하면 Spatial layout이 다 깨져버림). 완전 연결 계층에 의존하는 다른 방법들과 비교해서 더 적은 파라미터로 예측을 수행하고 더 정확히 예측할 수 있다. 
+
+이런 Pixel-to-Pixel 작업은 입력과 출력 간의 Spatial correspondence가 잘 매칭되도록 ROI를 작은 크기의 Feature map으로서 유지되도록 하는 것을 요구한다. 그래서 저자들은 ROI Align을 고안하게 되었다. 
+
+
+
+#### ROI Align
+
+ROI Pool 연산은 각 ROI에서 작은 크기의 Feature map을 추출하는 잘 알려진 연산이다. ROI Pool에서는 먼저 각 ROI의 부동 소수점  값을 Feature map의 개별 단위로 양자화 한다. 그리고 나서 Spatial bin으로 나눠지고 각 bin은 (주로 Max pooling으로)집계된다. 양자화는 연속 좌표 값인 x에 대해서 [x/16]를 계산하는데 16은 Feature map Stride이고 [.]은 Rounding 함수이다. 이런 양자화에는 ROI와 추출된 특징간의 잘못된 매칭이 있을 수 밖에 없다. Classification에서는 큰 문제가 되지 않을지 모르지만 Pixel mask를 예측하는데는 부정적인 영향을 끼친다. 이것을 해결하기 위해서 저자들은 ROI Align을 고안해냈다. 아이디어는 간단한데 ROI나 Bin 내에서 양자화를 하지 않는 것이다([x/16] 대신에 x/16 적용). Bilinear interpolation을 적용해서 각 ROI bin 내에서 정확한 입력 특징 값을 계산하고 Max 혹은 Average pooling으로 집계한다. 
+
+![](./Figure/Mask_R-CNN5.JPG)
+
+저자들은 ROI Align을 ROI Warp 연산과도 비교했다. ROI Warp는 Alignment 이슈를 간과하고 ROI Pool과 같이 양자화를 적용한 형태로 구현되었다. 그래서 ROI Warp가 Bilinear resampling을 적용한다하더라도 ROI Pool과 비슷한 결과를 보이게 된다. 
+
+![](./Figure/Mask_R-CNN6.JPG)
+
+ROI Pooling에서는 RPN에서 ROI의 픽셀 값이 부동 소수점 값으로 되어 있는데 ROI Pool에서 이 부동 소수점을 반올림 한다. 
+
+![](./Figure/Mask_R-CNN7.JPG)
+
+또 bin으로 나눌때 정확한 영역으로 나누지 않기 때문에 입력과 달리 Align이 되지 않는다. 
+
+![](./Figure/Mask_R-CNN8.JPG)
+
+ROI Align에서는 정확하게 구역을 나누려고 한다. 
+
+![](./Figure/Mask_R-CNN9.JPG)
+
+더 정확하게 나누기 위해서 각 셀을 다시 2x2로 나누는데 이때 각 셀을 Subcell이라고 한다. 
+
+![](./Figure/Mask_R-CNN10.JPG)
+
+이때 값을 할당하기 위해서 위와 같이 각 Subcell의 영역을 구역이 차지하고 있는 가중치에 비례하여 값을 할당한다. 
+
+![](./Figure/Mask_R-CNN11.JPG)
+
+각 Subcell에 값이 할당되고 나서 각 Cell에 대하여 Max pooling을 수행한다. 
+
+[Taeoh Kim - PR-057: Mask R-CNN](https://www.youtube.com/watch?v=RtSZALC9DlU)
+
+
+
+#### Network Architecture
+
+저자들은 다양한 Architecture로 Mask R-CNN을 구현했다. 정확하게는 (1) 전체 이미지에 대해서 특징을 추출하는 Backbone을 다르게 했고 (2) Classification, Box regression, Mask prediction을 수행하는 네트워크 Head를 다르게 했다. 
+
+Backbone에 대해서는 ResNet과 ResNeXt의 깊이 50, 101을 사용했다. 원래 Faster R-CNN + ResNet에서는 마지막 컨볼루션 계층인 4번째 Stage에서의 Feature map으로 RPN과 Fast R-CNN Detector가 연산을 수행하는데 저자들은 이를 C4라고 칭했다(ResNet-50-C4).
+
+저자들은 또 FPN으로 구현하기도 했다. Faster R-CNN + FPN은 각기 다른 단계의 Feature pyramid에 특징을 추출한다. 이것 빼고 나머지는 Vanilla ResNet과 동일하다. 
+
+Head는 다음의 Figure 4와 같다. 
+
+ ![](./Figure/Mask_R-CNN12.JPG)
+
+ResNet-C4 Backbone에 붙는 Head의 경우 ResNet의 5번째 단계를 포함한다(9번째 계층인 res5). 여기서 계산이 집중된다. FPN에 대해서는 Backbone이 이미 res5를 포함하고 있기 때문에 더 적은 수의 필터를 가진다. 
+
+
+
+### Implementation Details
+
+#### Training
+
+Fast R-CNN에서처럼 ROI는 GT box와 IOU가 적어도 0.5이상이면 Positive 그렇지 않으면 Negative가 된다. Mask Loss는 Positive ROI에서만 계산된다. Mask target은 ROI와 GT mask 간의 교차점이다. 
+
+이미지는 크기가 재조정되어 짧은쪽이 800 픽셀이 되도록 했다. 미니 배치 사이즈는 GPU당 2장의 이미지이고 각 이미지는 N개의 ROI를 샘플링한다. 그래서 Positive와 Negative의 비율이 1:3이 되도록 한다. N은 C4 Backbone에서는 64이고 FPN에서는 512이다. 8 GPU로 훈련 시켰다. 160k iteration 동안은 Learning rate 0.02이 훈련 시켰고 120k iteration에서 10배 감소 시켰다. Weight decay 0.0001과 Momentum 0.9를 적용했다. ResNeXt에서는 GPU당 1장의 이미지로 훈련시켰고 같은 Iteration 만큼 훈련시키되 Learning rate는 0.01부터 시작한다. 
+
+RPN은 앵커 박스는 5 Scale과 3 Aspect ratio 옵션이 있다. 편의상 RPN은 의도하지 않는 이상 Mask R-CNN과 특징을 공유하지 않으면서 따로 훈련되었다.  그렇긴 하지만 RPN과 Mask R-CNN은 같은 Backbone을 사용하므로 특징을 공유할 수 있다. 
+
+
+
+#### Inference
+
+테스트 시에 Proposal 숫자는 C4 Backbone의 경우 300, FPN은 1000이다. Box prediction 브랜치에서는 NMS를 수행한다. 그리고 나서 Mask 브랜치가 100개의 가장 높은 Scoring의 Detection box에 적용된다. 이런 과정이 훈련때와는 다르지만 추론 속도를 높이고 정확도를 개선한다(숫자가 더 적지만 더 정확한 ROI 덕분에). Mask 브랜치는 ROI당 K개의 Mask를 예측할 수 있지만 Classification 브랜치에서 예측한 클래스인 k에 대한 k번째 Mask만 사용했다. m x m의 부동 소수점 Mask 출력은 ROI 크기로 재조정되고 0.5의 Threshold로 이진화 된다. Mask R-CNN이 Top 100의 Detection 박스에 대해서 계산하기 때문에 원래의 Faster R-CNN보다 약간의 Overhead(보통 ~20%)가 있다. 
+
+
+
+
+
