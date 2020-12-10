@@ -154,5 +154,75 @@ RPN은 앵커 박스는 5 Scale과 3 Aspect ratio 옵션이 있다. 편의상 RP
 
 
 
+## Experiments: Instance Segmentation
 
+저자들은 COCO 데이터 셋으로 Ablation study를 진행하면서 여러 SOTA 알고리즘과 Mask R-CNN을 비교했다. COCO 평가 지표로 결과를 제시했는데 여기에는 AP50 AP75 AP_S, AP_M, AP_L이 포함되어 있다. 특별히 언급하지 않는 이상 여기서 AP는 Mask IOU를 의미한다. 80k 훈련 이미지와 35k의 검증 셋일부를 합쳐서 훈련 시켰고(trainval135k) Ablation study에서 결과는 남은 검증 셋 5k로 평가했다(minival). 또 test-dev 셋으로도 검증했다. 
+
+
+
+### Main Results
+
+저자들은 아래 Table 1과 같이 Mask R-CNN과 다른 Instance segmentation의 결과를 비교했다. 
+
+![](./Figure/Mask_R-CNN13.JPG)
+
+
+
+![](./Figure/Mask_R-CNN14.JPG)
+
+
+
+![](./Figure/Mask_R-CNN15.JPG)
+
+
+
+![](./Figure/Mask_R-CNN16.JPG)
+
+위의 Figure 6에서는 Mask R-CNN baseline과 FCIS+++의 결과를 비교해서 보여주고 있다. FCIS+++의 경우 인스턴스 끼리 겹치는 영역에서 Systematic artifact가 보인다. 이런 것 때문에 Instance segmentation이 어렵다고 한다. Mask R-CNN의 경우 이런 Artifact가 보이지 않는다. 
+
+
+
+### Ablation Experiments
+
+저자들은 Mask R-CNN에 대해서 Ablation study를 실시했는데 이는 아래 Table 2에 나와 있다.
+
+![](./Figure/Mask_R-CNN17.JPG)
+
+
+
+#### Architecture
+
+Table 2a에서는 다양한 아키텍처에서 구현된 Mask R-CNN의 성능을 보여주는데 깊을 수록 더 좋은 결과가 나왔고(50 vs 101) 더 발전된 형태의 아키텍처에서 성능이 좋았다(FPN, ResNeXt). 
+
+
+
+#### Multinomial vs Independent Masks
+
+저자들은 Classification, Box regression 브랜치에서 나온 결과를 이용해서 Mask 브랜치에서 예측을 수행하는 것의 이점을 확인하기 위해서 Table 2b와 같이 Pixel마다 Softmax와 Multinomial Loss(주로 FCN에서 사용되는 개념)를 적용해서 성능을 비교했다. 이는 Mask prediction과 Class prediction을 합쳐서 수행하는 것인데 총 AP가 5.5 정도 차이가 난다. 이것으로 저자들의 가정이 맞다는 것을 확인할 수 있다. 
+
+
+
+#### Class-Specific vs Class-Agnostic Masks
+
+Mask R-CNN의 구현체는 Class-specific한 Mask를 예측한다. 클래스당  하나의 m x m mask를 예측한다. 저자들이 확인한 결과 Class-specific과 Class-agnostic mask가 거의 성능이 유사했다(agnostic-29.7 vs specific-30.3). 
+
+
+
+#### ROI Align
+
+ROI Align을 적용한 결과는 Table 2c에 나와 있다. 이 실험은 ResNet-50-C4 Backbone으로 수행했다(Stride 16). 결과적으로 ROI Align은 ROI Pool보다 AP가 3 포인트 더 개선되었다(특히 AP75). ROI Align에 Max 혹은 Average pool 여부는 중요하지 않기 때문에 저자들은 Average pool을 적용했다고 하다.  
+
+추가적으로 MNC에서 제안한 ROI Warp를 적용해서도 성능을 비교했다. 앞서 언급한 것처럼 ROI Warp에서도 여전히 Quantization을 적용하기 때문에 입력에 대한 Alignment 상태가 깨지게 된다. Table 2c에서 보는 것처럼 ROI Warp는 ROI Pool과 비슷하며 ROI Align보다 성능이 못하다. 저자들이 말하기 핵심은 적절한 Alignment라고 한다. 
+
+그리고 저자들은 ROI Align을 ResNet-50-c5 Backbone에 적용한 결과를 비교했다(Stride가 16에서 32로 커짐). Figure 4의  오른쪽과 같은 Head를 사용했는데 이는 res5 Head를 이용할 수 없기 때문이다. Table 2d를 보면 ROI Align이 Mask AP를 많이 개선한 것을 볼 수 있다(특히 Mask AP75). 주목할 점은 Stride-32 C5 Feature가 Stride-16 c4 Feature보다 더 정확하다는 점이다. 
+
+마지막으로 FPN에서 ROI Align은 1.5 Mask AP, 0.5 Box AP만큼 개선시켰다.  결론은 Detection과 같이 Finer alignment가 필요한 상황에서는 ROI Align이 좋다는 것이다. 
+
+![](./Figure/Mask_R-CNN19.JPG)
+
+
+
+#### Mask Branch
+
+Segmentation은 Pixel-to-Pixel task이기 때문에 저자들은 FCN을 사용해서 Mask의 Spatial layout을  활용했다.  Table 2e에서는 ResNet-50-FPN Backbone에 Multi-layer perceptron과 Fully convolutional Network를 적용했을때 결과를 나타낸다. FCN이 MLP보다 Mask AP가 2.1 더 높다. 
 
