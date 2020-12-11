@@ -226,3 +226,37 @@ ROI Align을 적용한 결과는 Table 2c에 나와 있다. 이 실험은 ResNet
 
 Segmentation은 Pixel-to-Pixel task이기 때문에 저자들은 FCN을 사용해서 Mask의 Spatial layout을  활용했다.  Table 2e에서는 ResNet-50-FPN Backbone에 Multi-layer perceptron과 Fully convolutional Network를 적용했을때 결과를 나타낸다. FCN이 MLP보다 Mask AP가 2.1 더 높다. 
 
+
+
+### Bounding Box Detection Results
+
+![](./Figure/Mask_R-CNN20.JPG)
+
+저자들은 Table 3와 같이 Mask R-CNN과 당시 SOTA 알고리즘들을 COCO Bounding box object detection으로 비교했다. 이 경우에 훈련은 Mask 브랜치까지 훈련되었더라도 추론 시에 Mask 브랜치의 출력은 무시했다. 
+
+Table 3의 Faster R-CNN, ROI Align이라고 되어 있는 모델은 Mask 브랜치 없이 훈련시킨 Mask R-CNN이다(ROI Pool 대신 ROI Align을 적용한 Faster R-CNN 모델). 이 모델은 Mask R-CNN 모델의 결과와 0.9포인트 나는데 이로서 알 수 있는 점은 Multi-task 훈련으로 이만큼 성능이 더 개선될 수 있다는 점이다. 
+
+Mask R-CNN 모델에서 Mask 브랜치와 Box regression 브랜치의 AP는 크게 차이 나지 않는다(Table 1의 Mask는 37.1, Table 3의 Box는 39.8로 2.7 포인트 차이).
+
+
+
+### Timing
+
+#### Inference
+
+저자들은 Faster R-CNN에서의 4-step 훈련 방식을 따라서 RPN과 Mask R-CNN 사이에 Base network에서 추출된 특징을 공유하는 ResNet-101-FPN 모델을 훈련시킨 바 있다. Nvidia Tesla M40 GPU에서 이미지 한 장을 처리하는데 195ms가 걸린다(CPU로 출력결과를 원래 입력 Resolution으로 복구하는데 15ms가 더 걸린다). 그러면서 RPN과 Mask R-CNN 사이에 특징을 공유하지 않는 버전과 통계적으로 같은 Mask AP를 보인다. Figure 4의 왼쪽과 같이 ResNet-101-C4 방식으로도 수행해봤는데 ~400ms가 걸린다. 
+
+
+
+#### Training
+
+ResNet-50-FPN 모델을 COCO trainval135k 데이터셋으로 훈련시킬때 동기화된 8-GPU로는 32시간이 걸린다(미니 배치 사이즈 16당 0.72s가 걸리는 셈). 그리고 ResNet-101-FPN으로는 44시간이 걸린다. 
+
+
+
+## Mask R-CNN for Human Pose Estimation
+
+본문 참조
+
+
+
