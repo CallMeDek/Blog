@@ -118,5 +118,59 @@ TCB에서는 arm에 있는 Feature들을 ODM의 구조에 맞게 변경하는 �
 
 
 
+## Training and Inference
 
+### Data Augmentation
+
+저자들은 원본 이미지를 임의로 확장시키거나 크롭하는 기법을 적용했고 아래에서 소개된 Random photometric distortion을 적용했다.
+
+- A. G. Howard. Some improvements on deep convolutional neural network based image classification. CoRR, abs/1312.5402, 2013
+
+또 훈련 샘플들을 Flipping 해서 새로운 이미지를 만들기도 했다. 
+
+
+
+### Backbone Network
+
+ILSVRC CLS-LOC 데이터셋으로 미리 훈련시킨 VGG-16, ResNet-101 네트워크를 Backbone 네트워크로 사용했다. DeepLab-LargeFOV와 유사하게 VGG-16의 fc6, fc7을, 파라미터 Subsampling을 통해서 conv_fc6, conv_fc7으로 변경했다. conv4_3과 conv_5_3이 다른 계층과 비교해서 Feature scale이 다르기 때문에 L2 normalization으로 feature norm을 scale했다. 그리고나서 scale을 역전파 동안 학습한다. 그러면서 High-level information을 Capture하고 다양한 크기에서 Object detection을 수행하기 위해서 두 개의 Convolution 계층(conv6_1, conv6_2)을 Truncated VGG-16의 끝 부분에 더했다. Truncated ResNet-101의 끝에는 Residual block(res6)을 더했다. 
+
+
+
+### Anchors Design and Matching
+
+다양한 크기의 Object를 다루기 위해서, 각기 다른 크기의 Anchor와 관련 있는, VGG-16, ResNet101의 Stride 8, 16, 32, 64 픽셀, 네 개의 Feature layer를 선택했다. 각 계층은 특정 Scale과 3개의 종횡비(예를 들어 0.5, 1.0, 2.0)의 Anchor를 담당했다.  훈련 시에는 Jaccard overlap에 근거해서 Anchor와 GT box를 매칭했고 그에 따라 End-to-End 방식으로 학습시켰다. 구체적으로 각 GT 박스와 가장 Overlap이 높은 Anchor를 매칭하고 나서 각 Anchor 박스 중에서 GT box와 Overlap이 0.5 이상이면 그 Anchor에 해당 GT box를 매칭시켰다. 
+
+
+
+### Hard Negative Mining
+
+Anchor 박스를 매칭하는 단계 후에, ARM 모듈에서 Easy negative anchor들이 걸려져도 ODM에서의 대부분의 Anchor들은 Negative이다. SSD에서와 같이 저자들은 이런 클래스 불균형 문제를 경감시키고자 Hard negative mining을 적용했다.  그래서 Loss value가 높은 순서대로 정렬해서 Positive와 Negative의 비가 1:3이 되도록 Negative example을 뽑았다. 
+
+
+
+### Loss Function
+
+RefineDet에서 Loss는 두 부분으로 나눠진다. ARM에서는 각 Anchor에 Binary class label(객체인지 아닌지)를 할당하고 위치와 크기를 동시에 Regression 한다. 그러고 나서 Negative confidence score가 Threshold보다 작은 Refined된 Anchor들을 ODM으로 보내 Detection을 수행한다. Loss function은 아래와 같이 정의한다. 
+
+![](./Figure/Single-Shot_Refinement_Neural_Network_for_Object_Detection3.JPG)
+
+i는 Mini-batch에서 Anchor의 Index이고 l^*_i는 Anchor i의 GT class label이다. g^\*\_i는 Anchore i의 GT box의 Location과 크기이다.  p_i와 x_i는 ARM에서 Anchor i가 객체일 확률과 Refined된 좌표이다. c_i, t_i는 ODM에서 바운딩 박스의 좌표와 객체일 확률이다. N_arm과 N_ODM은 ARM과 ODM에서 Positive anchor의 숫자이다. L_b는 Binary classification loss로 객체인지 아닌지에 대한 Cross-entropy/log loss이다. L_m은 Multi-class classification loss로 여러 클래스에 대한 Softmax loss이다. Faster R-CNN에서와 같이 L_r에서는 Smooth L1를 사용했다. [l^\*\_i >= 1]는 Anchor가 Negative가 아닐때 1보다 크거나 같고 Negative이면 0이다. 그렇기 때문에 [l^\*\_i >= 1]L\_r은 Anchor가 Negative일때 Regression loss를 무시한다는 뜻이다. 마냑에 N_arm = 0이라면 다음이 성립한다. 
+
+![](./Figure/Single-Shot_Refinement_Neural_Network_for_Object_Detection4.JPG)
+
+N_odm = 0이라면 다음이 성립한다. 
+
+![](./Figure/Single-Shot_Refinement_Neural_Network_for_Object_Detection5.JPG)
+
+
+
+### Optimization
+
+저자들은 RefineDet-VGG16에서는 conv6_1, conv_6_2의 두 개의 컨볼루션 계층을 추가할때 xavier method로 파라미터를 랜덤으로 초기화 했고 RefineDet-ResNet101에서는 res6의 Residual block을 추가할 떄는 평균 0, 표준 편차 0.01의 가우시안 분포를 따르는 랜덤 값으로 파라미터를 초기화 했다. Default 배치 사이즈는 32로 설정했고 전체 네트워크는 0.9 momentum, 0.0005 weight decay의 SGD으로 Fine-tuning했다. 초기 Learning rate는 10^-3으로 설정했다. 
+
+
+
+### Inference
+
+추론 시에는 ARM이 먼저 Negative confidence score가 Threshold보다 높은 Anchor를 필터링한다. 그리고 나서 남아있는 Anchor들의 크기와 위치를 조정한다. 그런 다음 ODM은 조정된 Anchor를 바아서 이미지당 400개의 높은 Confident detection을 출력한다. 마지막으로 클래스당 0.45을 jaccard overlap의 NMS을 수행해서  Top 200개의 High confident detection을 탐지 결과로 출력한다. 
 
