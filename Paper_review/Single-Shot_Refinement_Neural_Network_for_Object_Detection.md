@@ -174,3 +174,80 @@ N_odm = 0이라면 다음이 성립한다.
 
 추론 시에는 ARM이 먼저 Negative confidence score가 Threshold보다 높은 Anchor를 필터링한다. 그리고 나서 남아있는 Anchor들의 크기와 위치를 조정한다. 그런 다음 ODM은 조정된 Anchor를 바아서 이미지당 400개의 높은 Confident detection을 출력한다. 마지막으로 클래스당 0.45을 jaccard overlap의 NMS을 수행해서  Top 200개의 High confident detection을 탐지 결과로 출력한다. 
 
+
+
+## Experiments
+
+실험은 PSCAL 2007, 2012, VOC2012, MS COCO 데이터셋으로 수행했다. PASCAL VOC, MS COCO 데이터셋은 각각 20, 80개의 클래스를 포함한다. PASCAL VOC는 MS COCO 데이터셋의 부분집합이다. 
+
+[sfzhang15 - RefineDet](https://github.com/sfzhang15/RefineDet)
+
+
+
+![](./Figure/Single-Shot_Refinement_Neural_Network_for_Object_Detection6.JPG)
+
+### PASCAL VOC 2007
+
+모든 모델은 VOC 2007과 VOC 2012의 trainval 데이터 셋으로 훈련되었고 VOC 2007 test셋으로 테스트 되었다. 첫 80k iteration 동안은 Learning rate를 10^-3으로 했고 남은 20k iteration 마다 10^-1씩 Decay 했다. Default 훈련 배치 사이즈는 32이다. PASCAL VOC 데이터 셋(VOC 2007 + 2012 포함)으로 수행한 모든 실험에서는 VGG-16만 Backbone으로 사용했다. 
+
+RefineDet과  당시 SOTA 알고리즘의 비교 결과는 Table1에 나와 있다. 입력 데이터의 크기는 탐지 정확도에 상당한 영향을 끼친다. 그 이유는 High resolution이 작은 물체를 탐지하는데 큰 도움이 되기 때문이다. 
+
+
+
+#### Run Time Performance
+
+Table 1의 5번째 열의 속도는 배치 사이즈 1의, NVIDIA Titan X, CUDA 8.0, cuDNN v6에서 평가된 것이다. 
+
+
+
+#### Ablation Study
+
+저자들은 RefineDet의 각 요소의 중요도를 알아보기 위해서 네 가지 버전의 RefineDet을 만들었고 VOC 2007에서 성능 테스트를 했다. 
+
+![](./Figure/Single-Shot_Refinement_Neural_Network_for_Object_Detection7.JPG)
+
+네 가지 변형 모델 모두 같은 하이퍼 파라미터 셋팅을 적용했고 입력 크기도 320 x 320으로 동일하게 했다. VOC 2007 + 2012의 Trainval 세트로 훈련시켰고 2007 Test 세트로 테스트했다. 
+
+
+
+##### Negative Anchor Filtering
+
+Negative anchor filtering의 효율성을 알아보기 위해서 Confidence threshold θ를 설정해서 훈련과 테스트 간에 모든 조정된 Anchor들이 ODM으로 들어갈 수 있도록 했다. Negative anchor filtering을 제거하면 Table 3과 같이 0.5 mAP가 하락한다. Negative Anchor filtering은 Easy negative sample을 제거해서 클래스 불균형 문제를 어느정도 해소한다. 
+
+
+
+##### Two-Step Cascaded Regression
+
+ARM에서 조정한 Anchor 대신에 직접적으로 ODM에서 Anchor를 사용하는 방식에서는 mAP 2.2 감소했다. 
+
+
+
+##### Transfer Connection Block
+
+TCB의 효율성을 알아보기 위해서 RefineDet에서 TCB 부분을 없애고, SSD와 같이 ARM이 직접 Multi-class detection을 수행했을때는 mAP가 1.1 감소했다.  저자들이 파악한 이유는 ARM에서 변별력 있는 특징과 Large-scale context information을 통합하여 이용 가능하게 하는 것이 TCB 덕분이라는 것이다. 
+
+
+
+### PASCAL VOC 2012
+
+![](./Figure/Single-Shot_Refinement_Neural_Network_for_Object_Detection8.JPG)
+
+
+
+### PASCAL VOC Object detection
+
+![](./Figure/Single-Shot_Refinement_Neural_Network_for_Object_Detection11.JPG)
+
+
+
+### MS COCO
+
+![](./Figure/Single-Shot_Refinement_Neural_Network_for_Object_Detection9.JPG)
+
+![](./Figure/Single-Shot_Refinement_Neural_Network_for_Object_Detection10.JPG)
+
+
+
+## Conclusions
+
+저자들은 RefineDet이라고 하는 Single-shot refinement neural network 기반의 Detector를 제시했다. 이 Detector는 ARM과 ODM이라고 하는 상호 연결된 두 개의 모듈로 구성되어 있다. ARM에서는 Easy negative anchor를 필터링하여 Search space를 줄이고 Classifier를 위해 Anchor의 크기와 위치를 조정하는 역할을 한다. ODM에서는 ARM에서 Refined anchor를 받아서 Detection을 수행한다. 이때 TCB로 ARM에서의 변별력 있는 특징들과 High-level context information을 결합하여 ODM의 각 스테이지 계층의 파라미터를 초기화 한다. 전체 네트워크는 End-to-End의 Multi-task loss로 훈련된다. 
