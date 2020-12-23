@@ -28,3 +28,92 @@ CenterNet으로 매우 빠른 작업을 수행할 수 있다고 한다.
 
 [xingyizhou - CenterNet](https://github.com/xingyizhou/CenterNet)
 
+
+
+## Related work
+
+### Object detection by region classification 
+
+RCNN 계열의 알고리즘들은 객체가 들어있을 법한 지역 후보들을의 집합을 만들어서 그 부분에 대해서 Deep network로 Detection을 수행한다. 이런 방법은 느리고 저 차원적인 방법이다. 
+
+
+
+### Object detection with implicit anchors
+
+Faster R-CNN의 미리 정의된 바운딩 박스인 Anchor로 이미지 특징 격자의 각 셀에서 객체가 있거나 없음으로 분류한다. 이때 GT와 IOU > 0.7이면 Foreground, < 0.3 이면 Background로 분류한다. 각 Region proposal에 대해서는 후에 다시 한번 Multi-class classification을 수행한다. One-stage detector들도 기본적으로 Anchor에 의존한다. 
+
+저자들의 방법은 Anchor 기반의 One-stage 방법과 관련 있다. 중심 좌표는 아래 Figure 3과 같이 하나의 모양이 없는 Anchor로 볼 수 있다. 
+
+![](./Figure/Objects_as_Points3.JPG)
+
+차이점은 첫번째로, CenterNet은 Anchor를 객체의 위치에 따라 할당하지 Box overlap으로 할당하지 않는다. 그러므로 Foreground, Background로 분류하기 위한 Threshold가 필요 없다. 두 번째로, 객체당 하나의 Positive anchor만이 존재한다. 그러므로 NMS를 할 필요가 없다. 단지 Heatmap에서 Peak를 뽑아내고 그 Peak를 중심으로 각 Task에 필요한 Property를 계산해낸다. 세 번째로 다른 Object detector들보다 Resolution(예를 들어 Stride 16)이 더 크다(Stride 4). 이런 점은 여러 모양의 Anchor로 조사할 필요를 없앤다. 
+
+
+
+### Object detection by keypoint estimation
+
+Object detection에 keypoint estimation을 사용한 사례는 아래와 같다. 
+
+- H. Law and J. Deng. Cornernet: Detecting objects as paired keypoints. In ECCV, 2018.
+
+  ![](./Figure/Objects_as_Points4.JPG)
+
+CornerNet에서는 두 바운딩 박스 코너를 Keypoint로서 탐지한다.
+
+- X. Zhou, J. Zhuo, and P. Krahenb ¨ uhl. Bottom-up object detection by grouping extreme and center points. In CVPR, 2019.
+
+  ![](./Figure/Objects_as_Points5.JPG)
+
+ExtremeNet에서는 Top, Left, Bottom, Right의 가장 바깥쪽 부분과 중심 점을 탐지한다.
+
+[Jiyang Kang - PR-241: Objects as Points](https://www.youtube.com/watch?v=mDdpwe2xsT4)
+
+
+
+두 방법 모두 Robust keypoint estimation network를 구축하기는 하나, CenterNet과 차이가 있다면 위의 두 방법은 Keypoint detection 후에 각 점을 그룹핑 하는 단계가 있다는 것이다. 이 단계로 속도가 느려진다. CenterNet에는 단순히 객체 당 중심 좌표 하나만을 추출하므로 그룹핑이나 후속 처리 과정이 필요 없다. 
+
+
+
+### Monocular 3D object detection
+
+- Deep3DBox는 R-CNN 스타일의 프레임워크인데 먼저 2D로 객체를 탐지하고 탐지한 객체를 3D estimation 네트워크로 입력한다. 
+- 3D RCNN은 Faster R-CNN 다음에 3D project을 수행하는 head를 더 추가한다. 
+- Deep Manta는 다양한 Task를 수행할 수 있도록 훈련되 coarse-to-fine Faster R-CNN을 사용한다. 
+
+저자들이 제안하는 방법은 Deep3DBox나 3DRCNN과 유사하다. 
+
+
+
+## Preliminary
+
+![](./Figure/Objects_as_Points6.JPG)
+
+[Jiyang Kang - PR-241: Objects as Points](https://www.youtube.com/watch?v=mDdpwe2xsT4)
+
+예측 결과인 Keypoint heatmap의 차원이 W/R x H/R x C인 이유는 Stride가 R이기 때문에 R에 한번 Window를 옮겨서 연산을 수행하기 때문이다. 이를 C만큼 수행하는데 예를 들어서 Human pose estimation에서 Human joints를 위해서 C=17이고 Object detection에서 Object category를 위해서 C=80이다. 
+
+![](./Figure/Objects_as_Points8.JPG)
+
+저자들은 입력 이미지를 넣어서 Keypoint heatmap을 예측해 내기 위해서 Fully-convolutional encoder-decoder network를 사용한다. 이때 네트워크는 Hourglass network, ResNet, DLA를 사용한다. 
+
+![](./Figure/Objects_as_Points7.JPG)
+
+저자들은 keypoint prediction network를 훈련 시킬때 다음의 연구를 따른다. 
+
+- H. Law and J. Deng. Cornernet: Detecting objects as paired keypoints. In ECCV, 2018.
+
+2차원에 해당하는 클래스 c의 각 GT Keypoint p에 대해서 컨볼루션 연산 등을 통해서 floor value of p / R을 구한다. 그런 다음 아래와 같은 Gaussian kernel Y_xyc를 사용해서 Heatmap에 모든 GT Keypoint를 블러링한다. 이렇게 하는 이유는 만약에 딱 점이 한 개라면 Loss가 커서 제대로 학습이 되지 않기 때문이다. 
+
+![](./Figure/Objects_as_Points9.JPG)
+
+σ_p는 Object size-adaptive standard deviation이다.  만약에 두 가우시안 커널이 같은 클래스에 겹칠 경우에 Element-wise maximum 연산을 수행한다. 
+
+![](./Figure/Objects_as_Points10.JPG)
+
+α, β는 Focal loss에서의 하이퍼 파라미터이다. N은 이미지 I에 있는 Keypoint의 갯수인데 N으로 정규화해서 모든 Positive focal loss instance가 1이 되도록 한다. 저자들은 모든 실험에서 α = 2,  β = 4로 설정했다. Output stride에 의해서 발생하는 Discretization 오류(Stride를 4로 했는데 꼭 Resolution이 4로 나눠 떨어지라는 보장이 없다)를 상쇄하기 위해서 저자들은 추가적으로 다음과 같이 각 중심점 마다 Local offset을 예측한다. 
+
+![](./Figure/Objects_as_Points11.JPG)
+
+모든 클래스는 같은 Offset prediction 값을 공유한다. 이 Offset은 다음과 같은 L1 loss로 훈련시킨다. 
+
+![](./Figure/Objects_as_Points12.JPG)
