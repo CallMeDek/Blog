@@ -117,3 +117,57 @@ ExtremeNet에서는 Top, Left, Bottom, Right의 가장 바깥쪽 부분과 중�
 모든 클래스는 같은 Offset prediction 값을 공유한다. 이 Offset은 다음과 같은 L1 loss로 훈련시킨다. 
 
 ![](./Figure/Objects_as_Points12.JPG)
+
+
+
+## Objects as Points
+
+![](./Figure/Objects_as_Points13.jpg)
+
+위에서 Pk는 중심 좌표로서 아래와 같다.
+
+![](./Figure/Objects_as_Points14.jpg)
+
+앞서 Y_hat으로 중심좌표를 예측한 일과 더불어 수행해야 할 작업은 Object size를 구하는 일이다. 위에서 Size에 대한 Loss를 구할 때 예측된 Object size의 차원은 다음과 같다. 
+
+![](./Figure/Objects_as_Points15.jpg)
+
+Scale에 대한 정규화는 수행하지 않았고 Raw pixel coordinate를 직접적으로 사용하지 않았다고 한다. 전체적인 훈련 목표는 다음의 Loss를 최대한 줄이는 것이다. 
+
+![](./Figure/Objects_as_Points16.jpg)
+
+저자들은 Size loss에 대한 비중을 0.1로 두었고 Offset loss에 대한 비중을 1로 두었다. 결국 단일 네트워크로 Keypoints Y_hat, Offset O_hat, Size S_hat을 구하게 된다. 
+
+![](./Figure/Objects_as_Points17.jpg)
+
+네트워크는 각 위치마다 총 C + 4 출력 크기만큼의 값을 예측하게 된다. Backbone 네트워크는 Fully-convolutional network이고 모든 Task의 서브 브랜치가 공유한다. 각 브랜치의 입력으로 들어가기 전에 Backbone에서 추출된 특징들은 3 x 3 컨볼루션 + ReLU + 1 X 1 컨볼루션 계층을 통과 한다. 
+
+![](./Figure/Objects_as_Points18.jpg)
+
+![](./Figure/Objects_as_Points20.jpg)
+
+
+
+#### From points to bounding boxes
+
+추론 시에는 먼저 각 카테고리별 Heatmap에서 Peak들을 뽑아낸다. 그리고 각 Peak의 8방향으로 인접해 있는 값과 크거나 같은 모든 범위를 찾아내어 Top 100 peak만 남기고 모두 지운다. 
+
+![](./Figure/Objects_as_Points21.jpg)
+
+이것은 3x3 maxpooling으로 한 번에 수행 가능하고, NMS를 수행하는 것과 같은 효과를 낸다. 
+
+![](./Figure/Objects_as_Points22.jpg)
+
+그렇게 구한 좌표들로 바운딩 박스를 만들어 내는데 Offset과 Size loss로 최적화 한다. 
+
+
+
+### 3D detection
+
+본문 참조
+
+
+
+### Human pose estimation
+
+본문 참조
