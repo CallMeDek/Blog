@@ -171,3 +171,108 @@ Scale에 대한 정규화는 수행하지 않았고 Raw pixel coordinate를 직�
 ### Human pose estimation
 
 본문 참조
+
+
+
+## Implementation details
+
+![](./Figure/Objects_as_Points23.JPG)
+
+저자들은 ResNet-18, 101, DLA-34, Hourglass-104 아키텍처를 사용했다. ResNet 아키텍처들과 DLA-34 아키텍처는 Deformable convolution 계층을 사용했고 Hourglass network는 그대로 사용했다. 
+
+![](./Figure/Objects_as_Points24.JPG)
+
+Deformable convolution은 Convolution의 Receptive field가 고정되어 있는 것과 달리 Receptive field의 각 영역이 Offset으로 표현되어 학습이 가능하다. 이렇게 되면 근처에 있는 픽셀들끼리 살펴보는 것이 아니라 좀 더 유기적으로 먼 곳에 있는 픽셀들을 볼 수 있다(Astro 알고리즘과, 좀 더 멀리 있는 픽셀을 본 다는 점에서 유사한 면이 있지만 Astro 알고리즘과 달리 보는 픽셀 영역이 학습되기 때문에 정형화 되지 않을 수 있다는 차이가 있다). 
+
+
+
+### Hourglass
+
+![](./Figure/Objects_as_Points25.JPG)
+
+Hourglass network는 입력 대비 4의 배수씩 Downsample을 하는데 두 개의 연속적인 Hourglass module이 붙는다. Hourglass module은 대칭 구조의, 5개의 Down과 Up convolution을 수행하고 각각이 Skip connection으로 연결되어 있다. Heatmap의 Peak의 경우 크기가 매우 작기 때문에 정확한 위치를 찾는 것이 중요한데 이때문에 Large context information에 Skip connection으로 정확한 위치 정보를 포함하고 있는 Finer information을 더한다. 위의 각 상자의 경우 ResNet의 Residual connection으로 구축되어 있다. 
+
+
+
+### ResNet
+
+![](./Figure/Objects_as_Points26.JPG)
+
+ResNet의 경우 위와 같이 Downsampling을 하고 나서 Up convolution으로 원래 입력 크기까지 맞춰준다. 이때 Deformable convolution을 적용한다. Up convolution에서 커널의 가중치 값들은 Bilinear interpolation으로 초기화 했다. 
+
+
+
+### DLA
+
+![](./Figure/Objects_as_Points27.JPG)
+
+Deep layer aggregation은 위와 같이 Hierarchical skip connection으로 구축한 네트워크이다. 저자들은 원래의, Iterative DLA의 용량을 증가시키고 Deformable convolution으로 Skip connection을 구현해서 변형시켰다. 
+
+
+
+### Training
+
+훈련 설정은 본문 참조.
+
+
+
+### Inference
+
+추론 설정은 본문 참조.
+
+
+
+## Experiments
+
+저자들은 Object detection을 MS COCO 데이터 셋에서 검증했다. 성능은 COCO의 AP 형식으로 구했다. 
+
+
+
+### Object detection
+
+![](./Figure/Objects_as_Points28.JPG)
+
+위의 결과는 CornerNet(40.6% AP, 4.1 FPS)나 ExtreamNet(40.3% AP, 3.1 FPS) 비교해봤을때 속도와 정확도면에서 더 좋은데 속도가 더 빠른 것은 더 적은 Output head과 단순한 Box decoding scheme때문이다. 더 좋은 정확도는 중심 좌표가 corner나 extreme 좌표보다 탐지하기 더 쉽기 때문이다. 또 저자들이 주장하길 RetinaNet + ResNet-101보다 본인들의 방법이 더 성능이 좋다고 한다. 
+
+- CenterNet 34.8% AP, 45 FPS (Input 512x512), RetinaNet 34.4% AP, 18 FPS (Input 500x500)
+
+또 DLA-34 아키텍처를 사용한 CenterNet이 YOLOv3, Faster R-CNN-FPN보다 더 낫다고 주장했다. 
+
+
+
+#### State-of-the-art comparison
+
+![](./Figure/Objects_as_Points29.JPG)
+
+
+
+### Additional experiments
+
+만약에 두 물체가 완벽하게 겹쳐 있는 경우에는 한 가지 물체만 탐지하게 될 것이다. 저자들은 실제로 이런 경우가 얼마나 일어나는지 실험을 통해 알아보고 다른 방법들은 어떻게 이를 다루는지 알아봤다고 한다. 
+
+![](./Figure/Objects_as_Points30.JPG)
+
+
+
+#### Center point collision
+
+COCO 데이터 셋에서는 입력 데이터 대비 Stride가 4 줄어든 Feature map에서 중심점이 겹치는 객체가 614쌍이 있다. 총 860001의 객체가 있을때 CenterNet은 0.1%의 객체를 예측할 수 없게 된다. RCNN과 비교했을때(2%) 훨씬 적은 숫자라고 할 수 있다. 그리고 Anchor 기반의 방법들보다도 더 적다(20.0% Faster R-CNN with 15 anchors at 0.5 IOU threshold). 715쌍의 객체의 IOU > 0.7이고 두개의 Anchor에 할당되게 되므로 Center-based 할당방법이 더 적은 충돌을 일으킨다. 
+
+
+
+#### NMS
+
+IOU 기반의 NMS가 CenterNet에 필요 없다는 것을 확인하기 위해서 저자들은 NMS를 후 처리 단계로 CenterNet의 예측 결과에 적용해봤다. DLA-34의 경우는 39.2에서 39.7%로 AP가 개선되었지만 Houglass-104의 경우 42.2% 그대로였다. 
+
+
+
+#### Training and Testing resolution
+
+훈련시에는 Input resolution을 512로 고정했다. 테스트시에는 CornerNet과 같이 원본 입력 Resolution은 유지하고 네트워크의 Maximum stride만큼 Zero-pad를 적용했다. ResNet과 DLA는 32 픽셀을 입력 이미지의 패딩으로, HourglassNet에는 128픽셀을 입력이미지의 패딩으로 적용했다. Table 3a 결과가 나와 있다. 
+
+
+
+#### Regression loss
+
+저자들은 Size regression을 위한 Loss에서 Vanilla l1 loss와 Smooth l1 loss를 적용했을때를 비교했다. Table 3c에 결과가 나와있다. 
+
