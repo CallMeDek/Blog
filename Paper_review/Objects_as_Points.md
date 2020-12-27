@@ -276,3 +276,64 @@ IOU 기반의 NMS가 CenterNet에 필요 없다는 것을 확인하기 위해서
 
 저자들은 Size regression을 위한 Loss에서 Vanilla l1 loss와 Smooth l1 loss를 적용했을때를 비교했다. Table 3c에 결과가 나와있다. 
 
+
+
+#### Bounding box size weight
+
+저자들은 Size loss의 영향력에 대한 실험을 수행했다. Table 3b에 결과가 나와 있다. 
+
+
+
+#### Training schedule
+
+훈련 시간과 관련된 실험 결과는 Table 3d에 나와 있다. 
+
+
+
+### 3D detection
+
+![](./Figure/Objects_as_Points31.JPG)
+
+자세한 사항은 본문 참조
+
+
+
+### Pose estimation
+
+![](./Figure/Objects_as_Points32.JPG)
+
+자세한 사항은 본문 참조
+
+
+
+![](./Figure/Objects_as_Points33.JPG)
+
+
+
+## Conclusion
+
+저자들은 이미지 내 객체를 점으로 보고 탐지를 수행하는 견해를 제시했다. 저자들이 제안한 CenterNet object detector는 Keypoint estimation 방식의 네트워크이다. 그래서 객체의 중심 좌표를 찾고 그들의 크기를 예측해낸다. 알고리즘으로 End-to-End의 미분가능한 방식으로 훈련이 가능하고  NMS같은 후속 처리도 필요 없어졌다. 또 CenterNet은 Pose estimation, 3D orientation 등을 한 번의 순전파로 수행할 수 있다.
+
+
+
+## Appendix B: 3D BBox Estimation Details
+
+본문 참조
+
+
+
+## Appendix C: Collision Experiment Details
+
+본문 참조
+
+
+
+## Appendix D: Experiments on PascalVOC
+
+본문 참조
+
+
+
+## Appendix E: Error Analysis
+
+본문 참조
