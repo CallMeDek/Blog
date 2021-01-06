@@ -84,3 +84,58 @@ Point Linking Network는 Anchor 박스 없이 Detection을 수행하는 One-stag
 
 저자들은 Hourglass 아키텍처를 상당히 개조했고 Focal loss를 저자들의 목적에 맞게 변경했다. 
 
+
+
+## CornerNet
+
+### Overview
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints10.JPG)
+
+전체적인 네트워크 구조는 위와 같다. Hourglass network에서 추출한 Feature로 Top-left corner와 관련된 작업을 수행하는 브랜치와 Bottom-right corner와 관련된 작업을 수행하는 브랜치 2개가 존재한다. Heatmap은 각 Corner의 위치를 파악하는데 쓰이고 Embedding vector는 같은 객체의 Corner끼리의 Vector의 Distance를 줄여서 같이 그룹핑 될 수 있도록하는데 쓰인다. Offset은 좀 더 객체의 GT에 잘 맞는 박스를 예측해내기 위해서 각 Corner의 위치를 조정하는데 쓰인다. 각 요소를 생산해낸 후 박스를 만드는 후처리 작업을 수행한다. 또 각 브랜치에는 Backbone에서 추출한 Feature들을 갈무리하고 정확한 박스를 만들어 내는 작업을 하는 Corner pooling module이 있다. 저자들이 말하길 다른 Detection 알고리즘처럼 각기 다른 크기의 객체를 탐지하기 위해서 다른 크기의 Feature들을 사용하지 않았다고 한다. 
+
+
+
+### Detecting Corners
+
+각 Corner별 Heatmap의 크기는 HxWxC이다. 여기서 C는 카테고리 수이므로 카테고리마다 Heatmap을 만들어낸다는 것을 알 수 있다. Background 카테고리는 없다. 각 Channel은 해당 클래스에 해당하는 Corner들의 위치를 나타내는 Binary mask이다. 
+
+각 Corner에는 하나의 GT Positive location이 있고 나머지 location은 다  Negative이다. 모델을 훈련시킬 때 저자들은 모든 Negative에 동일하게 Penalty를 주는 대신에 Positive location의 특정 반경에 있는 위치들에 대해서는 감소된 Penalty를 부여했다.  왜냐하면 정확히 GT는 아니지만 Positive location의 반경 안에 포함되는 Corner들은 다음 그림 5와 같이 GT에 충분히 들어맞는 박스를 만들어 낼 수 있기 때문이다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints11.JPG)
+
+이때 저자들은 이 반경의 크기를 정할때, 반경 안에 있는 Corner들로 박스를 만들어 냈을때 GT와 적어도 t IOU만큼 겹칠수 있게 하도록(저자들은 t를 0.3으로 정했다.) 반경의 크기를 정했다. 반경에 대해서 Penalty 감소의 정도는 다음과 같은 2D Gaussian 커널에 의해서 정해졌다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints12.JPG)
+
+여기서 중심점은 Positive location이고 σ는 반경의 1/3이다. 
+
+Pcij를 예측된 Heatmap에서 클래스 C에 대한 Location (i, j)에서의 Score로 하고 ycij를 Unnormalized Gaussian 커널에 의해서 증대된 GT Heatmap이라고 했을때 저자들은 다음과 같은, 저자들의 연구에 맞는 Focal loss를 고안해 낼 수 있었다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints13.JPG)
+
+N은 이미지 내의 객체의 숫자이고 α, β는 Focal loss의 하이퍼파라미터이다(각 Sample이 Loss에 기여하는 정도를 결정하는 파라미터. 저자들은 각각 2, 4로 설정했음.). Focal loss에서도 설정했지만 Focal loss에서는 Easy sample의 Loss에 대한 기여를 낮추는 것이 목적이다. ycij = 1로 Positive location일때 Pcij라는 Score가 높을수록(강하게 확신할수록) Loss 값이 낮아진다. ycij=1이 아닐 경우에, ycij가 높다는 것은 GT location에 가깝다는 뜻이므로 이에 대한 Loss 값이 낮아진다. 
+
+다음으로 보통 많은 방법들이 Global information을 얻고 Memory 사용량을 줄이기 위해서 Down sampling을 수행하는데 이렇게 되면 Resolution에서 처음의 이미지와 출력 이미지의 크기가 달라진다. 그러므로 (x, y)에 있던 개체가 Heatmap에서는 다음과 같은 위치로 매핑된다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints14.JPG)
+
+여기서 n은 입력과 출력 사이의 Down sampling factor(입력 대비 출력이 얼마만큼 줄었는지, 다른 논문에서는 Stride로 표현하기도 함.)이다. 이렇게 되면 Small 박스에 대해서는 GT 박스와의 IOU에 큰 영향을 끼칠 수도 있다. 이를 해결하기 위해서 저자들은 Location offset이라는 개념을 도입했다. 이 Offset으로, 박스를 원래의 Resolution으로 재매핑하기 전에 위치를 약간 조정한다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints15.JPG)
+
+Ok는 Offset이고 xk, yk는 Corner k의 x, y 좌표이다. 이 offset은 클래스별 박스에서 각각 따로 구하는 것이 아니고 Top corner들끼리, 또 Bottom corner들끼리 공유한다. 이 Offset에 관한 Loss는 다음과 같이 디자인했다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints16.JPG)
+
+
+
+### Grouping Corners
+
+저자들이 Corner들을 그룹핑하는 방법은 Newell 등이 제안한 방법을 많이 참고했다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints17.JPG)
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints18.JPG)
+
+Lpull은 같은 객체의 Corner들간의 그룹핑을 수행할때 발생하는 Loss이고 Lpush는 다른 객체의 Corner들간의 그룹핑을 수행했을때 발생하는 Loss이다. Lpull에서 ek는 객체 k의 Top-left corner의 Embedding 값과 Bottom-right corner의 Embedding 값의 평균이다. etk는 Top-left corner의 Embedding 값이고 ebk는 Bottom-right corner의 Embedding 값이다. 위의 Newell의 논문과 관련된 그림을 보면 오른쪽 그래프에서 각 점들이 Embedding 값에 따라 일자로 정렬되어 있는 모습을 볼 수 있다. Lpull에서의 목적은 etk, ebk가 최대한 ek와 비슷해져서 Loss를 줄이는 것이다. 이때 모습은 그래프에서와 같이 같은 객체 내의 Point들의 Variance가 크지 않을때의 모습과 유사할 것이다. 반대로 Lpush의 목적은 각기 다른 객체의 Embedding 값의 평균이 커지는 것이다. 그렇게 되면 그래프와 같이 다른 객체 사이의 점들의 거리는 커질 것이다. 저자들은 Δ를 1로 정했다. 
