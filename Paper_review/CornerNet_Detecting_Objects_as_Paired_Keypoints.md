@@ -139,3 +139,31 @@ Ok는 Offset이고 xk, yk는 Corner k의 x, y 좌표이다. 이 offset은 클래
 ![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints18.JPG)
 
 Lpull은 같은 객체의 Corner들간의 그룹핑을 수행할때 발생하는 Loss이고 Lpush는 다른 객체의 Corner들간의 그룹핑을 수행했을때 발생하는 Loss이다. Lpull에서 ek는 객체 k의 Top-left corner의 Embedding 값과 Bottom-right corner의 Embedding 값의 평균이다. etk는 Top-left corner의 Embedding 값이고 ebk는 Bottom-right corner의 Embedding 값이다. 위의 Newell의 논문과 관련된 그림을 보면 오른쪽 그래프에서 각 점들이 Embedding 값에 따라 일자로 정렬되어 있는 모습을 볼 수 있다. Lpull에서의 목적은 etk, ebk가 최대한 ek와 비슷해져서 Loss를 줄이는 것이다. 이때 모습은 그래프에서와 같이 같은 객체 내의 Point들의 Variance가 크지 않을때의 모습과 유사할 것이다. 반대로 Lpush의 목적은 각기 다른 객체의 Embedding 값의 평균이 커지는 것이다. 그렇게 되면 그래프와 같이 다른 객체 사이의 점들의 거리는 커질 것이다. 저자들은 Δ를 1로 정했다. 
+
+
+
+### Corner Pooling
+
+서론에서 언급한대로 Figure 2와 같이 바운딩 박스가 객체 전체를 포함하기 위해서 Top-corner가 객체에서 멀리 떨어져야 하는 경우가 있다. 그래서 Top-corner의 위치가 적절한지 이미지의 오른쪽 끝으로 선을 긋고 이미지의 아래쪽으로 선을 그었을때 객체를 다 포함하는지 확인할 필요가 있다. 이를 위해서 저자들은 Corner pooling 이라는 개념을 고안해냈다.  연산 방법은 아래와 같다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints19.JPG)
+
+연산 수행 결과 예시는 아래와 같다.
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints20.JPG)
+
+이 모듈의 아키텍처는 아래와 같다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints21.JPG)
+
+먼저 Residual block에서 3x3 convolution module를 저자들이 고안한 Corner pooling module로 대체한다(Backbone에서의 Feature를 3x3 컨볼루션 두개로 처리한다(특별히 언급하지 않는 이상 하나의 컨볼루션에는 BN, ReLU 포함.). 채널은 128. 위 그림의 점선 부분 참고).  그리고 나서 3x3 Conv-BN 256 Channel 계층을 통과 시키고 나서 Projection shortcut으로 Feature들을 더한다. ReLU를 통과하고 나서  3X3 Convolution 256 channel 계층을 통과 한 뒤에 3개의 Conv-ReLU-Conv 브랜치를 통과 하고 나면 Heatmap, Embedding, Offset이 생성된다. 
+
+
+
+### Hourglass Network
+
+Hourglass Network는 원래 Human pose estimation Task에서 처음 도입되었다. 하나의 네트워크는 여러개의 Hourglass module로 이루어져 있다. Hourglass module에서는 먼저 일렬로 연결되어 있는 Convolution과 Max pooling 계층으로 입력 이미지 Feature를 Down sampling한다. 그리고 나서 마찬가지로 일렬로 되어 있는 Convolution과 Upsampling 계층으로 Up sampling을 수행한다. Max pooling에서 Detail들이 사라지므로 Skip connection으로 Up sampled Feature에 더해준다. 이렇게 하면 Global, local Feature를 하나의 단일한 네트워크로 캐치할 수 있다. 
+
+CornerNet은 두 개의 Hourglass module로 구성되어 있다. 다만 저자들은 원래의 module을 목적에 맞게 약간 변경했다. Max pooling 계층 대신에 Stride 2의 Convolution을 사용했다. 5배 정도 입력 Feature를 Down sampling하면서 채널 수를 늘린다(256, 384, 384, 384, 512). Up sampling 시에는 2개의 Residual block과 Nearest neighbor upsampling 계층을 사용한다. 모든 Skip connection은 2개의 Residual block로 구성되어 있다. 하나의 Module에는 채널 512의 Residual block이 4개있다. Hourglass module에 Feature를 통과 시키기 전에는 7x7 stride 2 128 channel의 Convolution과 Stride 2 256 channel의 Residual block으로 본래의 Image resolution을 4배 정도 줄인다. 
+
+네트워크 중간의 Feature들로 예측을 수행하는 것은 성능에 도움이 되지 않아서 적용하지 않았다고 한다. 1x1 Conv-BN을 첫 번째 Hourglass module의 입력과 출력에 적용했고 이들을 원소별 덧셈으로 합친 다음 ReLU와 256 Channel의 Residual block에 통과 시킨다. 이렇게 생성된 특징은 두 번째 Hourglass module의 입력을 들어간다. 전체 네트워크의 깊이는 104층이다. 저자들은 맨 마지막 출력 Feature로만 예측을 수행했다고 한다. 
