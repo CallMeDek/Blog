@@ -167,3 +167,29 @@ Hourglass Network는 원래 Human pose estimation Task에서 처음 도입되었
 CornerNet은 두 개의 Hourglass module로 구성되어 있다. 다만 저자들은 원래의 module을 목적에 맞게 약간 변경했다. Max pooling 계층 대신에 Stride 2의 Convolution을 사용했다. 5배 정도 입력 Feature를 Down sampling하면서 채널 수를 늘린다(256, 384, 384, 384, 512). Up sampling 시에는 2개의 Residual block과 Nearest neighbor upsampling 계층을 사용한다. 모든 Skip connection은 2개의 Residual block로 구성되어 있다. 하나의 Module에는 채널 512의 Residual block이 4개있다. Hourglass module에 Feature를 통과 시키기 전에는 7x7 stride 2 128 channel의 Convolution과 Stride 2 256 channel의 Residual block으로 본래의 Image resolution을 4배 정도 줄인다. 
 
 네트워크 중간의 Feature들로 예측을 수행하는 것은 성능에 도움이 되지 않아서 적용하지 않았다고 한다. 1x1 Conv-BN을 첫 번째 Hourglass module의 입력과 출력에 적용했고 이들을 원소별 덧셈으로 합친 다음 ReLU와 256 Channel의 Residual block에 통과 시킨다. 이렇게 생성된 특징은 두 번째 Hourglass module의 입력을 들어간다. 전체 네트워크의 깊이는 104층이다. 저자들은 맨 마지막 출력 Feature로만 예측을 수행했다고 한다. 
+
+
+
+## Experiments
+
+### Training Details
+
+저자들은 모델을 파이토치로 개발했고 특별히 논문에서 언급하지 않은 셋팅들은 파이토치의 기본 세팅을 따랐다고 한다. 그리고 모델은 별도의 데이터로 Pretraining하지 않았다고 한다. 저자들만의 Focal loss를 디자인하면서 Corner heatmap를 출력하는 컨볼루션에서의 편향값 셋팅은 원 저자들의 방법을 따랐다고 한다. 훈련 중의 입력 Resolution은 511x511이고 이는 최종적으로 128x128의 Resolution을 출력해낸다. 과적합성을 줄이기 위해서 여러가지 Data augmentation을 적용했따고 한다. 그리고 입력 이미지에 대해서는 (아마 이미지 용량을 줄이기 위함일듯) PCA를 적용했다고 한다. Adam으로 가중치 최적화를 진행했고 전체 훈련 손실은 다음과 같이 정의한다. 
+
+ ![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints22.JPG)
+
+각 가중치는 Push(카테고리가 다른 Corner끼리 밀어내기 위함.), Pull(같은 객체의 Corner끼리 그룹핑 하기 위함), Offset(입력과 출력간의 Resolution 차이에 의한 바운딩 박스의 위치 에러를 보정하기 위함)이 손실에서 차지하는 비중을 결정한다. 저자들은 Pull, Push의 비중은 0.1 그리고 Offset 관련된 손실의 비중은 1로 설정했다. 저자들은 실험 결과 Pull, Push의 비중을 1보다 크거나 같게 할 경우 성능이 나빠지는 것을 확인했다. 배치 사이즈나 GPU, Learning rate, 학습 시간 등은 본문 참조. 
+
+
+
+### Testing Details
+
+추론 시에는 후처리 작업을 통해서 Heatmap, Embedding, Offset으로부터 바운딩 박스를 만들어 냈다. 먼저 3x3 Max pooling 계층에 Corner heatmap 통과 시켜서 NMS를 수행했다. 그리고 나서 각각 Top 100의 Top-left, Bottom-right의 Corner들만 Heatmap에서 골라낸다. 그리고 Offset으로 각 Corner들의 위치를 조정하고 Top-left, Bottom-right의 Embedding으로 L1 distance를 계산한다. 만약에 Distance가 0.5 이상이거나 각 Corner가 다른 카테고리에 해당할 경우 이 쌍은 제거한다. Top-left와 Bottom-right의 Average score는 Detection score로서 해석한다. 
+
+저자들은 이미지를 고정된 크기로 재조정 하는 것 대신에 원본 이미지의 Resolution을 유지하고 CornerNet에 입력으로 넣기 전에 0으로 패딩을 붙인다. 원본 이미지와 Flipped된 이미지가 테스트 할때 사용된다. 이 데이터셋의 Detection 결과에 대해서 Bodla 등이 고안해낸 Soft-nms를 수행하여 중복된 Detection 결과를 제거한다. 그리고 Top 100의 Detection 결과만 평가한다. Titan X(PASCAL 평가에서 쓰이는) GPU 기준으로 장당 244ms의 시간으로 처리된다. 
+
+
+
+### MS COCO
+
+저자들은 CornerNet을 MS COCO 데이터셋으로 평가했다. 저자들은 Training set과 Validation set에서의 35k 이미지를 모델을 훈련시키는데 쓰고 Validation set에서의 5k 이미지를 하이퍼 파라미터 서치와 Ablation study에서 사용했다. Test set에서 평가한 결과는 MS COCO 평가 서버에 제출되었다. 
