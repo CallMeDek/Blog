@@ -193,3 +193,43 @@ CornerNet은 두 개의 Hourglass module로 구성되어 있다. 다만 저자�
 ### MS COCO
 
 저자들은 CornerNet을 MS COCO 데이터셋으로 평가했다. 저자들은 Training set과 Validation set에서의 35k 이미지를 모델을 훈련시키는데 쓰고 Validation set에서의 5k 이미지를 하이퍼 파라미터 서치와 Ablation study에서 사용했다. Test set에서 평가한 결과는 MS COCO 평가 서버에 제출되었다. 
+
+
+
+### Ablation Study
+
+#### Corner Pooling
+
+Corner pooling이 저자들의 모델에 끼치는 영향을 확인하기 위해서, 같은 크기의 Corner pooling이 없는 대조군과 성능 차이를 확인했다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints23.JPG)
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints24.JPG)
+
+
+
+#### Stability of Corner Pooling over Larger Area
+
+저자들은 Corner pooling 연산 시에 각 이미지의 사분면의 크기가 다를때 Corner들의 위치가 Corner pooling 연산의 안정성에 영향을 끼칠 수 있다고 가정했다. 그래서 실험을 수행했고 저자들이 내린 결론은 Corner pooling 연산이 Corner의 위치에 상관 없이 안정적으로 수행될 수 있도록 한다는 것이다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints25.JPG)
+
+
+
+#### Reducing Penalty to Negative Locations
+
+저자들은 객체의 크기에 따라 결정되는 반경 내의, Positive location 주위의 Negative location들에 대해 Penalty를 줄여봤다.  하나는 Penalty reduction이 없는 네트워크이고 다른 하나는 반경이 2.5로 고정되어 있는 네트워크이다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints26.JPG)
+
+저자들은 Object 크기에 따른 반경의 성능이 더 좋고, Penalty reduction의 효과가 특히 중간 크기 이상의 객체에서 더 좋다는 것을 발견했다. 
+
+
+
+#### Hourglass Network
+
+저자들은 Hourglass Network의 영향력을 알아보기 위해서 Hourglass Network 대신에 ResNet-101의 FPN 네트워크에서 CornerNet을 구현해봤다. 저자들은 FPN의 마지막 출력으로만 예측을 수행했다. 또한 Hourglass Network를 Backbone으로 하는 Anchor 박스 기반의 Detector도 구현해봤다. 이때 Hourglass module은 Up sampling 과정 중의 다양한 크기의 Feature들에서 Anchor box로 예측을 수행했다. Anchor box 디자인은 RetinaNet을 따랐고 Intermediate supervision을 훈련 중에 더했다. 여기서의 실험은 CornerNet에서의 훈련 설정을 적용했고 Network는 Pre training없이 Scratch부터 훈련되었다. 
+
+저자들은 Hourglass Network가 CornetNet의 성능에 중요한 영향을 끼친다는 것을 확인했다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints27.JPG)
