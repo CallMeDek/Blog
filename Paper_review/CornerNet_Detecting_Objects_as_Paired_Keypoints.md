@@ -233,3 +233,39 @@ Corner pooling이 저자들의 모델에 끼치는 영향을 확인하기 위해
 저자들은 Hourglass Network가 CornetNet의 성능에 중요한 영향을 끼친다는 것을 확인했다. 
 
 ![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints27.JPG)
+
+
+
+#### Quality of the Bounding Boxes
+
+CornerNet으로 만들어지는 Bounding box의 질을 알아보기위해서 저자들은 여러 IOU Threshold에서 CornerNet의 성능을 평가했다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints28.JPG)
+
+Table5를 보면 AP 90, 즉 Tight한 Bounding box의 성능은 CornerNet이 제일 좋은 것을 확인할 수 있다. 
+
+
+
+#### Error Analysis
+
+저자들은 Heatmap, Offset, Embedding이 최종 출력의 Error에 어떤 영향을 끼치는지 알아보고자 Error analysis를 수행했다. 이때 예측된 Heatmap, Offset을 GT 값들로 대체하고 검증 셋에서 성능을 평가했다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints29.JPG)
+
+저자들은 성능 상의 Main bottleneck이 Corner를 발견하는 작업임을 확인했다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints30.JPG)
+
+
+
+#### Comparison with state-of-the-art detectors
+
+저자들은 CornerNet을 MS COCO test-dev 셋으로 평가한 결과를 다른 알고리즘들과 비교했다. 
+
+![](./Figure/CornerNet_Detecting_Objects_as_Paired_Keypoints31.JPG)
+
+
+
+## Conclusion
+
+저자들은 Anchor 박스 기반이 아니라 박스의 Top-left, Bottom-right의 코너를 찾아서 위치를 조정하고 박스를 만들어 내는 새로운 방식의 Detection 알고리즘을 제안했다. 
