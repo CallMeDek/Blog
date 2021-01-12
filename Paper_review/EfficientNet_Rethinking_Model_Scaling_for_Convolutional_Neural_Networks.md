@@ -31,3 +31,75 @@ Mingxing Tan, Quoc V. Le(1Google Research, Brain Team, Mountain View, CA)
 ### ConvNet Accuracy
 
 관련 연구 내용은 본문 참조. 
+
+
+
+### ConvNet Efficiency
+
+깊은 Convolution 네트워크는 자주 모델 파라미터수가 비대해진다. 그래서 다음과 같은 Model compression이 Accuracy와 Efficiency를 조절하면서 모델의 크기를 줄이는 보통의 방법이다. 
+
+- Han, S., Mao, H., and Dally, W. J. Deep compression: Compressing deep neural networks with pruning, trained quantization and huffman coding. ICLR, 2016
+- Yang, T.-J., Howard, A., Chen, B., Zhang, X., Go, A., Sze, V., and Adam, H. Netadapt: Platform-aware neural network adaptation for mobile applications. ECCV, 2018.
+
+또 Mobile이 대중화 되면서 이에 맞는 ConvNet들, 예를 들면 SqueezeNets, MobileNets, ShuffleNets 등을 사용하기도 한다. 방금 언급한 네트워크 아키텍처는 실험적으로 모델의 설정이나 구조를 바꿔야 하지만 모바일에 맞는 네트워크 아키텍처를 디자인하기 위해서 Neural architecture search를 하기도 한다. 
+
+- Tan, M., Chen, B., Pang, R., Vasudevan, V., Sandler, M., Howard, A., and Le, Q. V. MnasNet: Platform-aware neural architecture search for mobile. CVPR, 2019.
+
+이런 Search로 네트워크를 극대로 Tuning하면 Hand-crafted mobile ConvNets보다 성능이 더 나아지기도 한다. 그러나 이런 기술을, 디자인할 여지가 많이 남아있는 큰 모델이나 Tuning 비용이 많은 모델에 어떻게 적용할지는 미지수이다. 저자들은 이런 문제를 해결하는데 초점을 둔다. 그러기 위해서 Model scaling에 주목했다. 
+
+
+
+### Model Scaling
+
+ConvNet을 각기 다른 Resource 제약에 따라 Scale 하는 방법은 여러가지가 있다. ResNet에서는 네트워크의 깊이를 줄이거나 늘려서 Scale을 조절한다. WidResNet과 MobileNets은 네트워크 너비를 조절한다. 또 보통 더 큰 Input image size는 좀 더 많은 FLOPS의 Overhead가 있긴 하지만 Accuracy를 높이는데 도움이 되는 것으로 알려져 있다. 저자들의 연구는 이 세 요소를 Scaling 하는 방법에 대해 다룬다. 
+
+
+
+## Compound Model Scaling
+
+### Problem Formulation
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks3.JPG)
+
+여기서 각 Stage의 모든 계층은 같은 구조를 띈다. Figure 2(a)는 <224, 224, 3>의 이미지를 <7, 7, 512>로 출력하는  ConvNet 구조를 보여준다. 보통의 ConvNet은 가장 좋은 계층의 구조 Fi를 찾는데 초점을 둔다면 Model scaling은 네트워크 깊이 Li, 너비 Ci, Resolution (Hi, Wi)를 Fi의 변경 없이 유기적으로 확장하는데 목적을 둔다. 저자들은 주어진 Resource 제약 사항 하에 이 요소들을 조절하여 최적의 Accuracy를 내는데 목적이 있다. 이때 이 요소들은 일정한 비율로 균등하게 Scaled된다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks4.JPG)
+
+
+
+
+
+### Scaling Dimensions
+
+방금 전의 목표에서의 문제는 Resource 제약사항 하에서 d, w, r라는 값들이 서로 의존되어 있다는 것이다. 즉 하나의 값을 변경하면 그에 따라 다른 값들도 변경되어야 한다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks5.JPG)
+
+
+
+#### Depth(d)
+
+직관적으로 더 깊은 네트워크일수록 더 풍부한 Complex feature들을 잘 잡아낼수 있고 새로운 Task에 대해서 일반화 하기 쉽다는 것을 알 수 있다. 그러나 깊은 네트워크일수록 Vanishing gradient 문제 때문에 모델을 훈련시키기 어려워진다. Skip connections, Batch normalization 같은 방법들이 이런 문제를 완화시키기는 하나 깊이를 늘리는 방법만으로는 여전히 한계가 있다. 에를 들어서 ResNet-1000은 ResNet-101과 정확도면에서 큰 차이가 없다. Figure 3(middle)을 보면 모델이 어느정도 깊어지면 성능이 Saturation 되는 현상을 볼 수 있다. 
+
+
+
+#### Width(w)
+
+모델의 너비를 Scaling 하는 방법은 크기가 작은 모델에서 흔히 쓰이는 방법이다. 아래의 연구에 따르면 너비가 더 넓은 모델은 Fine-grained feature들을 잘 잡아내고 훈련 시키기 쉬운 경향이 있다. 
+
+- Zagoruyko, S. and Komodakis, N. Wide residual networks. BMVC, 2016.
+
+그러나 극도로 넓은 그러나 얇은(모델의 용량을 키우기에는 제약사항이 있기 때문에 넓어진만큼 얇아질 수 밖에 없다.) 모델은 Higher level feature(Context information)를 잡는데 어려움을 겪는다. Figure 3(left)를 보면 너비가 어느 순간 Saturation 되는 현상을 볼 수 있다. 
+
+
+
+#### Resolution(r)
+
+좀 더 고해상도의 입력 이미지로 훈련시킬 경우 모델은 좀 더 Fine-grained pattern들을 잘 캐치할 가능성이 커진다. Figure 3(right)를 보면 Resolution을 높여서 훈련시킬 경우 정확도가 증가시키는 것을 확인 할 수 있다. 그러나 마찬가지로 해상도가 어느정도 커지면 모델의 성능이 Saturation 된다.(r=1은 224x224, r=2.5는 560x560)
+
+
+
+#### Observation 1
+
+네트워크의 깊이, 너비, 입력 이미지 해상도를 높이는 것은 정확도를 개선하는데 도움이 되지만 어느정도 모델의 용량이 커지면 이런 이점은 점차 사라진다. 
+
