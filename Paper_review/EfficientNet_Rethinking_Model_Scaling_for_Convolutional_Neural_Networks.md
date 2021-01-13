@@ -103,3 +103,57 @@ ConvNet을 각기 다른 Resource 제약에 따라 Scale 하는 방법은 여러
 
 네트워크의 깊이, 너비, 입력 이미지 해상도를 높이는 것은 정확도를 개선하는데 도움이 되지만 어느정도 모델의 용량이 커지면 이런 이점은 점차 사라진다. 
 
+
+
+### Compound Scaling
+
+저자들은 경험을 통해서 Scaling 요소들이 상호 의존적이라는 것을 알았다. 직관적으로 고해상도의 이미지의 경우 네트워크의 깊이가 깊어야 더 큰 Receptive field가 이미지 안의 더 큰 픽셀을 가지는 비슷한 특징들을 잘 캐치할 것이다. 또 너비가 커져야 Fine-grained한 패턴을 잘 잡아낼 수 있을 것이다. 이런 점으로 봤을때 한 가지 요소만 Scaling할 것이 아니고 이 요소들을 균형적으로 조정하는 것이 맞다는 것은 지당해보인다.  
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks6.JPG)
+
+저자들은 이 가정이 유효한지 확인해보기 위해서 Figure 4와 같이 여러 조건들을 비교해봤다. 
+
+
+
+#### Observation 2
+
+모델이 더 나은 정확도와 효율성을 가지기 위해서는 네트워크의 깊이, 너비, 이미지 해상도의 차원을 균형적으로 조절하는 것이 중요하다. 
+
+저자들은 이런 맥락에서 이 요소들을 균일하게 조절하는 Compound scaling method라는 것을 제안했다. ø는 Compound coefficient로 실질적으로 이 요소들을 조절하는 역할을 한다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks7.JPG)
+
+α, β, γ는 그리드 서치를 통해서 결정되는 상수 값이고 ø는 유저가 Model scaling 정도를 조절할때 쓰는 Coefficient인데 Resource가 얼마나 가용한지에 따라 다르게 설정한다. α, β, γ는 가용한 자원을 각 요소에 얼만큼 배치할 것인가를 결정한다. 흥미로운 점은 보통의 Convolution의 경우 FLOPS가 d, w^2, r^2에 각각 비례한다.  저자들은  α\*β^2\*γ^2가 거의 2가 되게 해서 모델의 용량이 2^ø만큼 커질수 있도록 했다. 
+
+
+
+## EfficientNet Architecture
+
+Model Scaling 과정 동안 Baseline 네트워크 안의 계층의 Operator인 Fi는 바뀌지 않기 때문에 저자들이 말하길 좋은 Baseline network를 선택하는 것도 중요하다고 한다. 저자들은 여러 ConvNets에서 저자들의 방법을 실험하긴 했으나 저자들의 방법의 효과를 극대화 하기 위해 EfficientNet이라고 하는 Mobile-size의 네트워크 아키텍처를 고안해냈다. 
+
+저자들은 EfficientNet을 고안할때 아래의 연구에 영감을 받았다고 한다. 
+
+- Tan, M., Chen, B., Pang, R., Vasudevan, V., Sandler, M., Howard, A., and Le, Q. V. MnasNet: Platform-aware neural architecture search for mobile. CVPR, 2019
+
+이 아키텍처를 고안할때 정확도와 FLOPS를 최적화 하는 Multi-objective neural architecture search를 수행했다. 이때 Search space는 위의 연구와 동일하고 아래의 식을 Optimization goal로 설정했다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks8.JPG)
+
+ACC(m)과 FLOPS(m)는 각각 모델 m의 정확도와 FLOPS를 나타낸다. T는 목표 FLOPS 값을 나타내고 w = -0.07로 설정했는데 정확도와 FLOPS 사이의 Trade-off를 조절하는 하이퍼파라미터이다. 위의 연구와는 다르게 저자들은 Latency보다는 FLOPS에 초점을 둬서 Optimization을 수행했다. 왜냐하면 저자들은 특정 하드웨어 디바이스를 목표로 이 연구 방법을 만들어 낸 것이 아니기 때문이다. 이렇게 해서 탄생한 것이  EfficientNet-B0이다. 위의 연구와 Search space가 동일하기 때문에 네트워크 아키텍처 구조가 MnasNet과 유사하지만 EfficientNet-B0은 더 큰 FLOPS 값을 목표로 했기 때문에 MnasNet보다 좀 더 크다. EfficientNet-B0의 구조는 아래와 같다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks9.JPG)
+
+Main building block은 아래 논문들에서 쓰였던 Mobile inverted bottleneck인 MBConv이다. 
+
+- Sandler, M., Howard, A., Zhu, M., Zhmoginov, A., and Chen, L.-C. Mobilenetv2: Inverted residuals and linear bottlenecks. CVPR, 2018.
+- Tan, M., Chen, B., Pang, R., Vasudevan, V., Sandler, M., Howard, A., and Le, Q. V. MnasNet: Platform-aware neural architecture search for mobile. CVPR, 2019.
+
+그리고 아래 연구와 같이 Squeeze-and-excitation optimization이라는 개념도 도입했다. 
+
+- Hu, J., Shen, L., and Sun, G. Squeeze-and-excitation networks. CVPR, 2018.
+
+EfficientNet-B0에서 시작해서 아키텍처의 Scale을 Compound scaling method로 키우기 위해서 다음과 같은 두 가지 단계를 거친다. 
+
+1. 먼저 ø를 1로 고정해서 Resource가 현재보다 두 배 정도 가용하다고 가정하고 α, β, γ에 대한 그리드 서치를 수행한다(이때 이전에 언급한 조건들을 만족시킨다). 저자들은  EfficientNet-B0에 대해서  α=1.2, β=1.1, γ=1.15라는 값이 α\*β^2\*γ^2 almost 2 라는 제약 조건 하에 가장 최적의 값이라는 것을 실험적으로 알아냈다. 
+2. 최적의 α, β, γ을 고정시키고 기존의 조건을 만족한다는 제약 하에 ø를 늘려서 모델의 용량을 키운다. 그렇게 해서  EfficientNet-B1-B7까지의 모델을 구축할 수 있었다. 
+
