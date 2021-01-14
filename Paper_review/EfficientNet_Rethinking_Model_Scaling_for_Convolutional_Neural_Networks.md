@@ -157,3 +157,35 @@ EfficientNet-B0에서 시작해서 아키텍처의 Scale을 Compound scaling met
 1. 먼저 ø를 1로 고정해서 Resource가 현재보다 두 배 정도 가용하다고 가정하고 α, β, γ에 대한 그리드 서치를 수행한다(이때 이전에 언급한 조건들을 만족시킨다). 저자들은  EfficientNet-B0에 대해서  α=1.2, β=1.1, γ=1.15라는 값이 α\*β^2\*γ^2 almost 2 라는 제약 조건 하에 가장 최적의 값이라는 것을 실험적으로 알아냈다. 
 2. 최적의 α, β, γ을 고정시키고 기존의 조건을 만족한다는 제약 하에 ø를 늘려서 모델의 용량을 키운다. 그렇게 해서  EfficientNet-B1-B7까지의 모델을 구축할 수 있었다. 
 
+
+
+## Experiments
+
+### Scaling Up MobileNets and ResNets
+
+저자들은 먼저 저자들의 방법을 MobileNets와 ResNet에 적용해봤다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks10.JPG)
+
+
+
+### ImageNet Results for EfficientNet
+
+저자들은 EfficientNet 모델을 ImagNet 데이터셋으로 훈련시켜봤는데 이때 셋팅은 다음의 연구와 같다.
+
+- Tan, M., Chen, B., Pang, R., Vasudevan, V., Sandler, M., Howard, A., and Le, Q. V. MnasNet: Platform-aware neural architecture search for mobile. CVPR, 2019.
+
+RMSProp, Decay 0.9, Momentum 0.9, Batch norm momenturm 0.99, Weight Decay 1e-5, Initial learning rate 0.256(Decays by 0.97 per 2.4 epochs) SiLU(Swish-1) activation, AutoAugment, Stochastic depth(Survival probabtility 0.8). Dropout rate from 0.2 for EfficientNet-BO to 0.5 for B7. 또 Training set에서 임의로 25K의 이미지를 뽑아서 Minival 셋으로 정하고 이 셋으로 Early stopping을 적용했다. 그리고 Early stopped checkpoint를 Validation 셋으로 평가해서 최종 Validation 정확도를 구했다. 
+
+ ![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks11.JPG)
+
+Table 2를 보면 대체로 EfiicientNet 모델들이 다른 ConvNets 모델과 정확도를 유사하면서 훨씬 적은 수의 Parameter를 갖는 것을 확인할 수 있다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks12.JPG)
+
+Figure 1과 5를 보면 EfficientNet 계열의 모델들이 용량도 작을 뿐더러 FLOPS가 적어도 훨씬 정확도가 높은 것을 확인할 수 있다. 이것은 Computationally cheap하다는 의미이다. 
+
+저자들은 또 Latency를 아래 Table 4와 같이 측정하기도 했다. 20번 돌릴 동안의 평균 Latency를 측정한 결과이다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks13.JPG)
+
