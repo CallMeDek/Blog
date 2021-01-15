@@ -189,3 +189,42 @@ Figure 1과 5를 보면 EfficientNet 계열의 모델들이 용량도 작을 뿐
 
 ![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks13.JPG)
 
+
+
+### Transfer Learning Results for EfficientNet
+
+저자들은 Transfer learning으로 흔히 사용되는 데이터셋에서 EfficientNet에 대한 성능을 평가했다. 이 데이터셋은 아래 Table 6와 같다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks14.JPG)
+
+아래 Table 5는 이 평가 결과를 보여준다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks15.JPG)
+
+아래 그림 6은 각 데이터셋에 대해서 모델의 Accuracy-파라미터 수에 대한 성능 그래프를 나타낸다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks16.JPG)
+
+
+
+## Discussion
+
+EfficientNet 아키텍처와는 별개로 Scaling method가 성능에 미치는 영향을 알아보기 위해서 저자들은 EfficientNet-B0 네트워크에서 각기 다른 Scaling method로 만든 모델을 ImageNet 데이터셋으로 성능 평가를 수행했다. 대체로 모든 Scaling method들이 좀 더 많은 FLOPS로 정확도를 증가시킨다. 그 중에서 아래 Figure 8을 보면 저자들의 방법이 그 효율성이 제일 높은 것을 확인할 수 있다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks17.JPG)
+
+저자들은 이런 현상의 이유를 알아보기 위해서 Figure 7과 같이 각기 다른 Scaling method로 만든 모델들의 Class activation map을 비교했다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks18.JPG)
+
+이 모델들에 대한 정보는 아래 Table 7과 같다. 
+
+![](./Figure/EfficientNet_Rethinking_Model_Scaling_for_Convolutional_Neural_Networks19.JPG)
+
+저자들이 주장하기 Compound scaling method가 좀 더 이미지 내 객체와 관련된 적절한 지역에 초점을 맞추는 경향이 있다고 한다. 
+
+
+
+## Conclusion
+
+저자들은 이번 연구를 통해서 ConvNet들을 Scaling하는데 너비, 깊이, 입력 해상도를 균형감 있게 조정하는 것이 Accuracy와 Efficiency 간의 최적의 Trade-off를 결정하는데 있어서 중요하다는 것을 알았다. 저자들은 이 문제를 다루기 위해서 Compound scaling method라고 하는 방법을 제안했다. 이 방법을 위해 고안한 EfficientNet으로 저자들은 더 적은 양의 파라미터 수와 FLOPS로도 SOTA에 버금가는 정확도를 달성할 수 있었다.  
