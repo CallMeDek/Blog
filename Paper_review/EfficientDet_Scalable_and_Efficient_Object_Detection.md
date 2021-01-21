@@ -143,3 +143,53 @@ BiFPN은 Bidirectional cross-scale connection과 Fast normalized fusion 개념�
 
 저자들은 Feature fusion 과정에서 Depthwise separable convolution을 썼고 Batch normalization과 Activation을 각 Convolution 연산 후에 수행했다고 한다. 
 
+
+
+## EfficientDet
+
+### EfficientDet Architecture
+
+![](./Figure/EfficientDet_Scalable_and_Efficient_Object_Detection17.JPG)
+
+EfficientDet의 아키텍처는 위와 같으며 전체적으로 One-stage 알고리즘의 패러다임을 따른다. EfficientNet Backbone은 ImageNet에서 Pretraining했다. BiFPN은 Feature network의 역할을 하는데 Backbone에서의 P3-7까지의 Feature를 입력으로 받아서 Top-down과 Bottom-up의 Bidirectional feature fusion을 반복적으로 통과시킨다. 이렇게 만들어진 Fused feature들은 Class, box prediction network의 입력으로 들어간다. Class, box prediction network는 모든 Level의 Feature에 대해서 공유된다. 
+
+
+
+### Compound Scaling
+
+저자들은 저자들의 선행 연구의 방법을 Object detection에도 적용하기로 했다. 그래서 Compound coefficient ø로 네트워크의 Backbone, BiFPN, class/box network, Resolution을 동시에 유기적으로 Scaling 한다. 저자들이 말하길 Object detection은 Image classification과는 다르게 Grid search를 수행하기 힘드므로 Scaling factor에 대한 Search는 Heuristic할 수밖에 없음을 인정한다. 
+
+![](./Figure/EfficientDet_Scalable_and_Efficient_Object_Detection18.JPG)
+
+
+
+#### Backbone network
+
+Backbone에서는 EfficientNet-B0부터 B6까지의 Width/Depth Scaling coefficient와 동일한 값을 다시 사용해서 ImageNet으로 Pretrained된 checkpoints를 다시 사용할 수 있도록 했다. 
+
+
+
+#### BiFPN network
+
+BiFPN의 Width, Height은 위 그림과 같이 Scaling된다. BiFPN의 너비에 대해서는 {1.2, 1.25, 1.3, 1.35, 1.4, 1.45}에서 Grid search를 수행했는데 1.35의 결과가 가장 좋게 나왔다. 
+
+
+
+#### Box/class prediction network
+
+Box/class branch의 너비는 BiFPN과 같게 고정시켰다. 그러나 깊이는 위 그림과 같이 Scaling 한다. 
+
+
+
+#### Input image resolution
+
+BiFPN에서 Level3-7까지의 Feature가 사용되기 때문에 입력 Resolution은 2^7=128로 나눠 떨어져야 한다. 그래서 위 그림과 같이 Scaling 한다. 
+
+
+
+![](./Figure/EfficientDet_Scalable_and_Efficient_Object_Detection19.JPG)
+
+ø에 따른 각 Scaling 값은 위 Table 1과 같다. D7과 D7x는 같은 BiFPN, Head 구조를 사용하는데 D7의 경우 더 큰 Resolution이고 D7x는 더 큰 Backbone과 Feature level을 사용한다(P3-P8). 
+
+
+
