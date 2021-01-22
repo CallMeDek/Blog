@@ -193,3 +193,22 @@ BiFPN에서 Level3-7까지의 Feature가 사용되기 때문에 입력 Resolutio
 
 
 
+## Experiments
+
+### EfficientDet for Object Detection
+
+셋팅과 관련된 사항은 본문 참조. 
+
+![](./Figure/EfficientDet_Scalable_and_Efficient_Object_Detection20.JPG)
+
+성능 평가 결과와 관련된 사항은 본문 참조.
+
+![](./Figure/EfficientDet_Scalable_and_Efficient_Object_Detection21.JPG)
+
+
+
+### EfficientDet for Semantic Segmentation
+
+Semantic Segmentation와 관련된 실험 결과는 본문 참조. 
+
+![](./Figure/EfficientDet_Scalable_and_Efficient_Object_Detection22.JPG)
