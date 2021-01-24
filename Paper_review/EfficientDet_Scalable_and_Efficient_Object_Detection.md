@@ -212,3 +212,61 @@ BiFPN에서 Level3-7까지의 Feature가 사용되기 때문에 입력 Resolutio
 Semantic Segmentation와 관련된 실험 결과는 본문 참조. 
 
 ![](./Figure/EfficientDet_Scalable_and_Efficient_Object_Detection22.JPG)
+
+
+
+
+
+## Ablation Study
+
+여기서의 Ablation study는 COCO validation 셋으로 수행했다. 
+
+
+
+### Disentangling Backbone and BiFPN
+
+![](./Figure/EfficientDet_Scalable_and_Efficient_Object_Detection23.JPG)
+
+Table 4는 Backbone의 영향력과 BiFPN의 영향력을 보여준다. 먼저 Backbone을 바꿨을때 성능이 더 향상된 것을 확인할 수 있고 FPN을 BiFPN으로 바꿨을때 더 성능이 좋아진것을 확인할 수 있다.
+
+
+
+### BiFPN Cross-Scale Connections
+
+![](./Figure/EfficientDet_Scalable_and_Efficient_Object_Detection24.JPG)
+
+Table 5는 서로 다른 스타일로 Cross-scale connection을 수행하는 Feature network의 각 방법들을 사용했을때의 성능을 보려준다(Figure 2). 주의할 점은, 원래의 FPN과 PANet은 오직 하나씩의 Top-down, Bottom-up의 흐름만이 있는데 공평하게 성능을 비교하기 위해서 저자들은 이 구조를 여러번 반복해서 넣고 모든 Conv를 Depthwise separable conv로 바꿔서 BiFPN과 유사하게 만들었다. 그리고 같은 Backbone과 Class/box prediction network 그리고 같은 Training setting을 적용했다. 저자들이 말하길 원래의 FPN은 한방향의 Flow(Top-down) 때문에 정보의 흐름이 내부적으로 제한적일 수 밖에 없기 때문에 상대적으로 낮은 AP를 보인다고 한다. FPN+PANet은 정확도는 NAS-FPN보다 살짝 높지만 더 많은 파라미터와 FLOPs를 요구한다고 한다. 저자들이 제안한 BiFPN은 FPN+PANet과 정확도면에서는 유사한데 훨씬 적은 파라미터와 FLOPs를 요구한다. 여기에 Feature가 Output에 기여하는 weighted라는 개념을 적용하면 성능은 더 좋아진다고 한다. 
+
+
+
+### Softmax vs Fast Normalized Fusion
+
+저자들은 Fast normalized feature fusion이라는 개념을 제시해서 정규화된 weights들의 이점은 유지하면서 Softmax 시의 Cost는 줄일 수 있다는 것을 언급한 바 있다. 
+
+![](./Figure/EfficientDet_Scalable_and_Efficient_Object_Detection25.JPG)
+
+Table 6에서는 다른 크기를 가진 3가지 Detector에서 Softmax와 Fast Fusion의 성능을 제시했다. Softmax와 Fast normalized 방식은 정확도면에서는 유사하나 저자들의 방법이 속도가 훨씬 빠르다는 것을 확인할 수 있다. 
+
+![](./Figure/EfficientDet_Scalable_and_Efficient_Object_Detection26.JPG)
+
+Figure 5는 EfficientDet-D3의 BiFPN에서 임의로 선택된 세 개의 Feature fusion 노드에서의 학습된 가중치를 나타낸다. Normalized weights들은 항상 모든 입력 값에 대해서 합하면 1이 된다.  이 정규화된 weight들은 훈련 과정 중에 빠른 시간안에 변하는데 각 Feature들은 Feature fusion에 각기 다른 양으로 기여한다. 저자들의 방식과 Softmax의 방식의 변화 경향이 유사하다는 것을 확인할 수 있다. 
+
+
+
+###  Compound Scaling
+
+![](./Figure/EfficientDet_Scalable_and_Efficient_Object_Detection27.JPG)
+
+Figure 6는 저자들이 제안한 Compound scaling 방법과, 모델을 Scaling 하는 다른 방법들을 비교한 것이다. 
+
+
+
+## Conclusion
+
+저자들은 효율적인 Object detection을 위한 네트워크 아키텍처 디자인 선택의 일환으로 Weighted bidirectional feature network와 Detection에 맞는 Compound scaling method를 제안했다. 이를 바탕으로 EfficientDet이라고 하는 아키텍처를 제안했는데 이 구조는 훨씬 적은 수의 파라미터 수와 FLOPs으로도 당시의 SOTA의 정확도를 보였다. 
+
+
+
+## Appendix
+
+Traning epoch 수와 입력 이미지 크기에 대한 Jittering 그리고 입력 이미지의 해상도에 따른 모델 성능의 변화는 본문을 참고. 
