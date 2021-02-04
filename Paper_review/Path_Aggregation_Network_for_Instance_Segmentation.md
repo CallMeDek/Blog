@@ -140,3 +140,73 @@ Adaptive Feature Pooling는 Figure 1(c)에 나와 있다.
 그 다음의 서브 네트워크에서 합쳐진 Feature grid들이 하나의 파라미터 계층을 독립적으로 거치게 되는데 이 다음에 Fusion operation이 수행되게 되는 것이다(위 그림에서 fc1).  이는 네트워크가 Feature들을 조정하는 것을 가능하게 한다. 예를 들어서 두 개의 fc 계층이 FPN의 Box 브랜치에 있다고 하면 Fusion 연산은 첫 번째 fc 계층 후에 수행된다.  Mask R-CNN에서는 네 개의 연속적인 컨볼루션 계층이 Mask 브랜치에서 사용되기 때문에 저자들은 Fusion 연산을 첫 번째와 두 번째 컨볼루션 계층 사이에서 수행하도록 했다. 합쳐진  Feature grid는 분류, 박스 회귀, 마스크 예측과 같은 작업을 위한 각 Proposal의 Featuer grid로서 사용된다. 
 
 저자들은 디자인 시에 입력 이미지 피라미드의 각기 다른 Feature map을 사용하는 것 대신에 네트워크 내에서 Feature hierarchy로 부터 정보를 합칠 수 있도록 초점을 뒀다. 이것은 L2 정규화, Concatenation, Dimension reduction이 필요한 다른 방법과 비교했을때 더 단순하다고 한다. 
+
+
+
+### Fully-connected Fusion
+
+#### Motivation
+
+fc-layers와 FCN은 Instance segmentaion과 Mask proposal prediction에 사용된다. 저자들이 말하길 이 둘은 작동 방식이 다르다고 한다. FCN은 각 픽셀에 대한 예측을 수행하는데 이미지 내의 모든 위치에 대해서 Local receptive field의 파라미터가 공유된다. 이에 반해 fc-layers는 위치에 민감하기 때문에 각기 다른 위치에 대해 예측을 수행하려면 다양한 파라미터가 필요하다. 그래서 각 위치에 맞게 조정할수 있는 능력이 있다. 또한 각 위치에 대한 예측은 전체 Proposal의 Global information으로 만들어진다. 이것은 객체를 구별하고 같은 객체에 속하는 부분은 부분끼리 알아보는데 도움이 된다. 저자들은 이 두가지 타입의 계층을 섞어서 Mask prediction을 수행했다고 한다. 
+
+
+
+#### Mask Prediction Structure
+
+Mask 브랜치는 각 Proposal을 위한 Pooled feature grid를 입력으로 받아 연산을 수행한다. 
+
+![](./Figure/Path_Aggregation_Network_for_Instance_Segmentation5.png)
+
+주요 경로는 작은 FCN인데 4개의 연속적인 컨볼루션 계층과 1개의 디컨볼루션 계층으로 구성되어 있다. 각 컨볼루션 계층은 256채널의 3x3 필터를 가진다. 디컨볼루션 계층은 2배로 해상도를 키운다. 여기서는 각 클래스에 대한 Binary classification을 픽셀마다 수행한다. 그렇기 때문에 Mask R-CNN과 같이 Segmentataion과 Classification을 분리해서 수행하게 된다.  저자들은 여기에 더해서  conv3부터 fc 계층까지의 짧은 경로를 추가했다. 이 경로에는 두 개의 3x3 짜리 컨볼루션 층이 있는데 두 번째 계층은 연산 부담을 줄이기 위해서 채널 수를 줄인다. 
+
+완전 연결 계층은 클래스 상관 없이 배경/전경을 구분하기 위해서 쓰인다. Mask 크기가 28x28이기 때문에 완전 연결 계층은 784x1x1짜리 벡터를 만들어낸다. 이 벡터가 FCN에서 만들어 지는 Mask와 동일한 크기로 모양이 바뀐다. 최종 예측 값은 FCN에서의 각 클래스에 대한 Mask prediction과 완전 연결 계층에 의한 배경/전경 예측을 합쳐져 얻는다. 이때 완전 연결 계층은 여러개 보다는 1개만을 사용해서 중간의 공간 정보가 없어지는 문제를 방지한다. 
+
+
+
+## Experiments
+
+저자들은 저자들의 방법을 COCO, Cityscapes, MVD 데이터 셋으로 평가했다. 포괄적인 Ablation study는 COCO 데이터셋으로 수행했다. 또 COCO 2017 Instance Segmentation, Object Detection Challenge에서 결과를 냈다. 
+
+
+
+### Implementation Details
+
+저자들은 Mask R-CNN과 FPN을 Caffe에 기반하여 저자들의 방법에 맞게 다시 구현해냈다. 저자들은 아래의 연구에서의 Image centric training 이라는 개념을 차용했다. 
+
+- R. Girshick. Fast R-CNN. In *ICCV*, 2015
+
+각 이미지에 대해서 512개의 ROI를 Positive-Negative 비율 1:3으로 샘플링한다. Weight decay 0.0001, Momentum 0.9로 설정한다. 다른 하이퍼파라미터는 데이터 셋마다 다르게 설정했다고 한다. 그리고 Mask R-CNN과 같이 Proposal들은 모델 네트워크와 독립적으로 훈련된 RPN에서 생성했다. Backbone은 Object detection/Instance segmentatoin에서 공유되지 않는다. 
+
+
+
+### Experiments on COCO
+
+#### Dataset and Metrics
+
+저자들은 저자들의 모델을 train-2017의 부분집합 셋으로 훈련시켰고 Ablation study를 위한 결과는 val-2017 부분집합으로 평가했다. 그리고 다른 모델과의 비교를 위해서 test-dev로 모델을 평가했다. 
+
+Metric은 COCO의 표준 평가 척도를 따라서 AP, AP50, AP75, APs, APm, APL를 구했다. 저자들의 모델은 Object detection, Instance segmentation 둘 다 수행할 수 있다. 그중에서 Object detection만을 수행하는 Detector를 하나 따로 훈련시켰다. 그래서 최종적으로 저자들은 Mask AP, 독립적으로 훈련시킨 Detector의 Box ap인 AP^bb, 둘 다 수행하는 모델의 Box ap인 AP^bbM로 성능을 평가했다. 
+
+
+
+#### Hyper-parameters
+
+훈련 과정에서는 한 배치에 16개의 이미지를 묶었다. 이미지들의 짧은 부분과 긴 부분은 특별히 언급하지 않는 이상 각각 800, 1000이다. Instance segmentation에서는 120k 동안에는 Lr을 0.02로, 남은 40k 동안은 0.002로 했다. Object detection은 저자들의 모델에서 Mask 브랜치를 없는 형태로 구현했다. 이때 60k 동안은 Lr을 0.02로 나머지 20k는 0.002로 했다. 모든 모델 파라미터는 미리 훈련된 Mask R-CNN과 FPN에서 가져왔고 Fine-tuning은 하지 않았다. 
+
+
+
+#### Instance Segmentation Results
+
+저자들은 PANet의 성능을 비교하기 위해서 test-dev 셋을 사용하되 Multi-scale traning을 했을때와 안 했을 때를 구분해서 평가했다. 
+
+![](./Figure/Path_Aggregation_Network_for_Instance_Segmentation6.png)
+
+
+
+#### Object Detection Results
+
+Mask R-CNN에서와 유사한 방법으로 저자들은 Bounding box results를 Box 브랜치에서의 결과를 토대로 평가했다. 
+
+![](./Figure/Path_Aggregation_Network_for_Instance_Segmentation7.png)
+
+
