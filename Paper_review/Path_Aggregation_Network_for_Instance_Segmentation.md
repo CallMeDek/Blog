@@ -210,3 +210,22 @@ Mask R-CNN에서와 유사한 방법으로 저자들은 Bounding box results를 
 ![](./Figure/Path_Aggregation_Network_for_Instance_Segmentation7.png)
 
 
+
+#### Component Ablation Studies
+
+저자들은 Bottom-up path augmentation, Adaptive feature pooling, Fully-connected fusion, Multi-scale training, Multi-GPU synchronized batch normalization, Heavier head의 중요도를 알아보는 연구를 수행했다.  Multi-scale training의 경우 가장 긴 부분을 1,400까지로 하고 나머지 부분을 400에서 1,400까지로 했다. 저자들은 모든 GPU에 걸친 하나의 배치 안의 모든 샘플들의 평균과 표준편차를 계산했다. 또 훈련 중에는 어떤 파라미터도 고정시키지 않았다. Multi-GPU synchronized batch normalization 적용시에는 새롭게 추가한 계층의 뒤에 항상 Batch normalization을 적용했다. Heavier head는 두 개의 완전 연결 계층을 사용하는 것 대신에 4개의 3x3크기의 연속적인 컨볼루션 계층을 사용했다. 이때 이 head는 Box classification과 Box regression 브랜치에서 공유해서 사용한다. 
+
+Baseline에서 시작해서 각 요소들을 하나씩 추가하는 방식으로 수행한 Ablation study는 val-2017 데이터셋으로 수행했다. 
+
+![](./Figure/Path_Aggregation_Network_for_Instance_Segmentation8.JPG)
+
+ResNet-50을 기본 아키텍처로 사용했다. 저자들은 성능을 Mask AP, Object detection만 수행하는 모델의 Box ap인 AP^bb, Object detection, Instance segmentation 등 다중 작업을 한꺼번에 수행하는 모델의 Box ap인 AP^bbM으로 평가했다. 
+
+- Re-implemented Baseline: 저자들의 방법을 적용한 Mask R-CNN은 원래 버전과 유사한 성능을 보였고 Object detector는 오히려 좋은 성능을 보였다. 
+- Multi-scale Training & Multi-GPU Sync. BN: 이 두 기술은 네트워크의 성능 수렴이 더 잘 이뤄질 수 있도록 했고 일반화 능력을 향상시켰다. 
+- Bottom-up Path Augmentation: Adaptive feature pooling의 유무와 상관없이 이 개념을 적용하면 그렇지 않을때보다 Mask AP와 Box ap AP^bb가 각각 0.6, 0.9 정도 더 개선되었다. 특히 크기가 큰 객체에 대한 성능 향상 효과가 컸다. 이것은 Lower feature level에서의 정보의 유용성을 입증하는 것이다. 
+- Adaptive Feature Pooling: Bottom-up path augmentation의 유무와 상관 없이 Adaptive pooling은 성능을 향상시킨다. 모든 크기에서 전반적으로 향상되었는데 이는 다른 Stage에서의 Feature들을 사용하는 것이 최종 예측을 하는데 도움이 된다는 것을 보여주는 것이다. 
+- Fully-connected Fusion: Fully-connected fusion은 Mask를 더 잘 예측하는 것에 목적이 있다. Mask AP를 0.7정도 향상시켰으며 모든 객체 크기에 대해서 성능이 향상되었다. 
+- Heavier Head: Heavier head는 Multi-task로 학습시킨 모델의 바운딩 박스와 관련된 Box ap AP^bbM을 향상시켰다. Mask AP나 Object detection만을 위한 모델의 Box AP에서는 그 정도가 미미했다. 
+
+PANet에서의 이 모든 요소들을 합치면 Mask AP는 기본 네트워크보다 4.4정도 향상되고 Object detector의 Box AP는 4.2정도 향상된다. 특히 작거나 중간 크기의 객체들에 대해서 효과가 컸다. 성능 향상의 절반 정도는 Multi-scale training과 Multi-GPU sync. BN에서 기인했다. 
