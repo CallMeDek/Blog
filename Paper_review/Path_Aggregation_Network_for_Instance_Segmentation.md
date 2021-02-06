@@ -229,3 +229,47 @@ ResNet-50을 기본 아키텍처로 사용했다. 저자들은 성능을 Mask AP
 - Heavier Head: Heavier head는 Multi-task로 학습시킨 모델의 바운딩 박스와 관련된 Box ap AP^bbM을 향상시켰다. Mask AP나 Object detection만을 위한 모델의 Box AP에서는 그 정도가 미미했다. 
 
 PANet에서의 이 모든 요소들을 합치면 Mask AP는 기본 네트워크보다 4.4정도 향상되고 Object detector의 Box AP는 4.2정도 향상된다. 특히 작거나 중간 크기의 객체들에 대해서 효과가 컸다. 성능 향상의 절반 정도는 Multi-scale training과 Multi-GPU sync. BN에서 기인했다. 
+
+
+
+#### Ablation Studies on Adaptive Feature Pooling
+
+저자들은 Adaptive feature pooling과 관련된 Ablation study를 수행하여 어디에 Fusion 연산을 두는 것이 좋은지 그리고 가장 적절한 Fusion operation 무엇인지를 확인했다. 저자들은 이 연산을 ROIAlign과 fc1 사이에 두거나(fu.fc1fc2) fc1와 fc2 사이에 뒀다(fc1fu.fc2). 
+
+![](./Figure/Path_Aggregation_Network_for_Instance_Segmentation9.JPG)
+
+비슷한 셋팅을 Mask 브랜치에도 적용했다. Feature fusion을 위해서 max, sum operation으로 테스트 했다.  Table 4를 보면 Fusion operation에 크게 민감하지 않다는 것을 알 수 있따. 그러나 파라미터 계층이 다른 Level의 Feature grid를 조정할수 있게 하는 것은 매우 중요하다. 저자들은 max를 Fusion operation으로 하고 첫번째 파라미터 계층 뒤에 두었다. 
+
+
+
+#### Ablation Studies on Fully-connected Fusion
+
+저자들은 Augmented fc 브랜치를 다른 방식으로 구현하는 방법으로 성능을 비교해봤다. 저자들은 두 가지 관점으로 여기서의 연구를 수행했는데 하나는 이 새로운 브랜치를 시작하기 위한 계층 그리고 다른 하나는 새로운 브랜치와 FCN에서의 예측값을 Fusion하는 방법이다. 저자들은 일단 conv2, conv3, conv4에서 각가 새로운 경로를 만들어봤다. 그리고 max, sum, product operation을 Fusion을 위한 연산으로 적용해봤다. 여기서 저자들이 Mask R-CNN 브랜치와 Bottom-up augmentation 그리고 Adaptive feature pooling을 Baseline으로 두었다. 
+
+![](./Figure/Path_Aggregation_Network_for_Instance_Segmentation10.JPG)
+
+Table 5를 보면 확실히 conv3에서 시작하고 Sum의 Fusion operation이 가장 좋은 결과를 내는 것을 알 수 있다. 
+
+
+
+#### COCO 2017 Challenge
+
+![](./Figure/Path_Aggregation_Network_for_Instance_Segmentation11.JPG)
+
+여기서 저자들의 성능을 끌어올릴수 있는 이유에는 PANet에서 몇가지 개념이 더 적용되었기 때문이다. 먼저 저자들은 DCN에 적용되는 것에 Deformable convolution을 사용했다. Multi-scale testing, Horizontal flip testing, Mask voting, Box voting도 적용되었다. Multi-scale testing을 위해서 가장 긴 쪽을 1400으로 하고 다른 부분을 600에서 1200까지 step 200으로 했다고 한다. 그리고 4개의 Scale만 사용했다. 그리고 저자들은 큰 모델을 기초 모델로 사용했다. 저자들은 3개의 ResNeXt-101(64x4d), 2개의 SE-ResNeXt-101(32x4d), 1개의 ResNet-269 그리고 1개의 SENet을 Bounding box, Mask generation을 위한 Ensemble로서 사용했다.  다른 큰 초기 모델의 성능도 이와 유사하다. 1개의 ResNeXt-101(64x4d) 모델이 Proposal을 만들어 내기 위한 기본 모델로 사용되었다. 저자들은 이 모델을 각기 다른 Random seed로 훈련시키고 Balanced sampling을 적용하거나 안하거나 하는 방식으로 훈련시켜서 모델 간의 다양성을 강화하려고 했다. 여기서 Detection 결과는 Instance mask에 딱 맞추는 방식으로 얻었다. 
+
+![](./Figure/Path_Aggregation_Network_for_Instance_Segmentation12.JPG)
+
+
+
+### Experiments on Cityscapes
+
+#### Dataset and Metrics
+
+Cityscapes는 차에 설치된 카메라로 찍은 거리 풍경을 포함한다. 2975개의 훈련 이미지가 있고 500개의 검증 이미지가 있으며 1525개의 테스트 이미지가 Annotation이 잘되어 있다. 나머지 20k의 이미지는 Annotation이 잘되어 있지 않아 훈련에서 배제했다. 저자들은 모델 성능을 val, secret test subset에서 평가했다. 8개의 Semantic class가 Instance mask와 함께 Annotation되어 있다. 각 이미지는 1024x2048 크기이며 AP, AP50의 방식으로 평가했다. 
+
+
+
+#### Hyper-parameters
+
+저자들은 원본 Mask R-CNN과의 정확한 비교를 위해서 하이퍼 파라미터 셋팅을 원본과 동일하게 설정했다. 구체적으로 이미지의 짧은쪽의 크기가 {800, 1024}에서 샘플링 되도록 해서 훈련에 사용했고 짧은쪽이 1024인 이미지는 추론에 사용했다. COCO에서 적용했던 Testing trick이나 DCN의 적용하지 않았다.  저자들의 모델을 18k동안은 LR 0.01로 6k 동안은 0.001로 훈련시켰다. 8개의 이미지(GPU당 1개의 이미지)가 하나의 배치로 묶였고 ResNet-50을 기본 모델로 사용했다. 
