@@ -273,3 +273,43 @@ Cityscapes는 차에 설치된 카메라로 찍은 거리 풍경을 포함한다
 #### Hyper-parameters
 
 저자들은 원본 Mask R-CNN과의 정확한 비교를 위해서 하이퍼 파라미터 셋팅을 원본과 동일하게 설정했다. 구체적으로 이미지의 짧은쪽의 크기가 {800, 1024}에서 샘플링 되도록 해서 훈련에 사용했고 짧은쪽이 1024인 이미지는 추론에 사용했다. COCO에서 적용했던 Testing trick이나 DCN의 적용하지 않았다.  저자들의 모델을 18k동안은 LR 0.01로 6k 동안은 0.001로 훈련시켰다. 8개의 이미지(GPU당 1개의 이미지)가 하나의 배치로 묶였고 ResNet-50을 기본 모델로 사용했다. 
+
+
+
+#### Results and Ablation Study
+
+![](./Figure/Path_Aggregation_Network_for_Instance_Segmentation13.png)
+
+저자들은 저자들의 모델을 test subset으로 평가한 결과를 다른 모델들과 비교하여 Table 8에 나타냈다. 위에서 언급한대로 Cityscapes 데이터셋에서 Annotation이 잘 되어 있는 데이터로만 훈련시켰다. 
+
+![](./Figure/Path_Aggregation_Network_for_Instance_Segmentation14.png)
+
+val subset에서 성능 향상을 확인한 결과는 Table 9에 나와 있다. 저자들의 Re-implmented baseline에 네트워크의 성능 수렴을 더 잘 할수 있도록 하기 위해서 Multi-GPU synchronized batch normalization을 더했다. 
+
+
+
+### Experiments on MVD
+
+MVD는 Instance segmentation을 위한 크기가 상대적으로 큰 데이터셋이다. 37개의 Semantic class에 대해서 Instance level의 Annotation이 잘 되어 있는 길거리 풍경 이미지가 25,000장 있다. 이미지는 여러 나라에서 여러 장비로 찍었다. 그래서 이미지 안의 내용물과 해상도는 다양하다. 저자들은 ResNet-50모델을 기본으로 해서 train subset으로 훈련시키고 AP AP50의 평가척도로 val, secret test subset으로 모델을 검증했다. 
+
+![](./Figure/Path_Aggregation_Network_for_Instance_Segmentation15.png)
+
+
+
+## Conclusion
+
+저자들은 PANet이라고 하는 Instance segmentation을 위한 프레임워크를 발표했다. 저자들은 네트워크에서 정보의 전파를 더 잘 할 수 있게 하기위해서 프레임워크를 디자인했다. 저자들은 모든 Feature level에서의 특징들을 모았고 안정적인 정보 전달을 위해서 가장 높은 Level과 낮은 Level 사이에 짧은 Shortcut을 만들었다. 각 Proposal을 위한 Feature들을 풍부하게 하기 위해서 부가적인 경로를 추가했다. 
+
+
+
+## Appendix
+
+### Training Details and Strategy of Generating Anchors on Cityscapes and MVD
+
+본문 참조.
+
+
+
+### Details on Implementing Multi-GPU Synchronized Batch Normalization
+
+본문 참조. 
