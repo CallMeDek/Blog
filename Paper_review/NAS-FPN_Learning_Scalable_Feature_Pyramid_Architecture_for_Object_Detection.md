@@ -93,3 +93,45 @@ Pyramid network으로 들어가는 입력 Feature 계층은 각 Merging cell의 
 ### Deeply supervised Anytime Object Detection
 
 NAS-FPN을 Scaling할때 여러 Pyramid network를 쌓는 방식으로 구현하는 것의 이점은 Feature pyramid representation이 어떤 형태의 Pyramid network의 출력에서도 얻어질 수 있다는 것이다. 이 특징은 Early exit에 의해 도출되는 Detection result에서 결과를 뽑아내는 Anytime detection을 가능하게 한다. 즉 저자들은 Intermidiate pyramid network에 Classifier와 Box regression head를 붙여서 Deep supervision 방식으로 훈련시킬 수 있다. 추론시에는 모델은 모든 Pyramid network에서의 순전파를 마칠 필요가 없다. 대신에 어떤 형태의 Pyramid network 출력에서라도 순전파를 멈추고 탐지 결과를 도출해낼 수 있다. 이런 특성은 연산 Resource나 Latency가 중요 이슈인 상황에 유용할 수 있고 Detection 결과를 만들어내는데 할당되는 Resource가 동적으로 결정되는 상황에서 하나의 솔루션이 될 수 있다. 
+
+
+
+## Experiments
+
+저자들은 NAS-FPN 아키텍처를 발견하기 위한 RNN controller를 학습하기 위한 NAS에 관한 실험을 수행했다. 그리고 나서 발견된 NAS-FPN이 Backbone과 Image size와 상관 없이 성능이 준수하다는 것을 입증했다고 주장한다. NAS-FPN의 용량은 Pyramid network에서 쌓이는 계층의 수나 Feature dimension(channel)의 수를 조절하면 쉽게 조정할 수 있다. 
+
+
+
+### Implementation Details
+
+저자들은 오픈소스 RetinaNet 구현체를 실험에 사용했다. 이 모델은 여러 TPU로 64 이미지를 한 배치로 해서 훈련시켰다. 훈련 중에는 출력 이미지 사이즈가 원본 이미지의 [0.8, 1.2]의 비율로 랜덤하게 적용되도록 Multiscale 훈련을 시켰다. 모든 컨볼루션 계층 뒤에는 Batch normalization 계층이 붙는다. Focal loss를 위한 하이퍼파라미터로는 α=0.25,  γ=1.5으로 설정했다. Weight decay 0.001, Momentum 0.9이고 50 epochs 동안 훈련시켰다. 초기 LR은 30 epochs 동안 0.08이고 30, 40 epoch 때 0.1씩 Decayed된다. 실험에 DropBlock을 적용할때는 150 epochs동안 훈련시켰고 120, 140 epoch때 각각 Decayed된다. Step-wise lr schedule은 1280x1280 이미지 사이즈의 AmoebaNet backbone의 저자들의 모델에서는 훈련이 안정적이지 않았기 때문에 이때는 Cosine lr schedule을 적용했다. 대부분의 실험에서 모델은 COCO train2017셋에서 훈련시켰고 COCO val2017셋에서 검증되었다. Table1에서는 test-dev으로 테스트했을때 Accuracy를 나타낸다. 
+
+![](./Figure/NAS-FPN_Learning_Scalable_Feature_Pyramid_Architecture_for_Object_Detection5.png)
+
+
+
+### Architecture Search for NAS-FPN
+
+#### Proxy task
+
+RNN controller의 훈련 시간을 단축시키기 위해서 저자들은 Proxy task라고 하는 실제 훈련시간보다는 짧지만 실제 task와 관련이있는 방법이 필요했다. Proxy task는 좋은 FPN 아키텍처를 확인하기 위한 Search 중에 사용될수 있다. 저자들이 떠올린 방법은 단순히 대상 Task의 훈련 과정을 줄이고 그것을 Proxy task로서 사용하는 것이었다. 저자들은 RetinaNet의 성능 수렴이 일어나도록 50 epochs동안 훈련을 진행한 것과 달리 Proxy task에서는 10 epochs동안만 훈련을 진행했다. 그리고 속도를 높이기 위해서 입력 크기가 512x512인 ResNet-10의 상대적으로 작은 Backbone 아키텍처를 사용했다. 이 방법을 적용했을때 Proxy task 훈련시간은 TPU들에서 1시간이었다. Proxy task에서는 Pyramid network는 3번 반복된다. 초기 LR은 8 epochs동안은 0.08이고 8 epoch에서는 0.1의 계수배로 Decayed된다. COCO train2017에서 7329장의 임의로 선택한 이미지를 검증 셋으로 썼는데 RNN controller의 Rewards를 얻기 위한 이미지로 사용했다. 
+
+
+
+####  Controller
+
+저자들의 RNN controller는 Proximal Policy Optimization 알고리즘으로 훈련시켰다. Controller는 다른 아키텍처의 자식 네트워크를 샘플로 뽑는다. 이 아키텍처들은 Worker들의 Pool을 사용해서 Proxy task로 훈련시켰다. Workqueue는 이 실험에서는 100개의 TPU로 구성되어 있다. 미리 검증셋으로 잡아 놓은 데이터셋에서의 AP 척도의 Detection accuracy는 Controller를 업데이트 하기 위한 Reward로서 사용된다. 
+
+![](./Figure/NAS-FPN_Learning_Scalable_Feature_Pyramid_Architecture_for_Object_Detection6.png)
+
+Figure 5의 왼쪽은 훈련 Iteration에 따른 샘플로 뽑힌 아키텍처들의 AP를 보여준다. 그래프를 보면 Controller가 점점 더 좋은 아키텍처를 만들어내는 것을 확인할 수 있다. Figure 6의 오른쪽은 Step에 따른 총 샘플로 뽑힌 아키텍처의 숫자와 RNN controller에 의해 만들어진 하나뿐인 아키텍처의 총 숫자를 나타낸다. 하나뿐인 아키텍처의 숫자는 8000 step 이후로 수렴하는 것을 확인할 수 있다. 저자들은 RL 훈련 과정 중에 샘플로 뽑힌 아키텍처들 중에서 가장 높은 AP를 보인 아키텍처를 모든 실험 중에 사용했다. 아 아키텍처는 8000 step에서 샘플로 뽑혔고 그 이후로 여러번 Step에서 샘플로 뽑혔다. 아래 Figure 6는 이 아키텍처를 보여준다. 
+
+![](./Figure/NAS-FPN_Learning_Scalable_Feature_Pyramid_Architecture_for_Object_Detection7.png) 
+
+
+
+#### Discovered feature pyramid architectures
+
+![](./Figure/NAS-FPN_Learning_Scalable_Feature_Pyramid_Architecture_for_Object_Detection8.png)
+
+Figure 7(b-f)는 RL 훈련 중에 점진적으로 Higher reward를 보이는 NAS-FPN을 그린 것이다. 저자들이 발견한 사실은 RNN controller가 빠른 시간에 중요한 Cross-scale connection을 만들 수 있다는 것이다. 예를 들어서 이 Controller는 High resolution 입력과 출력 Feature 계층 사이의 경로를 발견했는데 이는 작은 객체를 탐지하기 위해서 중요한 HIgh resolution feature을 만들어낸다. Controller에 의한 성능이 수렴되면서(Figure 5의 왼쪽) Controller는 Figure 7a(원래의 FPN 구조)과는 다르게 여러개의 Top-down, Bottom-up 경로를 가진 아키텍처를 발견하게 된다. 또 성능이 수렴하면서 Feature를 다시 사용하는 방법도 학습하게 된다. 후보군에서 임의로 두 개의 입력 계층을 뽑는 것 대신에 Controller는 한번 계산된 Feature representation을 다시 사용하기 위해서 새롭게 생성된 계층으로 경로를 구축하는 방법을 학습한다.  
