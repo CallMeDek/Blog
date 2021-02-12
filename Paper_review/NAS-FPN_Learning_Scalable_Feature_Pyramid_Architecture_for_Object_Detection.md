@@ -135,3 +135,44 @@ Figure 5의 왼쪽은 훈련 Iteration에 따른 샘플로 뽑힌 아키텍처�
 ![](./Figure/NAS-FPN_Learning_Scalable_Feature_Pyramid_Architecture_for_Object_Detection8.png)
 
 Figure 7(b-f)는 RL 훈련 중에 점진적으로 Higher reward를 보이는 NAS-FPN을 그린 것이다. 저자들이 발견한 사실은 RNN controller가 빠른 시간에 중요한 Cross-scale connection을 만들 수 있다는 것이다. 예를 들어서 이 Controller는 High resolution 입력과 출력 Feature 계층 사이의 경로를 발견했는데 이는 작은 객체를 탐지하기 위해서 중요한 HIgh resolution feature을 만들어낸다. Controller에 의한 성능이 수렴되면서(Figure 5의 왼쪽) Controller는 Figure 7a(원래의 FPN 구조)과는 다르게 여러개의 Top-down, Bottom-up 경로를 가진 아키텍처를 발견하게 된다. 또 성능이 수렴하면서 Feature를 다시 사용하는 방법도 학습하게 된다. 후보군에서 임의로 두 개의 입력 계층을 뽑는 것 대신에 Controller는 한번 계산된 Feature representation을 다시 사용하기 위해서 새롭게 생성된 계층으로 경로를 구축하는 방법을 학습한다.  
+
+
+
+### Scalable Feature Pyramid Architecture
+
+R-50, 5 @ 256은 ResNet-50 Backbone, 5 Stacked NAS-FPN pyramid networks, 256 feature dimension을 뜻한다. 
+
+
+
+#### Stacking pyramid networks
+
+저자들의 방법은 작은 아키텍처를 여러번 쌓으면 더 큰 아키텍처를 만들 수 있다는 특징이 있다(작은 빌딩 블록을 쌓아 더 큰 블록으로). 
+
+![](./Figure/NAS-FPN_Learning_Scalable_Feature_Pyramid_Architecture_for_Object_Detection9.JPG)
+
+Figure 8a를 보면 원본 FPN을 많이 쌓는다고 성능이 꼭 개선되는 것은 아닌 반면 NAS-FPN은 쌓을수록 성능이 개선되는 것을 확인할 수 있다. 저자들이 말하길 이는 저자들의 Search 알고리즘이 수동으로는 찾기 힘든, 성능을 개선시키는 아키텍처를 찾아낼수 있는 능력이 있음을 보여주는 것이라고 한다. 그림에서는 Proxy task로 3개만 쌓았지만 7개까지 성능이 개선되었다고 한다. 
+
+
+
+#### Adopting different backbone architecture
+
+저자들은 Accuracy와 Speed의 Tradeoff를 결정하기 위한 방법으로 Backbone 네트워크를 변경해보는 방법이 있다고 한다. NAS-FPN은 Proxy task 때문에 ResNet-10 Backbone으로 Search를 수행하긴 했지만 다른 Backbone에서도 Search를 수행할 수 있다고 한다.  Figure 8b가 그 결과를 보여준다. 
+
+
+
+#### Adjusting feature dimension of feature pyramid networks
+
+Figure 8c를 보면 NAS-FPN의 Feature dimension을 다르게 했을때의 성능 변화를 알 수 있다(ResNet-50 backbone). Feature dimension을 증가시키면 Detection 성능은 개선되지만 그것이 꼭 효율적인 방법으로 성능을 개선하는 것은 아닌 것으로 나타났다. R-50, 7 @ 256은 R-50 3 @ 384와 비슷한 AP를 보이지만 훨씬 적은 FLOPs를 가진다. Feature dimension을 증가시키면 Model regularization 기술을 적용할 필요가 있다. 그래서 저자들은 DropBlock을 적용했다. 
+
+
+
+#### Architectures for high detection accuracy
+
+![](./Figure/NAS-FPN_Learning_Scalable_Feature_Pyramid_Architecture_for_Object_Detection10.JPG)
+
+저자들은 정확하면서도 효율적인 모델을 구축하는 방법을 연구했다. Figure 9a를 보면 NAS-FPN R-50 5 @ 256 모델이 R-101 FPN 모델과 비슷한 FLOPs를 가지면서도 2.5 AP가 더 높은 것은 볼 수 있다.  이는 FPN에서 높은 용량을 가진 Backbone으로 바꾸는 것보다 NAS-FPN으로 FPN을 대체하는것이 더 효율적이라는 것을 의미한다. NAS-FPN을 적용하고 나서 더 높은 정확도를 원하면 무거운 Backbone을 쓰거나 더 높은 Feature dimension을 적용하는 것이 답이 될 수 있다. 
+
+
+
+
+
