@@ -174,5 +174,30 @@ Figure 8c를 보면 NAS-FPN의 Feature dimension을 다르게 했을때의 성�
 
 
 
+#### Architectures for fast inference
+
+Object detection에서 제한된 Computation 환경에서 낮은 지연율의 Detector를 만들어내는 것은 활발히 연구되고 있다. 저자들은 모바일용 Object detection을 위한 NAS-FPNLite을 고안해냈다. NAS-FPN과의 주요 차이점은 출력을 P3에서 P6까지만 가진다는 것이다. 그리고 SSDLite의 구축 방식을 많이 따랐고 컨볼루션을 Depth-wise separable 컨볼루션으로 대체했다. 저자들은 좋은 성능을 내는 15-cell짜리 아키텍처를 발견했고 이를 실험에 사용했다. NAS-FPNLite와 MobileNetV2를 결합하여 RetinaNet 프레임워크를 구축했다. 그리고 비교를 위해서 FPNLite baseline를 만들어냈는데 이는 원래의 FPN에 컨볼루션만 Depth-wise separable 컨볼루션으로 대체한 것이다. 저자들은 NAS-FPNLite와 FPNLite를 오픈 소스 Object detection API(Tensorflow 오픈 API)로 훈련시켰다. Figure 9b에서 저자들은 NAS-FPN의 Feature dimension을 48에서 64로 조절해서 FPNLite baseline과 Pixel 1 디바이스 환경에서 유사한 FLOPs와 CPU runtime을 보이도록 했다. NAS-FPNLite는 SSDLite와 FPNLite의 성능보다 우위를 보였다. 
+
+
+
+### Further Improvements with DropBlock
+
+NAS-FPN 아키텍쳐에서 도입되는 새로운 계층들의 숫자가 증가하는 바람에 과적합을 방지하기 위한 모델 규제 방법이 필요했다. 그래서 저자들은 NAS-FPN 계층들안에서 Batch normalization 계층 뒤에 3x3 block 크기 짜리 DropBlock를 적용했다. 
+
+![](./Figure/NAS-FPN_Learning_Scalable_Feature_Pyramid_Architecture_for_Object_Detection11.png)
+
+Figure 10을 보면 DropBlock이 NAS-FPN의 성능을 개선하는 것을 확인할 수 있다. 특히, 새롭게 도입된 Filter들이 더 많은 아키텍처의 성능을 더 개선한다. 
+
+
+
+## Conclusion
+
+저자들은 이 연구를 통해서 Object detection에서의 Feature Pyramid Network를 디자인하기 위한 과정을 좀더 최적화 하기 위해서 Neural Architecture Search를 사용하는 방법을 제시했다. COCO 데이터셋을 사용한 실험을 통해서 저자들이 발견한 아키텍쳐인 NAS-FPN이 유연하고(Cell 수의 컨트롤을 통해서 FPN의 용량을 조절할 수 있고 입력과 출력의 방식을 유사하게 해서 Early exit을 가능하게 함.) 정확한 Detection model을 구축한다는 목적에 맞다는 것을 보여줬다. Accuracy와 Speed 사이의 Tradeoff에 맞게 NAS-FPN은 많은 Backbone 아키텍처 위에서 잘 작동한다. 
+
+
+
+## Appendix A. Anytiime Detection
+
+본문 참조.
 
 
