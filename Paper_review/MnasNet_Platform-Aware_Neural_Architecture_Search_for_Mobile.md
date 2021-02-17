@@ -54,4 +54,36 @@ CNN 모델의 Resource 효율성을 개선하기 위한 접근 방식으로는 �
 
 
 
+## Problem Formulation
 
+저자들은 아키텍처 디자인 문제를, 높은 정확도와 낮은 지연율을 보이는 CNN 모델을 찾는 것을 목적으로 하는 Multi-objective search로 정형화 했다. 저자들은 실제 모바이스에서 모델의 Latency를 측정하여 Objective에 포함시켰는데 모바일의 하드웨어/소프트웨어적 다양성으로 인해 Latency를 측정하기 어렵다는 문제에 직면하기도 했다. 
+
+모델 m에 대해서 m의 대상 Task에서의 정확도를 ACC(m), 대상 모바일 플랫폼에서의 추론 지연율을 LAT(m)이라고 하고 T를 대상 지연율(목표 지연율)이라고 가정했을때, 한 가지 목표 설정 방법은 T를 제한사항으로 하고 이 지연율 조건 하에 ACC를 극대화 하는 방향으로 설정하는 것이다. 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile4.png)
+
+그러나 저자들이 말하길 이런 접근 방법은 한가지 척도만 극대화하고, 또 Multiple Pareto optimal solution을 제공하지 않는 문제가 있다고 한다. Pareto optimal하다고 할 수 있는 모델은 지연율을 증가시키지 않으면서 가장 높은 정확도를 보이거나 정확도를 감소시키지 않으면서 가장 낮은 지연율을 보일 수 있어야 한다. 저자들이 원하는 것은 한번의 Architecture search에서 Multiple Pareto-optimal solution을 찾는 것이었다. 
+
+이를 위한 여러가지 방식이 있겠지만 저자들은 그 중에서 직접 저자들이 고안한 Weighted product method를 Pareto optimal solution을 근사화 하기 위한 방법으로 사용했다. 그 목적은 아래와 같다. 
+
+| Goal                                                         | W                                                            |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile5.png) | ![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile6.png) |
+
+위에서 α, β는 Application 마다 다른 상수이다. 저자들의 경험으로 α, β를 고르는 규칙에 따르면 각기 다른 정확도-지연율 Trade-off 하에서도 Pareto-optimal solution이 유사한 Reward를 가질수 있다고 한다. 예를 들어서 저자들은 경험적으로 5%의 정확도 향상이 2배 지연율 상승을 동반한다는 것을 관측했다. 두 가지 모델이 있다고 가정 했을때 
+
+- M1 - 지연율 l, 정확도 a
+- M2 - 지연율 2l, 정확도 a(1 + 5%)
+
+저자들의 규칙에 따르면 두 모델은 비슷한 Reward를 가지므로 
+
+1. Reward(M1) = a*(l/T)^β
+2. Reward(M2) = a(1 + 5%)*(2l/T)^β
+3. a\*(l/T)^β ≈ a(1 + 5%)*(2l/T)^β
+4. β ≈ -0.07
+
+이므로 저자들은 모든 실험에서 특별히 언급하지 않는 이상 α = β = -0.07로 설정했다. 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile3.png)
+
+Figure 3은 (α, β)에 따른 Objective function을 보여준다. 위의 그래프는 지연율이 T보다 작을 경우에는 정확도만을 Objective value로 사용하고 T보다 클때에는 급격하게 Objective value가 패널틸르 받아서 모델이 Latency 제약을 침범하지 않도록 유도하게 한다. 아래 그래프에서는 T를 느슷한 제약사항으로 해서 Smooth하게 Objective value가 지연율에 따라 조정되는 것을 확인할 수 있다. 
