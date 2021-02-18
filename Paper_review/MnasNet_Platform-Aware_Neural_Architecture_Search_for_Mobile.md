@@ -87,3 +87,32 @@ CNN 모델의 Resource 효율성을 개선하기 위한 접근 방식으로는 �
 ![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile3.png)
 
 Figure 3은 (α, β)에 따른 Objective function을 보여준다. 위의 그래프는 지연율이 T보다 작을 경우에는 정확도만을 Objective value로 사용하고 T보다 클때에는 급격하게 Objective value가 패널틸르 받아서 모델이 Latency 제약을 침범하지 않도록 유도하게 한다. 아래 그래프에서는 T를 느슷한 제약사항으로 해서 Smooth하게 Objective value가 지연율에 따라 조정되는 것을 확인할 수 있다. 
+
+
+
+## Mobile Neural Architecture Search
+
+### Factorized Hierarchical Search Space
+
+NAS에서 잘 설계된 Search space는 매우 중요한데 이 연구 이전의 기존 연구 대부분이 몇가지 복잡한 Cell을 단순히 반복해서 쌓는 방식으로 아키텍처를 만들었다. 이렇게 되면 계층의 다양성이 없어져서 좋은 성능을 내기 힘들다고 주장한다. 
+
+저자들은 Factorized hierarchical search space라는 개념을 고안해냈다. CNN 모델을 여러 고유의 블럭으로 나누고 각 블럭마다 개별적으로 연산의 종류, 연결 방법들을 탐색한다. 이렇게 되면 다른 블럭의 다른 계층 아키텍처를 만들 수 있다. 저자들은 직감적으로 정확도와 지연율의 Trade-off를 잘 조절하기 위해서는 입력과 출력의 모양에 근거해서 가장 좋은 연산 방법을 찾아낼 필요가 있음을 이해했다. 예를 들어서 CNN의 초기 단계에서는 많은 양의 데이터를 처리하기 때문에 추론시 지연율에 관해서는 후기 단계보다 영향력이 더 크다. 저자들은 Depthwise separable 컨볼루션을 사용했다. Depthwise separable 컨볼루션 커널은 (K, K, M, N)의 네 개의 튜플로 나타냈는데 (H, W, M)의 입력을 (H, W, N)의 출력을 변환시킨다. 이때 (H, W)는 입력 해상도의 크기이고 M, N은 각각 입력과 출력 필터의 차원 수이다. 이때 총 Multiply-add의 수는 다음과 같다. 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile4.png)
+
+여기서 만약에 전체 연산량에 제한이 있다면 커널 크기 K와 차원 수 N을 균형감 있게 잘 조절할 필요가 있다. 예를 들어서 커널 크기 K를 크게 해서 Receptive field의 크기를 늘린다면 동시에 해당 계층이나 다른 계층의 필터 차원 수 N을 줄여서 균형을 맞출 필요가 있다. 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile5.png)
+
+Figure 4는 저자들의 Search space의 기본 구조를 보여준다. 저자들은 CNN 모델을 미리 정의된 블럭의 열로 나눠놓고 입력 해상도를 점점 줄이고 필터 차원 수를 점점 늘렸다. 각 블럭은 동일한 계층들의 리스트인데 이때 연산의 종류나 연결 방법은 블럭마다 Sub search space에서 결정한다. 구체적으로 블럭 i의 Sub search space는 다음의 옵션에서 선택하게 된다. 
+
+- 컨볼루션 연산의 종류: 보통의 컨볼루션(conv), Depthwise 컨볼루션(dconv), Mobile inverted bottleneck conv
+- 컨볼루션 커널 사이즈 K: 3x3, 5x5
+- Squeeze-and-excitation 비율: 0, 0.25
+-  Skip 연산의 종류: Pooling, Identity residual, No skip
+- 출력 필터 크기 Fi
+- 블럭 Ni 마다의 계층의 숫자
+
+예를 들어서 Figure 4의 블럭 4의 각 계층은 Inverted bottleneck 5x5 컨볼루션과 Identity residual skip path의 구조가 N4만큼 반복되는 것을 확인할 수 있다. 저자들은 모든 Search 옵션을 MobileNetV2를 참고해서 이진화 했다. 각 블럭에서의 계층의 숫자를 MobileNetV2에 근거해서 {0, +1, -1}의 옵션으로 탐색했고 계층마다의 필터 크기를 MobileNetV2에서의 크기 보다 {0.75, 1.0, 1.25}배의 옵션으로 탐색했다. 
+
+저자들은 Factorized hierarchical search space는 총 Search space의 크기와 계층의 다양성의 균형을 맞추다는 확실한 장점이 있다고 주장한다. 예를 들어서 네트워크를 B개의 블럭으로 나눴고 각 블럭은 S 크기의 Sub search space와 평균적으로 블럭마다 N개의 계층이 있다고 가정할때, 총 Search space 크기는 S^B가 되는데해 반해 평범한 계층마다의 Search space의 크기는 S^(B*N)이 된다고 한다. 
