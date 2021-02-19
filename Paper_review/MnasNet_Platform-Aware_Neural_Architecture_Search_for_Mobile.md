@@ -116,3 +116,19 @@ Figure 4는 저자들의 Search space의 기본 구조를 보여준다. 저자�
 예를 들어서 Figure 4의 블럭 4의 각 계층은 Inverted bottleneck 5x5 컨볼루션과 Identity residual skip path의 구조가 N4만큼 반복되는 것을 확인할 수 있다. 저자들은 모든 Search 옵션을 MobileNetV2를 참고해서 이진화 했다. 각 블럭에서의 계층의 숫자를 MobileNetV2에 근거해서 {0, +1, -1}의 옵션으로 탐색했고 계층마다의 필터 크기를 MobileNetV2에서의 크기 보다 {0.75, 1.0, 1.25}배의 옵션으로 탐색했다. 
 
 저자들은 Factorized hierarchical search space는 총 Search space의 크기와 계층의 다양성의 균형을 맞추다는 확실한 장점이 있다고 주장한다. 예를 들어서 네트워크를 B개의 블럭으로 나눴고 각 블럭은 S 크기의 Sub search space와 평균적으로 블럭마다 N개의 계층이 있다고 가정할때, 총 Search space 크기는 S^B가 되는데해 반해 평범한 계층마다의 Search space의 크기는 S^(B*N)이 된다고 한다. 
+
+
+
+### Search Algorithm
+
+저자들은 저자들의 Multi-objective search 문제에 맞는 Pareto optimal solution을 찾기 위해서 강화 학습을 적용하는 접근 방식을 사용했다. 강화학습을 사용한 이유는 구현하기 편리하고 Reward를 Customize하기 쉽기 때문이다. 
+
+구체적으로 저자들은 Search space의 각 CNN 모델을 토큰들의 리스트로 매핑했다. 이 토큰들은 파라미터 θ에 근거한 강화학습 Agent에서 행동 a1:T들의 열에 의해서 결정되었다. 저자들의 목적은 기대되는 Reward를 극대화 하는 것이다. 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile6.png)
+
+여기서 m은 행동 a1:T에 의해서 결정된 샘플링된 모델이고 R(m)은 Equation 2(위에서 표의 Goal의 식)에 의해서 정의되는 Objective value이다. 
+
+Figure 1과 같이 Search 프레임워크는 세 부분으로 구성된다. RNN 기반의 Controller, 모델의 정확도를 얻기 위한 Trainer, Latency를 측정하기 위한 모바일 기반의 Inference engine. 저자들은 Controller를 훈련시키기 위해서 잘 알려진 Sample-eval-update를 따랐다. 각 Step에서 Controller는 이것은 현재 파라미터 θ에 근거해서 자식 모델 배치를 샘플링한다. 이때 RNN으로부터의 Softmax logits에 근거한 토클들의 열을 예측한다. 각 샘플링된 모델에 대해서 저자들은 Target task에서 훈련시키고 정확도 ACC(m)을 얻고 디모바일 디바이스에서 모델을 구동해서 Inference Latency LAT(m)을 얻는다. 그런 다음 Equation 2(위의 표에서 Goal)의 식으로 Reward 값 R(m)을 계산한다. 각 Step의 마지막에는 Controller의 파라미터 θ들이 Proximal Policy Optimization을 사용한 Equation 5(바로 위의 식) 의해서 정의되는, 예산된 Reward를 극대화 하는 방향으로 업데이트 된다. Sample-eval-update loop는 파라미터 θ들이 어느 값들로 수렴하거나 Step의 최대치에 다다를때까지 반복적으로 수행된다. 
+
+
