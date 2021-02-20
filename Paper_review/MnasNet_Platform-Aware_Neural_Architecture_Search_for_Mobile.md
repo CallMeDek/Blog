@@ -132,3 +132,39 @@ Figure 4는 저자들의 Search space의 기본 구조를 보여준다. 저자�
 Figure 1과 같이 Search 프레임워크는 세 부분으로 구성된다. RNN 기반의 Controller, 모델의 정확도를 얻기 위한 Trainer, Latency를 측정하기 위한 모바일 기반의 Inference engine. 저자들은 Controller를 훈련시키기 위해서 잘 알려진 Sample-eval-update를 따랐다. 각 Step에서 Controller는 이것은 현재 파라미터 θ에 근거해서 자식 모델 배치를 샘플링한다. 이때 RNN으로부터의 Softmax logits에 근거한 토클들의 열을 예측한다. 각 샘플링된 모델에 대해서 저자들은 Target task에서 훈련시키고 정확도 ACC(m)을 얻고 디모바일 디바이스에서 모델을 구동해서 Inference Latency LAT(m)을 얻는다. 그런 다음 Equation 2(위의 표에서 Goal)의 식으로 Reward 값 R(m)을 계산한다. 각 Step의 마지막에는 Controller의 파라미터 θ들이 Proximal Policy Optimization을 사용한 Equation 5(바로 위의 식) 의해서 정의되는, 예산된 Reward를 극대화 하는 방향으로 업데이트 된다. Sample-eval-update loop는 파라미터 θ들이 어느 값들로 수렴하거나 Step의 최대치에 다다를때까지 반복적으로 수행된다. 
 
 
+
+## Experimental Setup
+
+ImageNet이나 COCO 같은 용량이 큰 데이터셋으로 탐색을 수행하는 것은 비용이 비싼데, 각 모델의 성능이 수렴하기까지 며칠이 걸릴지 모르기 때무이다. 기존의 연구들이 CIFAR 10같은 용량이 작은 데이터셋으로 탐색을 수행했는데 저자들은 이런 Small proxy가 실은 유효하지 않다고 주장한다. 왜냐하면 모델 Latency를 제대로 고려하려면 결국 모델의 크기를 키워야 하기 때문이다. 저자들은 그래서 용량이 큰 데이터셋으로 직접 탐색을 수행하는 대신 훨씬 적은 Step 동안 탐색을 수행했다. 저자들은 ImageNet 훈련 셋에서 50K 이미지를 임의로 골라서 검증 셋으로 정했다. 정확도가 확실히 저자들의 Search space으로 개선되었다는 것을 보장하기 위해서 비효율적이긴 하지만 NASNet에서와 같은 RNN controller를 사용했다. 각 아키텍처 탐색은 64개의 TPUv2로 4.5일이 걸렸다. 훈련 과정 동안 저자들은 각 샘플링된 모델은 Single-thread Pixel 1 환경에서 구동해서 Latency를 측정했다. 종합적으로 Controller는 탐색하는 동안 8K의 모델을 샘플링했다. 하지만 15개의 성능이 좋은 모델만 ImageNet으로 탐색 했고 1개의 모델만 COCO로 탐색했다. 
+
+ImageNet으로 훈련할때는 RMSProp optimizer에 Decay 0.9, momentum 0.9를 적용했고 Batch norm을 모든 컨볼루션 계층 뒤에 Momentum 0.99, Weight decay 1e-5로 더했다. Dropout은 Rate 0.2로 마지막 계층에 적용했다. LR은 0부터 0.256까지 첫 5 epochs동안 증가시켰고 그 후에 2.4 epochs 마다 0.97씩 Decayed 시켰다. 배치 크기는 4K이고 이미지 크기를 224x224로 조정했다. COCO 훈련에서는 저자들의 모델은 SSD dectector에 포함시켰고 MobileNetV2와 같은 셋팅으로 적용했으며 입력 크기는 320x320이다. 
+
+
+
+## Results
+
+### ImageNet Classification Performance
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile7.png)
+
+Table 1은 ImageNet에서 각 모델의 성능을 보여준다. 저자들은 Target Latency T를 75ms로 설정했고 위의 테이블의 Goal 식의 α = β = -0.07로 정했다. 그리고 난 다음 같은 탐색 환경에서 다른 Latency-accuracy의 Trade-off를 보이는 가장 성능이 좋은 모델 3개를 골랐다. 
+
+저자들은 Squeeze-and-excitation에 관해서 SE를 적용했을때와 안 했을때의 성능 결과를 아래 Table 2에 나타냈다. 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile8.png)
+
+
+
+### Model Scaling Performance
+
+개발자들은 자주 Accuracy-latency 혹은 Model size를 Trade 하기 위해서 모델의 크기를 줄이거나 늘리거나 한다. 한 가지 흔히 쓰는 방법은 Depth multiplier를 사용해서 Filter 크기를 조정하는 것이다. 다른 방법은 네트워크의 변경 없이 입력 이미지 크기를 줄이는 것이다. 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile9.png)
+
+Figure 5는 모델 크기 조절 방법을 MnasNet과 MobileNetV2에 적용했을때의 성능을 그래프로 나타낸 것이다. 
+
+모델의 크기를 조절하는 것에다가, 저자들의 방식은 Latency target에 맞춰 새로운 아키텍처를 탐색하는 것도 가능하다. 저자들의 방식은 Baseline model의 크기를 줄이거나 이런 Latency 제약 사항에 들어맞는 새로운 모델을 찾는다. 아래의 Table 4를 이 두 가지 방식을 비교한다. 공정한 비교를 위해서 224x224로 같은 이미지 사이즈를 적용했다. 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile10.png)
+
+
