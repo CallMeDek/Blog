@@ -168,3 +168,57 @@ Figure 5는 모델 크기 조절 방법을 MnasNet과 MobileNetV2에 적용했�
 ![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile10.png)
 
 
+
+### COCO Object Detection Performance
+
+COCO object detection을 위해서 저자들은 Table 2의 MnasNet 모델을 SSDLite의 Feature extractor로서 사용했다. 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile11.png)
+
+Table 3는 COCO에서의 MnasNet 모델의 성능을 보여준다. 저자들은 저자들의 모델을 COCO trainval35k로 훈련시켰고 test-dev2017으로 평가해서 결과를 COCO 서버에 보냈다고 한다. 
+
+
+
+## Ablation Study and Discussion
+
+여기서 저자들은 Latency 제약과 Search space의 영향에 대해서 알아봤다. 그리고 MnasNet 아키텍처와 계층 다양성의 중요함에 대해서 알아봤다. 
+
+
+
+### Soft vs. Hard Latency Constraint
+
+저자들의 Multi-objective search 방법에서 Reward를 계산하는 식에서 α, β를 다르게 설정함으로서 Hard 하거나 Soft한 Latency 제약사항을 알아볼 수 있다. 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile12.png)
+
+Figure 6은 α, β에 따른 Multi-objective search의 결과를 보여준다. α = 0, β = -1일때는 Latency는 Hard한 제약 사항으로 취급되므로 Controller가 Latency 패널티를 피하기 위해서 좀 더 빠른 모델에 집중하는 경향을 볼 수 있다. α = β = -0.07일때는 Latency가 Soft 제약사항으로 취급되어 넓은 범위의 Latency로 모델을 탐색한다. 이때 Target Latency인 75ms에 가깝게 모델을 샘플링하긴 하지만 40ms보다 더 작거나 110ms보다 더 큰 모델도 탐색하긴 한다. 이 점은 Table 1에서 보여준과 같은 Single architecture search에서의 Pareto curve에서 여러 모델을 뽑을 수 있게 한다.
+
+
+
+### Disentangling Search Space and Reward
+
+저자들은 저자들 연구의 두 가지 핵심 기여 사항인 Multi-objective reward와 New search space의 영향을 따로 분리해서 확인하고자 했다. 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile13.png)
+
+Table 5는 이 요소들의 적용했을때의 성능을 보여준다. NASNet에서 시작해서 저자들은 먼저 NASNet에서의 Cell 기반의 Search space를 적용했다. 그리고 저자들의 Multiple-object reward를 사용해서 단순히 Latency 제약 요소를 추가했다. 그 결과 정확도와 지연율을 바꿔서 좀 더 빠른 모델을 만들었다. 그리고 나서 저자들의 Multi-objective reward 개념과 New factorized serach space 개념을 적용했더니 더 정확하고 낮은 지연율을 가진 모델을 만들었다. 
+
+
+
+### MnasNet Architecture and Layer Diversity
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile14.png)
+
+Figure 7(a)는 저자들의 방법을 적용해서 찾은 MnasNet-A1 모델을 나타낸다. 네트워크 전체에 걸쳐서 다양한 계층으로 구성되어 있는 것을 확인할 수 있다. 한 가지 흥미로운 점은 저자들의 MnasNet이 3x3, 5x5 컨볼루션을 사용했다는 것인데 이는 이전의 모델들이 3x3 컨볼루션만 사용한 것과는 다른 양상이다(VGG 참고). 
+
+계층 다양성의 영향을 확인하기 위해서 저자들은 Table 6에서 MnasNet과 이것의 변형 모델을 비교했다. 변형 모델은 오직 한 타입의 계층만 반복해서 쌓은 것이다(Kernel size, Expansion ratio 고정). 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile15.png) 
+
+원래의 MnasNet 모델이 더 좋은 Trade-off를 보인 것으로, 리소스 제약사항이 있는 CNN 모델에서 계층의 다양성의 중요성을 보여주는 결과이다. 
+
+
+
+## Conclusion
+
+이 연구에서 저자들은, 강화 학습을 사용하여 리소스를 효율적으로 사용하는 모바일 CNN 모델을 디자인하기 위한 자동화된 NAS 방법을 제안했다. 저자들의 연구의 주요 골자는 Search space에 실제 모바일에서의 Latency 정보를 포함하는 것과 최상의 Trade-off를 보이는 Mobile 모델을 찾기 위한 Factorized hierachical search space 개념이다. 저자들의 방식으로 ImageNet classification이나 COCO object detection에서 SOTA의 결과를 보였다. 또 MnasNet 아키텍처는 계층 다양성의 중요성에 대해서도 상기 시켜줬다. 
