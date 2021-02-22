@@ -1,0 +1,76 @@
+# MnasFPN : Learning Latency-aware Pyramid Architecture for Object Detection on Mobile Devices
+
+Bo Chen, Golnaz Ghiasi, Hanxiao Liu, Tsung-Yi Lin, Dmitry Kalenichenko, Hartwig Adam, Quoc V. Le(Google Research)
+
+
+
+## Abstract
+
+저자들이 주장하길 리소스에 대한 제약사항이 있는 환경 하에서 괜찮은 모델의 아키텍처를 탐색하는 연구가 많이 이뤄졌지만 온디바이스 환경에서의 Object detection을 위한 디자인은 대부분 수동적으로 이뤄졌다고 한다. 이에 대한 몇가지 시도는 수행되었으나 모바일 친화적이지 않은 Search space 위주이거나 온디바이스 Latency가 반영되지 않거나 하는 문제가 있었다. 저자들은 MnasFPN이라고 하는, Detection head를 위한 모바일 친화적인 Search space를 제안했다. 그리고 이를 Latency를 인식하는 아키텍처 Search와 합쳐서 Object detection 모델을 만들었다. Ablation study에서는 성능 향상의 주요 원인이 저자들의 Search space의 혁신성에서 비롯된다는 것을 보여줬다. 
+
+
+
+## Introduction
+
+모바일 환경에 배치할 모델을 위한 아키텍처를 디자인 하는 것은 쉽지 않다. 왜냐하면 모델의 용량과 정확도 사이에 면밀한 Trade-off를 잘 조절해야 하고 디바이스가 모델이 사용하는 연산을 지원하는가 혹은 연산이 디바이스 친화적(연산을 빠르게 잘 수행)인가를 고려해야하기 때문이다. Neural architecture search는 이런 디자인 과정을 자동화하는 프레임워크를 제공했다. 여기서 강화학습 기반의 Controller는 유저가 지정한 Search space 하에 빠르고 정확한 모델을 만들어 내는 법을 학습한다. 그런데 NAS 연구는 Search 알고리즘을 개선하는데 집중하는데 반해 Search space를 디자인하는 작업은 성능에 큰 영향을 끼침에도 불구하고 연구가 비교적 덜 수행되었다고 한다. 
+
+모바일과 서버 기반의 Image classification을 위한 NAS 관련 연구는 큰 진보를 이뤄낸 반면 Object detection 관련해서는 상대적으로 적은 시도가 이뤄졌다고 한다. 그 이유 중 어느정도는 Backbone과 관련해서 Detection head의 Search space에서의 복잡성 때문이다. Backbone에서는 연속적으로 이미지의 특징을 추출하게 되는데 이때 특징이 점점 미세해진다. Object detection과 Image classification에서의 이미지 추출 과정은 유사하다. 그러므로 원래 NAS 방식의 연구들은 Classification feature extractor를 Detection에 맞게 재조정하거나 Detection head는 고정시켜놓고 Backbone을 탐색하거나 하는 방식이었다. Backbone은 계층의 연속이기 때문에 이때의 Search space는 연속적일수 밖에 없다. 이에 반해 Detection head는 연속적이지 않을 가능성이 크다. 여기서는 특징들을 합치거나 여러 크기에 맞춰 다시 만들어내거나 할 수 있다. 이렇게 하는 이유는 Class 예측이나 객체의 위치 추정을 더 잘 하게 하기 위해서이다. 그러므로 이때의 Search space는 어떤 특징을 합칠 것인가(Fuse) 얼마나 자주, 어떤 순서로 특징들을 합칠 것인가 하는 과정을 포함한다. 이것을 NAS 방식 아키텍처로 해결하는 것은 어렵다는 것을 몇몇 연구가 입증했다.
+
+한가지 예외는 NAS-FPN인데 Detection head의 비연속적인 Search space 문제를 다룬 첫 번째 NAS 논문이다. 이 연구에서는 정확도 만을 위해 최적화를 수행했고 SOTA 성능을 보였다. 그리고 수동적으로 NAS-FPNLite라고 하는 원본과 다른 변경 버전을 디자인해서 모바일에서 괜찮은 성능을 보여줬다. 그러나 NAS-FPNLite는 세 부분에서 한계를 가진다.
+
+- 아키텍처를 만들어내는 탐색 과정이 연산 복잡성이나 온디바이스에서의 지연율에 의해서 주도되지 않았다. 
+- 모바일에 맞게 수동적으로 아키텍처가 조정되었기 때문에 더 최적화가 가능할 여지가 남아있다.
+- 원본 NAS-FPN search space는 모바일에서의 사용을 위한 모델을 만들어 내는 목적이 아니었다. 
+
+저자들이 말하길 MnasFPN에서는 위의 이슈들을 다룬다고 한다. 구체적으로 이 Search space에서는 Depthwise 컨볼루션이 최적화 되어 있어서 모바일에 알맞다고 하고, Inverted residual block 개념을 Search space에 다시 도입해서 모바일 CPU 환경에서 Detection head에 효율적이라는 것을 증명했다고 주장한다. 저자들은 온디바이스에서 지연율이 주도하는 Search space에서 NAS를 수행했다. 
+
+그래서 저자들이 주장하는 저자들이 기여하는 바는 다음과 같다. 
+
+- 모바일 친화적인 Detection head를 위한 Search space
+- Object detection을 위한 지연율 인식 탐색을 첫번째로 수행
+- SSDLite, NAS-FPNLite를 능가한 Detection head 아키텍처
+
+
+
+
+
+
+
+## Experiments
+
+저자들은 COCO object detection으로 실험을 실시했고 Latency-aware search와 Search space의 각 요소들의 효율성을 알아보기 위한 Ablation study를 수행했다. 
+
+### Search Experiments and Models
+
+저자들은 아래와 같이 실험을 실시했는데 여기서 모든 Search space에서는 Cell 마다 5개의 블럭을 허용했다. 
+
+- MnasFPN: Figure 1에 나와 있음.
+- NAS-FPNLite: NAS-FPN을 가볍게 만든 모델로서 Head의 모든 컨볼루션을 Separable 컨볼루션으로 대체했다. 이 모델들은 Latency-sensitive NAS를 통해 탐색되지 않은 유일한 모델들이다(3.3절 참고). 
+- NAS-FPNLite-S: 모든 컨볼루션을 Separable 컨볼루션으로 대체한, NAS-FPN search space를 탐색한다. NAS-FPNLite와 차이점은 모델 구축 후에 이런 대체를 한 것이 아니고 애초에 Search space에서 대체를 한 뒤에 모델 구축 과정을 탐색하는 것이다. 
+- No-Exand: 중간 과정에서의 모든 Feature들에 대해서 F = C를 강제해서 MnasFPN에서 Expansion 부분만 제거한 실험이다. 이 실험으로 알 수 있는 것은 IRB에서 Expansion의 영향력을 알아볼수 있다는 것이다. 
+- Conn-Search: 블럭마다의 2개에서 D>= 2 사이의 서로 다른 입력(Feature map)을 합병하는 것을 용인한다.  단, 합병 연산은 덧셈만 가능하다. 
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile6.png)
+
+![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile7.png)
+
+
+
+### Experimental Setup
+
+저자들은 여기서 모든 Detection model을 같은 설정과 하이퍼 파라미터로 훈련시켰고 Ablation study는 5k COCO val2017 데이터셋에서 수행되었다. 최종 비교 결과는 COCO test-dev 데이터셋으로 평가되었다. 
+
+#### Training setup
+
+- COCO val2017: 각 모델은 150 epochs 혹은 277k steps 동안 훈련되었고 배치 사이즈는 64로 COCO train2017 데이터셋으로 훈련시켰다. 훈련은 8 Replicas로 동기화되었다. LR은 다음과 같은 스케쥴을 따랐다. 0부터 0.04까지 첫번째 에폭동안 선형적으로 증가하다가 이후부터는 값을 고정시켰다. 120 epoch과 140 epoch에서 각각 0.1까지 급격하게 줄었다. 훈련의 안정성을 위해서 Gradient-norm clipping을 10 epoch에서 적용했고 Ablation study에서는 MobileNetV2를 Backbone으로 사용한 모델을 ImageNet 데이터셋으로 Pre-training시켰다. 
+- COCO test-dev: 각 모델은 100k steps동안 처음부터(Pre training 없이) 훈련시켰고 32의 동기화된 Replicas로 배치 사이즈 1024로 훈련시켰다. LR은 4부터 0까지 Decayed되는 Cosine 스케쥴링을 적용했다. 단 처음 2k steps 동안은 Linear warmup phase를 적용했다. 경쟁력을 보장하기 위해서 COCO train2017과 val2017 데이터셋을 훈련 셋으로 병합했다. 
+
+모든 훈련과 평가는 320x320 크기의 입력 이미지를 사용했다. 또 Drop-block이나 Auto-augmentation이나 하이퍼 파라미터 튜닝을 적용하지 않았는데 이는 비교 연구에서 특정 유형의 모델을 선호하는 것을 피해서, 각종 문헌의 기존 결과와 공평하게 비교하기 위함이다. 
+
+#### Timing setup
+
+모든 Timing은 Pixel 1 디바이스에서 TensorflowLite의 Latency benchmarker를 사용해서 배치 사이즈 1의 Single-thread로 수행되었다. MobileNetV2의 관행을 따라서 각 Detection model은 TensorflowLite flatbuffer format으로 변경되어 NMS를 수행하기 바로 직전의 Box와 Class prediction 값을 출력한다. 
+
+#### Architecture Search Setup
+
+저자들은 MNASNet에서 사용된 Controller setup을 따랐다. Controller는 10K의 자식 모델을 샘플링하는데 TPUv2 디바이스에서 각각 1시간까지 걸리기도 한다. 모델을 훈련시키기 위해서 저자들은 COCO train2017 데이터셋을 임의로 111k-search-train 데이터셋과 7k-seach-val 데이터셋으로 나눴다. 저자들은 20 epochs동안은 배치 사이즈 64로 search-train 셋으로 훈련시키고 search-val 셋으로 mAP 척도로 모델을 평가했다. LR은 첫 번째 Epoch동안 0부터 0.4로 선형적으로 증가하고 Step-wise precedure를 따라 Epoch 16에서 0.1로 Decay시킨다. 저자들은 320x320 해상도의 이미지로 Proxy task로 훈련을 수행해서 Proxy task와 Main task의 측정된 Latency가 동일하도록 했다. 
