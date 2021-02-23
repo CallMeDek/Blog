@@ -32,7 +32,35 @@ Bo Chen, Golnaz Ghiasi, Hanxiao Liu, Tsung-Yi Lin, Dmitry Kalenichenko, Hartwig 
 
 
 
+## Related Work
 
+### Mobile Object Detection Models
+
+대부분의, 모바일에서의 Detection 모델은 전문가에 의해서 수동적으로 구축된다. SSDLite는 Light-weight detection head 아키텍처로 유명한 모델 중 하나이다. 이 모델에서는 모바일에서의 연산 부담을 줄이기 위해서 SSD head의 3x3 컨볼루션을 Separable 컨볼루션으로 바꿨다. 이 방법은 NAS-FPN을 모바일에 탑재하기 위해 만든 NAS-FPNLite에도 적용되었다. SSDLite와 NAS-FPNLite는 MobileNetV3와 같은 Backbone과 쌍을 이룰수 있다. 
+
+
+
+### Architecture Search for Mobile Models
+
+저자들의 NAS 탐색 방법은 온디바이스에서 측정되는 Latency signal에 의해서 작업이 진행된다. Latency 인식 NAS 방법은 이 연구 이전에 NetAdapt와 AMC에서 Pre-trained된 모델의 채널 차원을 학습하기 위해 사용되었다. 이때 Look-up table(LUT)이 네트워크의 각 부분들의 지연율의 합에 근거하여 종단간의 지연율을 효율적으로 측정하기 위해 사용되었다. 이 아이디어는 MnasNet에서 NAS 프레임워크를 사용해서 Generic 아키텍처 파라미터를 탐색하기 위한 용도로 확장되었다. 이때 강화학습 기반의 Controller는 각종 아키텍처의 지연율과 정확도를 관찰하고나서 효율적인 아키텍처를 만들어내는 법을 학습한다. 이 프레임워크는 MobileNetV3와도 결합되었다. 
+
+MnasNet 스타일의 탐색방법은 리소스 사용이 제한되는 연구자들에게는 그림의 떡이었다. 그러므로 NAS 연구 결과들의 비대한 몸집에도 불구하고 이 문제를 어느정도 해소하고자 탐색 효율성을 개선하는 방법쪽으로 초점이 맞춰졌다. 이 방법들은 하이퍼네트워크와 가중치 공유를 사용해서 탐색 효율성을 올리는 아이디어를 이용했다. 모바일에서의 Classification의 성공에도 불구하고 이런 탐색 방법들은 리소스가 제약되어 있는 상황에서 연속적이지 않은 Search space로까지 크게 확장되어 본적이 없다. 이런 이유로 저자들이 말하길 Mobile에서 Object detection 모델은 보기 힘들다고 한다. 
+
+
+
+### Architecture Search for Object Detection
+
+Object detection에서의 아키텍처 탐색의 비연속성이라는 특성때문에 Object detection에서의 NAS는 상당히 제한적이었다. 
+
+NAS-FPN은 Detection head Search 문제를 다루는 선구자격 연구이다. 이 연구에서는 FPN에 근거해서 아주 중요한 Search space를 제안한 바 있다. 저자들의 연구도 NAS-FPN에 영감을 받았지만 목적이 좀 더 모바일 친화적인 Search space에 있다는 차이점은 있다. 
+
+다른 선구자격 연구는 Auto-Deeplab이 있다. 여기서는 NAS search를 Semantic segmentation 문제에서 다뤘다. 저자들의 연구도 서로 다른 해상도의 연결 패턴을 학습하는, 유사한 문제에 직면했다. 
+
+DetNAS는 Detection body를 탐색하는 것의 효율성을 개선시키는데 초점을 맞췄다. 이 연구에서는 탐색 동안 모든 샘플링된 아키첵처의 ImageNet pretraining의 필요성에 의해서 촉발된 관리하기 힘든 연산량 문제를 다뤘다. 저자들의 연구는 Body보다는 Head에만 관심을 뒀다. 
+
+NAS-FCOS에서는 Object detection을 위한 탐색 과정의 속도를 높이기 위해서 Detection head에까지 가중치 공유 개념을 확장한 바 있다. NAS-FPN과 유사하게 Detection head를 위한 Search space는 모두 컨볼루션으로 이루어져 있으나, 모바일이 대상이 아니었다. 저자들의 연구는 이들의 연구에 보충적으로, 저자들의 모바일 친화적인 Search space에 근거한 Latency-aware 탐색은 그들의 가중치 공유 탐색 전략을 더 가속화 할 수 있다. 
+
+모바일쪽에서 Object detection 아키텍처는 거의 주요 타겟으로서 최적화되지는 않는다. 그보다는 Classification을 목적으로 한 가벼운 Backbone과 미리 훈련시킨 Detection head로 구성된다. 저자들은 모바일에서의 모델 배치를 위한 Object detection용 아키텍처 최적화를 직접적으로 수행한다고 한다.  
 
 
 
