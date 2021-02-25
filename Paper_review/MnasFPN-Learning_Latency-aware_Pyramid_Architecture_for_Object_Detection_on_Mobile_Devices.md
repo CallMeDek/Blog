@@ -98,6 +98,62 @@ Figure 1을 보면 IRB와 비슷한, 입력과 출력 Feature 사이의 연결�
 
 
 
+### Size Dependent Ordering(SDO)
+
+저자들이 말하는 MnasFPN의 또다른 혁신은 입력과 출력 해상도에 근거해서 컨볼루션 연산 종류와 네트워크의 구조를 동적으로 바꿀수 있다는 점이다. 저자들은 이를 Size Dependent Ordering(SDO)라고 부른다. 구체적으로 만약에 입력 Feature가 다운 샘플링될 필요가 있다면 다운 샘플링은 1x1 컨볼루션 전에 수행된다. 반대로 업 샘플링될 필요가 있다면 1x1 컨볼루션이 먼저 수행된다. 
+
+이 디자인은 계산을 최소화한다. 표기상의 편의를 위해서 Feature map이 정사각형이라고 가정하고, R을 높이와 너비를 나타낸다고 가정한다. Feature map을 병합할때, 저자들은 초기 입력 해상도 R0와 채널 차원 C가 중간 해상도 R과 채널 차원 F와 맞지 않을때, Reshaping과 1x1 컨볼루션을 수행해서 이를 맞춘다. 
+
+만약에 R0 > R(다운 샘플링이 필요한 경우)일때, R0 = kR이라고 한다면(k >= 2) 다운 샘플링은 Stride k의 kxk 컨볼루션으로 수행되어야 하고, 다운 샘플링 후에 1x1 컨볼루션을 수행할때 Cost는 아래와 같은 것이다.
+
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices2.JPG)
+
+이에 반해 1x1 컨볼루션 후에 다운 샘플링을 수행할 경우는 아래와 같다.
+
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices3.JPG)
+
+F >= 2인 조건이 합리적이라고 한다면 아래의 조건을 만족하므로 
+
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices4.JPG)
+
+Cost2와 Cost1의 차이는 아래와 같게 된다.
+
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices5.JPG)
+
+따라서 다운 샘플링 후에 1x1 컨볼루션을 적용하는 것이 더 실속있다는 것을 알 수 있다. 반대의 경우도 비슷하게 증명할수 있다. 
+
+
+
+### MnasFPN Search
+
+MnasFPN의 Feature 생성 과정과 모든 탐색가능한 요소는 Figure 1에 묘사되어 있다. 각 Feature 생성 블럭에 대해서 저자들은 병합할 두 입력 Feature, 합쳐진 Feature의 해상도 R과 채널 차원 F, 병합 연산(Addition 혹은 SE), 병합 후에 Depthwise 컨볼루션의 커널 크기를 탐색한다. 전체 네트워크 차원에서는 입력과 출력 그리고 생성된 Feature가 같은 채널 차원인 C를 공유하는데 이는 탐색 대상 값이다. 
+
+저자들은 MnasNet의 아키텍처 탐색 프레임워크를 도입해서 Latency 측정 값을 탐색 Objective에 포함시켰다. 저자들은 강화 학습 기반 컨트롤러를 훈련시켜서 다음과 같이 정의되는 Reward function을 극대화 하는 네트워크 아키텍처를 Controller가 제안하도록 했다. 샘플링된 아키텍처 m이 훈련되고 평가되는 과정은 Proxy task로 진행된다. Proxy task는 실제 Task의 축소 버전이다. Proxy task 성능은 mAP(m), 네트워크의 온디바이스에서의 지연율인 LAT(m)이 결합된 상태로 측정된다. 
+
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices6.JPG)
+
+w < 0일때는 Latency와 Accuracy의 Trade off point를 조절한다. 이론적으로 w는 원하는 Latency에서 성능 Trade-off 곡선을 딱 자르는 접선의 기울기이다. 실제로는 저자들이 관찰한 바에 따르면 원하는 Latency 주변의 성능을 보이는 아키텍처 또한 최적화된 아키텍처가 될 수 있고 Search space의 성능 경계가 비슷한 곡률을 보이기 때문에 w는 한 번만 설정될 필요가 있다고 한다. 
+
+Controller는 반복적으로 후보 아키텍처 m을 제안하고, Proximal Policy Optimization을 적용해서 Reward feedback인 Reward(m)에 근거해서 Controller 자신을 훈련시킨다. 모든 탐색 실험 후에 모든 샘플링된 아키텍처는 Figure 6와 같이 성능 경계를 추적하게 된다. 
+
+ ![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices7.JPG)
+
+그런 다음 가장 성능이 유력한 아키텍처를 성능 경계 곡선에 따라서 실제 Task에 배치할 수 있다. 
+
+#### Connectivity-based LUT
+
+저자들은 탐지에 맞도록 Latency look-up table을 조정해서 적용해서 LAT(m)를 측정했다. 이 연구 이전의 LUT 방식은 MnasFPN과 맞지 않았다. 왜냐하면 블럭의 숫자와 Head의 연결 패턴이 동적이기 때문이었다. 그 대신에 저자들은 런 타임에 각 모델의 계층 연결성을 계산해서 계층이 look-up table에 포함될지 안될지를 결정하도록 했다. 이런 Connectivity-based LUT는 온디바이스 측정과 높은 친밀성을 보였다(R^2 > 0.97)
+
+
+
+### Connectivity Search
+
+저자들이 말하길 MnasFPN search space의 디자인은 간결하다고 한다. 저자들이 이렇게 의도한 이유는 당시 Search 알고리즘들이 완벽하지 않고 큰 Search space가 항상 좋은 모델을 제안하는 것은 아니기 때문이라고 한다. 그러므로 Search space 디자인은 무엇을 포함하고 포함하지 않을 것인지와 관련된 문제가 된다. 
+
+저자들이 포함하지 않은 디자인 요소는 일반적인 연결 패턴을 탐색하는 것이다. 이 방법은 MNAS Controller에게는 부담이 많이 되지만 Search 알고리즘에게는 개선될 여지를 남겨둔다. 저자들은 탐색의 퀄리티가 탐색 효율성 뿐만 아니라 네트워크 연결 부분의 디자인 편향성에 의해서 질이 떨어질 수 있다는 연구 결과(Randomly-wired network)를 보고 병합 시에 두 개의 Feature만 선택되도록 했다. 저자들은 Conn-Search라고 하는 새로운 Search space를 디자인 했는데 D >= 2 이상의 서로 다른 Feature map들이 병합되는 것을 허락했다(저자들의 연구에서는 D=4).
+
+
+
 
 ## Experiments
 
