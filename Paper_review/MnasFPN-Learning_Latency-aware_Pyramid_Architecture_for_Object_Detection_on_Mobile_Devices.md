@@ -64,6 +64,41 @@ NAS-FCOS에서는 Object detection을 위한 탐색 과정의 속도를 높이�
 
 
 
+## MnasFPN
+
+저자들이 말하는 MnasFPN은 저자들이 제안하는 Search space와 NAS를 통해서 찾은 아키텍처 군을 의미한다. NAS-FPN(Lite)와 MnasFPN 모두 Feature extractor backbone과 반복적으로 쓰일수 있어서, 존재하는 Feature들의 쌍을 병합해서 새로운 Feature를 재귀적으로 만들어낼수 있는 Cell 구조로부터 Detection 네트워크를 구축한다. 각 Cell은 각기 다른 해상도의 Feature들을 써서 입력과 같은 해상도 수준의 Feature들을 출력한다. 그렇기 때문에 Cell 구조는 반복적으로 적용될 수 있다. 하나의 Cell은 Block들의 집합이다. 각 Block은 해상도가 다를 수 있는 두 Feature map을 Intermediate feature로 병합시키는데 Separable 컨볼루션으로 작업이 수행된다. MnasFPN은 NAS-FPN(Lite)와 Block 수준에서 차이 점이 있다. 
+
+
+
+### Generalized Inverted Residual Block(IRB)
+
+Inverted Residual block(IRB)는 NAS search space 관련 연구에서 흔히 사용되는 Block 아키텍처로 알려져 있다. IRB의 핵심 안점은 메모리에 부담을 덜어내기 위해서 낮은 차원의(채널) Feature로 연산을 수행하고 나서 Depthwise 컨볼루션으로 차원을 다시 확장 시키는 것이다. 저자들은 이에 착안해서 NAS-FPN search space에 IRB 같은 디자인을 적용하는 것을 고려했다. 여기서 주요 문제이자 혁신이라고 할 수 있는 점은 NAS-FPN 블럭 안에 비선형성 구조를 개선시키는데 있다. 
+
+
+
+### Expandable intermediate features
+
+NAS-FPN에서는 모든 Feature map이 의도적으로 C개의 같은 채널 수를 공유한다. 이와 비교해서 MnasFPN은 Intermediate feature size F라는, 좀 더 융통성을 부여했다. 이 F는 탐색하는 동안 값이 바뀌면서 C와는 독립적이다. F와 C를 조절하면서 Intermediate feature는 확장의 역할을 하거나(채널 수가 많아지거나) 병목 현상(채널 수가 적어지거나)의 역할을 한다. 1x1 컨볼루션이 필요에 의해서 입력 Feature 채널 수를 C에서 F로 바꿀때 적용될 수 있다. 
+
+
+
+### Learn-able block count
+
+NAS-FPN에서 각 셀당 블럭의 수는 미리 정의되어 있다. 이것은 Feature 재활용 매카니즘 때문이다. 만약에 블럭이 Cell의 출력에 사용되지 않으며 이 블럭의 Intermediate feature는, 같은 해상도와 크기를 가지는 출력 Feature에 더해지게 될 것이다. MnasFPN에서는 이와 반대로 Intermediate feature가 출력 Feature와 채널 사이즈가 다른 경우가 많다(F와 C). 결과적으로 사용되지 않는 블럭은 자주 버려지게 되고 Latency-accuracy trade-off를 결정하는데 유연성을 더할 수 있다. 
+
+
+
+### Cell-wide residuals
+
+Feature 간의 연결이 점점 더 얇아지면서 저자들이 알아 낸 사실은 같은 해상도의 모든 입력과 출력 쌍 사이에 Residual을 추가하면 정보의 흐름을 증강시키는데 도움이 된다는 것이다 IRB와 비슷하게 저자들은 Intermediate feature에 ReLU 비성형을 더했지만 출력 Feature에는 적용하지 않았다. 왜냐하면 Input/output feature 채널 사이즈 C는 의도적으로 메모리에 부담을 덜기 위해서 작게 설정되었기 때문이다. 정보를 잃을 수도 있는 비선형성 연산은 불필요하게 정보 흐름을 더 죽이는 결과를 가져올 수도 있을 것이다. 
+
+Figure 1을 보면 IRB와 비슷한, 입력과 출력 Feature 사이의 연결된 경로를 확인할 수 있다.
+
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices1.JPG)
+
+
+
+
 ## Experiments
 
 저자들은 COCO object detection으로 실험을 실시했고 Latency-aware search와 Search space의 각 요소들의 효율성을 알아보기 위한 Ablation study를 수행했다. 
