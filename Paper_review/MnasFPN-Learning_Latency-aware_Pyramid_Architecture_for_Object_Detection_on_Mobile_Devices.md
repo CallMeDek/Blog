@@ -169,9 +169,9 @@ Controller는 반복적으로 후보 아키텍처 m을 제안하고, Proximal Po
 - No-Exand: 중간 과정에서의 모든 Feature들에 대해서 F = C를 강제해서 MnasFPN에서 Expansion 부분만 제거한 실험이다. 이 실험으로 알 수 있는 것은 IRB에서 Expansion의 영향력을 알아볼수 있다는 것이다. 
 - Conn-Search: 블럭마다의 2개에서 D>= 2 사이의 서로 다른 입력(Feature map)을 합병하는 것을 용인한다.  단, 합병 연산은 덧셈만 가능하다. 
 
-![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile6.png)
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices8.png)
 
-![](./Figure/MnasNet_Platform-Aware_Neural_Architecture_Search_for_Mobile7.png)
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices9.png)
 
 
 
@@ -192,4 +192,40 @@ Controller는 반복적으로 후보 아키텍처 m을 제안하고, Proximal Po
 
 #### Architecture Search Setup
 
-저자들은 MNASNet에서 사용된 Controller setup을 따랐다. Controller는 10K의 자식 모델을 샘플링하는데 TPUv2 디바이스에서 각각 1시간까지 걸리기도 한다. 모델을 훈련시키기 위해서 저자들은 COCO train2017 데이터셋을 임의로 111k-search-train 데이터셋과 7k-seach-val 데이터셋으로 나눴다. 저자들은 20 epochs동안은 배치 사이즈 64로 search-train 셋으로 훈련시키고 search-val 셋으로 mAP 척도로 모델을 평가했다. LR은 첫 번째 Epoch동안 0부터 0.4로 선형적으로 증가하고 Step-wise precedure를 따라 Epoch 16에서 0.1로 Decay시킨다. 저자들은 320x320 해상도의 이미지로 Proxy task로 훈련을 수행해서 Proxy task와 Main task의 측정된 Latency가 동일하도록 했다. 
+저자들은 MNASNet에서 사용된 Controller setup을 따랐다. Controller는 10K의 자식 모델을 샘플링하는데 TPUv2 디바이스에서 각각 1시간까지 걸리기도 한다. 모델을 훈련시키기 위해서 저자들은 COCO train2017 데이터셋을 임의로 111k-search-train 데이터셋과 7k-seach-val 데이터셋으로 나눴다. 저자들은 20 epochs동안은 배치 사이즈 64로 search-train 셋으로 훈련시키고 search-val 셋으로 mAP 척도로 모델을 평가했다. LR은 첫 번째 Epoch동안 0부터 0.4로 선형적으로 증가하고 Step-wise precedure를 따라 Epoch 16에서 0.1로 Decay시킨다. 저자들은 320x320 해상도의 이미지로 Proxy task로 훈련을 수행해서 Proxy task와 Main task의 측정된 Latency가 동일하도록 했다. Reward objective에 대해서는(Eq 4) w = -0.3으로 설정했는데 이는 약간의 실험을 미리 실시했을때 측정된 결과이다.
+
+훈련이 끝나고 모든 샘플링된 모델에 대해서 성능 곡선을 측정했고 166ms, 173ms, 180m의 Latency에서 가장 성능이 좋은 모델을 뽑았다. 그런 다음 반복을 3에서 5로 증가시켜 총 3x3=9의 모델을 생성했다. 이 중에서 저자들은 Latency나 mAP에 편향되지 않는 모델만을 남겨뒀다. 
+
+
+
+### Discovered Architectures
+
+저자들은 최고의 성능을 보이는 MnasFPN 아키텍처와 NAS-FPNLite-S 아키텍처를 Figure 2와 3에 각각 나타냈다. 두 모델 모두 NAS-FPNLite 모델과 유사한 Latency를 보였다. 
+
+| MnasFPN                                                      | NAS-FPNLite-S                                                |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices10.png) | ![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices11.png) |
+
+두 모델을 비교했을때 알 수 있는 점은 다음과 같다.
+
+- MnasFPN은 대부분 간결하다. 5개의 내부 블럭이 주어짐에도 불구하고 MnasFPN은 하나의 블럭만 사용한다. 이에 반해 NAS-FPNLite-S는 5개를 사용하고 이 블럭들을 모두 같은 해상도에 배치한다. MnasFPN의 간결함은 저자들이 추정하길 다음과 같은 요소들때문인것으로 추정한다. 사용되지 않는 블럭을 잘라낼수 있는 능력, 각 블럭의 용량을 증가시킬수 있는 IRB에서의 확장력
+- 두 Feature을 병합하기 위한 Squeeze-and-excite(SE) 옵션은 사용되지 않는다. 
+- MnasFPN과 NAS-FPNLite-S 모두 20x20 해상도를 Intermediate Feature로서 선호한다. 이런 경향은 여러번 탐색을 수행하고 여러 Search space의 변경체들로 탐색을 진행해도 같은 경향을 보였다. 
+
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices12.png)
+
+Figure 4는 D=4의 Conn-search 아키텍처를 보여준다. 먼저 MnasFPN과 유사하게 Intermediate feature의 해상도는 모두 20x20과 가까운 것을 확인할 수 있다. 두번째로 거의 모든 경우가 2개 아니면 3개의 특징들이 병합되었다. 그러므로 4개의 입력을 연결하는 것은 과도하거나 저자들 연구에서의 Search space가 Search 알고리즘이 다룰 수 있는 어떤 한계에 있음을 확인할 수 있다. 
+
+
+
+### Latency Breakdowns
+
+저자들은 MnasFPN 아키텍처를 Feature extractor backbone, Detection head, Predictor로 나눴다. Predictor는 여러 컨볼루션과 Class predictor 그리고 Box decoder로 이뤄져 있다. 이 컨볼루션들은 CxC 크기이고 C는 MnasFPN의 출력 채널 차원수와 동일한 파라미터이다. 그러므로 저자들은 탐색은 Head와 네트워크의 Predictor의 부분적으로 영향을 끼치게 된다. 
+
+MnasFPN detection head의 개선 정도를 살펴보기 위해서 저자들은 두 200ms 모델의 Latency breakdown을 그렸다(MnasFPN with 5 repeats(25.5 mAP), NAS-FPNLite with 6 repeats(24.4 mAP)). 
+
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices13.png)
+
+Figure 5에서와 같이 저자들의 Search는 거의 80ms(49ms + 25ms) 혹은 40%의 시간에 영향을 끼친다. MnasFPN(C = 48)은 거의 2배정도되는 리소스를 Predictor보다는 Head에 할당했고 NAS-FPNLite(C=is 64)는 Predictor에 좀 더 리소스를 할당했다. 이는 MnasFPN에서 Detection head의 Early feature fusion과 상당한 연관이 있는 현상임을 암시한다. 
+
+또 위의 Figure 5는 Backbone 모델이 더 성능 Bottleneck이 되었다는 것을 알려준다(Right보다 파란색의 비율이 큼). 즉, NAS search 과정에서 MnasFPN이 더 효율적이라는 것을 알 수 있다. 
