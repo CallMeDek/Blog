@@ -229,3 +229,68 @@ MnasFPN detection head의 개선 정도를 살펴보기 위해서 저자들은 �
 Figure 5에서와 같이 저자들의 Search는 거의 80ms(49ms + 25ms) 혹은 40%의 시간에 영향을 끼친다. MnasFPN(C = 48)은 거의 2배정도되는 리소스를 Predictor보다는 Head에 할당했고 NAS-FPNLite(C=is 64)는 Predictor에 좀 더 리소스를 할당했다. 이는 MnasFPN에서 Detection head의 Early feature fusion과 상당한 연관이 있는 현상임을 암시한다. 
 
 또 위의 Figure 5는 Backbone 모델이 더 성능 Bottleneck이 되었다는 것을 알려준다(Right보다 파란색의 비율이 큼). 즉, NAS search 과정에서 MnasFPN이 더 효율적이라는 것을 알 수 있다. 
+
+
+
+### Ablation on IRB
+
+저자들이 IRB를 Detection head에 도입 한 것의 효과를 알아보기 위해서 Figure 7에 MnasFPN, NAS-FPNLite-S 그리고 No-Expand(Intermediate 모든 채널의 차원수를 F=C로 강제) 했을때 성능 곡선을 보여준다. 
+
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices14.png) 
+
+MnasFPN과 NAS-FPNLite-S는 Latency-aware 탐색을 똑같이 적용하지만 Search space가 다르다. MnasFPN seach space의 디자인이 NAS-FPNLite모델의 성능보다 뛰어난 모델을 생성해내는데 기여했음을 알 수 있다. MnasFPN과 No-Expand의 차이는 MnasFPN 블럭에서 Expansion의 적용 여부이다. No-Expand 모델의 성능은 MnasFPN 모델보다 훨씬 떨어진다. 학습된 모델 아키텍처를 살펴봤을때, 모델이 채널 차원을 C에서 16으로 줄였을때 Intermediate 노드의 수는 늘린 것을 확인할 수 있다. 이것은 NAS controller가 계속해서 빠지는(정체되는) 차선의 디자인 전략이다. 결과적으로 Figure 6를 봐도 알 수 있듯이 No-Expand의 성능 곡선이 다른 방법들에 비해 차선의 결과를 냄을 알 수 있다. 
+
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices15.png)
+
+
+
+### Ablation on Latency-aware Search
+
+저자들이 주장하길 저자들의 방법이 객체 탐지를 위한 아키텍처 탐지에 Latency-aware 훈련 방식을 도입한 첫 사례라고 한다. Latency signal을 이용하는 것의 이점을 조사하기 위해서 저자들은 MnasFPN과 NAS-FPNLite 그리고 NAS-FPNLite-S를 비교했다. 
+
+Figure 7에 의하면 MnasFPN은 NAS-FPNLite보다 성능 상의 확실한 우위를 보인다. NAS-FPNLite-S도 NAS-FPNLite보다는 우위지만 그 정도가 MnasFPN보다는 덜 하다고 한다. 저자들이 말하길 MNASNet 스타일의 Latency-aware 탐색이 전체적으로 효과적이긴 하지만 MnasFPN의 성능 우위의 주요 요인은 Seach space 디자인에 있다고 한다. 
+
+
+
+### Connectivity Search
+
+MnasFPN search space가 충분히 큰 지 측정하기 위해서 저자들은 Conn-Search(D=4) 모델과 비교했다. Figure 7을 보면 MnasFPN을 포함하는 충분히 큰 Search space를 가짐에도 불구하고 Conn-Search 모델은 차선의 Latency-accuracy tradeoff를 보였다. Figure 6에서 저자들은 Conn-Search의 성능 곡선이 MnasFPN보다 경미하게 낮다는 것을 확인했는데 이를 통해서 Controller가 Search space를 충분히 탐색할 수 없다는 것을 확인했다. Table 2를 보면 Conn-Search의 Cardinality가 MnasNet과 NAS-FPN의 Cardinality보다 훨씬 큰 것을 확인할 수 있다. 이 결과는 Search space와 Search 알고리즘의 공동 조정이 중요함을 말해준다. NAS가 수동으로 튜닝하는 일을 없애주고 모든 Search space를 포함하는 충분히 강력한 Search space만 디자인하면 된다고 생각할 수 있지만 현실은 Search 알고리즘이 임의의 큰 Search space를 다룰만큼 충분히 강력하지 못하는 것이다. 그러므로 NAS paper에서 했던 것처럼 Search space의 공동 조정과 반복적인 축소 작업은 여전히 유효하다. 
+
+
+
+### Ablation on SDO
+
+SDO의 영향을 알아보기 위해서 저자들은 MnasFPN의 아키텍처에서 SDO를 적용하지 않고 4번이나 5번 반복했다. SDO 개념이 적용되지 않는 모델들은 Feature map 크기를 조정하기 전에 1x1 컨볼루션을 수행하는데 이는 Down-sampling의 경우 비실속적이다. 그리고 샘플링된 MnasFPN 아키텍처는 Down-sampling 연산에 의해 지배당하게 된다. 
+
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices16.png)
+
+Table 3를 보면 SDO를 적용하지 않은 것이 mAP에 영향을 끼치지는 않지만 Latency를 8에서 11ms 더 느리게 증가시킨다. Backbone을 고려하지 않은 나머지 부분으로만 봤을때 이 양은 12%~14%에 해당하는 Latency 부분이 최적화 여지가 남게 되는 것이다. 
+
+
+
+### Performance Comparison on COCO Test-dev
+
+저자들은 MnasFPN의 다양한 Backbone들과 여러 온디바이스 Detection head 모델들과 성능을 비교했다.  
+
+![](./Figure/MnasFPN_Learning_Latency-aware_Pyramid_Architecture_for_Object_Detection_on_Mobile_Devices17.png)
+
+
+
+## Conclusion
+
+이 연구에서 저자들은 기존의 연구들이 Classification에서의 학습된 Backbone을 Trasfer 하는 것 대신에 Object detection에 맞는 아키텍처를 직접적으로 찾는 접근 방식을 보여줬다. 추가적으로 Search 프로세스를 디자인하고 타겟 플랫폼에 대한 지식을 포함하기 위한 Search space를 디자인했다. 저자들이 말하는 MnasFPN의 혁신점은 다음과 같다. 
+
+- MnasFPN은 IRB을 Detection head에 포함시켰고 Mobile CPU 환경에서 효과적임을 보였다.
+- MnasFPN은 Head에 있는 Reshaping과 컨볼루션 연산을 다시 구축해서 여러 크기의 정보를 효과적으로 병합할 수 있도록 했다. 
+
+Ablation study를 통해서 저자들은 위의 Search space 디자인에서의 두 혁신점이 성능을 끌어올리는데 필요하다고 생각했다. 반면에 Feature map 연결 부분으로 Search space를 확장시키는 개념은 NAS 프레임워크의 능력 밖으로 봤다. 결과적으로 저자들은 MnasFPN search space가 NAS controller의 용량과 연관이 있다고 봤다. Controller가 좀 더 강력해질수록 MnasFPN과 Connectivity search도 가능할 것이라고 봤다. 
+
+COCO test-dev 데이터로 MnasFPN은 NAS-FPNLite보다, Backbone이 없는 나머지 부분에서 25%의 성능 향상을 가져왔다고 한다. 이 개선 정도가 상당하기 때문에 개선이 일어나지 않은 나머지 부분이 성능 향상에 있어서 Bottleneck이 된다고 주장한다. 예를 들어서 Backbone의 경우 전체 Latency의 60%를 차지 하고 있는데 MnasFPN head를 조건으로 하거나, 같이 탐색될 수 있다. 이 작업이 유용할 수 있다고 보는 이유는 Table1에 나와 있는 것처럼 MnasFPN는 MobileNetV3 혹은 Depth-multiplied MobileNetV2 Backbone과 상성이 맞기 때문이다. Backbone과 Head를 함께 탐색하는 작업은 Cardinality 면에서 한계가 있지만 최근에 One-shot NAS 방법이 활로를 보여줬다고 한다. 
+
+
+
+## Appendix
+
+### Search space cardinality comparison
+
+본문 참고.
