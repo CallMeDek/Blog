@@ -27,3 +27,26 @@ CNN 모델의 정확도를 향상시키기위한 많은 방법들이 있지만, 
 - 1080Ti나 2080Ti 하나의 GPU 정도만 사용해도 강력하고 효율적인 Object Detection 모델을 만드는 방법 제시
 - Detection 모델을 훈련 시키는 동안 그 동안 알려져 있던 Bag-of-Freebies나 Bag-of-Specials 기법들의 영향력을 조사
 - CBN, PAN, SAM과 같은 방법들을 단일 GPU에서 훈련시킬 수 있도록 변경
+
+
+
+## Related work
+
+### Object detection models
+
+Object detection 네트워크는 보통 두 부분으로 나뉜다. 한 부분은 ImageNet에서 미리 훈련시킨 Backbone이고 다른 한 부분은 객체를 둘러싼 바운딩 박스와 관련된 값과 객체의 클래스를 예측하는 Head이다. 
+
+- GPU platform backbone: VGG, ResNet, ResNeXt, DenseNet
+- CPU platform backbone: SqueezeNet, MobileNet, ShuffleNet 
+
+Head와 관련해서는 One-stage, Two-stage detector로 두 가지 범주로 나눌 수 있다. 가장 많이 알려져 있는 Two-stage detector는 R-CNN 계열로 Fast R-CNN, Faster R-CNN, R-FCN, Libra R-CNN을 포함한다. Anchor 없이 동작하는 Two-stage detector로는 RepPoints가 있다. One-stgae detector에서 유명한 것은 YOLO, SSD, RetinaNet이 있다. 또한 Anchor 없이 동작하는 One-stage detector로는 CenterNet, CornerNet, FCOS이 있다. 
+
+Backbone과 Head 사이에 몇 가지 계층을 집어넣어 Detector를 발전시키기도 했다. 이 계층들의 역할은 주로 각기 다른 Stage에서 Feature map을 모으는 것이다. 저자들은 이 계층들을 Detector의 Neck이라고 부불렀다. Neck들은 주로 몇몇의 Bottom-up 경로와 Top-down 경로로 구성되었다. 이런 매커니즘이 결합된 네트워크로는 Feature Pyramid Network(FPN), Path Aggregation Network(PAN), BiFPN, NAS-FPN이 있다. 
+
+위와 같은 관점 말고도 어떤 연구자들은 아예 Object detection을 위한 새로운 Backbone을 쌓는데 중점을 두거나(DetNet, DetNAS) 모델 전체를 새로 쌓는데 중점을 주었다(SpineNet, HitDector)
+
+요약하자면 보통의 Object detector는 다음과 같이 구성되어 있다. 
+
+![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection2.png)
+
+
