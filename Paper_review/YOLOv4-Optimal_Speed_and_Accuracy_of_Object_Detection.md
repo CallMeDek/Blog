@@ -80,3 +80,88 @@ Feature integration에 관해서는 Skip connection, Hyper-column, FPN, SFAM, AS
 딥러닝 분야에서 어떤 연구자들은 좋은 성능을 내는데 도움이 되는 Activation function을 찾는데 초점을 뒀다. 여기에는 ReLU, LReLU, PReLU, ReLU6, Scaled Exponential Linear Unit(SELU), Swish, Hard-Swish, Mish가 있다. 
 
 딥러닝 기반의 Object detection에서 주로 쓰이는 Post-processing 기법은 NMS이다. Girshick등이 제안한 Greedy NMS, Soft NMS, DIoU NMS이 있다. Anchor가 없는 Object detection에서는 Post-processing 기법이 적용되지 않는다.  
+
+
+
+## Methodology
+
+본 연구의 기본 목적은 낮은 연산량보다는 실제 Production 시스템에서 빠르게 동작하는 모델을 만드는데 이를 병렬 컴퓨팅을 최적화 하는 것으로 달성하는 것이다. 저자들은 두 가지 실시간 모델 옵션을 고려했다. 
+
+- GPU에 관해서는 컨볼루션 그룹을 적게 사용(1-8 그룹): CSPResNeXt50/CSPDarknet53
+- VPU에 관해서는 그룹 컨볼부션을 사용하되 Squeeze-and-excitement 블럭을 사용하는 것을 삼감: EfficientNet-lite/MixNet/GhostNet/MobileNetV3
+
+
+
+### Selection of architecture
+
+이 연구의 목표는 다음의 요소들의 최적의 균형점을 찾는 것이다. 네트워크 입력 해상도, 컨볼루션 계층의 숫자, 파라미터 숫자(필터 크기의 제곱 * 필터의 숫자 * 채널/그룹 숫자), 출력 계층의 숫자(필터의 숫자). 예를 들어서 CSPResNext50은 CSPDarknet53보다 ImageNet 데이터셋에서의 Classification에서 더 좋은 성능을 보이고 반대의 경우 MS COCO 데이터셋에서 Object detection에서 더 좋은 성능을 보인다. 
+
+그 다음 목표는 Receptive field의 크기를 넓히기 위한 추가적인 블럭을 선택하는 것과 각기 다른 Detector 단계에 대해서 각기 다른 Backbone 단계에서의 파라미터를 집계하기 위한 최적의 방법을 선택하는 것이다(FPN, PAN, ASFF, BiFPN).
+
+Classification에서의 최적의 모델이 꼭 Object detection에서 최적이라는 법은 없다. Classifier와는 대조적으로 Detector는 다음을 요구한다. 
+
+- 높은 네트워크 입력 크기(해상도) - 다양한 크기의 작은 객체를 탐지하기 위해서
+- 더 많은 계층 수 - 더 넓은 Receptive field가 증가된 네트워크 입력 크기를 커버하기 위해서
+- 더 많은 파라미터 수 - 이미지 내에 각기 다른 크기의 여러 객체를 탐지하기 위해서
+
+이론적으로 생각하자면 더 넓은 Receptive field 크기(3x3 이상의 컨볼루션 계층)와 더 많은 수의 파라미터를 가진 모델이 Backbone으로 선택되어야 할 것처럼 보인다. 
+
+![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection3.png)
+
+각각 다른 크기의 Receptive field의 영향력을 요약하자면 아래와 같다.
+
+- 객체 크기 - 모델이 객체 전체를 볼 수 있게 함.
+- 네트워크 크기 - 모델이 객체 주변의 Context 정보를 볼 수 있게 함.
+- 네트워크 크기를 넘었을때 - 이미지 포인트와 최종 Activation 사이의 연결 경로 숫자를 증가시킴.
+
+저자들은 CSPDarknet53위에 SPP 블럭을 더했다. 이 모델은 Receptive field의 크기를 상당히 증가시키고가장 중요한 Context feature를 분리시키면서도 네트워크 작동 속도를 거의 감소시키지 않는다. 저자들은 Backbone에서의 각 Feature들을 모으는 방법으로 PANet을 적용했다(YOLOv3로 FPN을 적용한 것과는 대조적으로).
+
+그래서 YOLOv4의 아키텍처는 다음과 같다. CSPDarknet53 Backbone, SPP 모듈, PANet path-aggregation neck, YOLOv3 head
+
+저자들은 Cross-GPU Batch normalization(CGBN 혹은 SyncBN) 이나 특별히 고가의 장비를 사용하지 않았는데 그 이유는 저자들의 목적이 누구나 GTX 1080Ti 혹은 RTX 2080Ti 같은 장비로 저자들의 방법을 구현할 수 있게 하는 것이기 때문이다. 
+
+
+
+### Selection of BoF and BoS 
+
+Object Detection 훈련 과정에서 성능을 높이기 위해서 보통 다음과 같은 기법들을 적용한다. 
+
+#### ![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection4.png)
+
+PReLU 그리고 SELU는 훈련시키기 어렵기 때문에, ReLU6는 양자화 네트워크에 특화되어있기 때문에 저자들은 이 Activation들은 위의 리스트에서 제거했다. Regularization에서는 DropBlock 논문을 발표한 저자들이 논문에서 다른 기법들과 본인들의 기법을 비교해서 우위에 있다는 것을 발표했다. 그래서 저자들은 DropBlock을 저자들의 Regularization으로 채택했다. Normalization에서 대해서는 하나의 GPU 만을 사용하기 때문에 SyncBN은 고려하지 않았다. 
+
+
+
+### Additional improvements
+
+하나의 GPU에서 훈련시키기 적합한 모델을 디자인 하기 위해서 저자들은 추가적인 디자인 옵션을 적용했다. 
+
+- 새로운 Data augmentation 기법인 Mosaic과 Self-Adversarial Training(SAT)
+- Genetic 알고리즘을 적용하여 최적의 하이퍼 파라미터 선택
+- 몇 가지 기법들을 저자들의 목적에 맞게 변경 - 변경된 SAM, PAN, Cross mini-Batch Normalization
+
+Mosaic은 4개의 훈련 이미지를 섞는 방식의 새로운 Data augementation 기법이다. 4개의 서로 다른 Context 정보를 가진 이미지가 섞이기 때문에 객체를 찾는 것을 이 Context를 고려하지 않고 수행할 수 있게 된다. 게다가 각 계층의 BN에서 4개의 다른 이미지로부터 Activation 통계값을 계산한다. 이것은 큰 미니 배치 사이즈의 필요성을 둔화시킨다. 
+
+![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection5.png)
+
+Self-Adversarial Training(SAT)는 2번째 순전파 단계에서 작동하는 새로운 Data augmentation 기법이다. 1번째 순전파-역전파 단계에서 네트워크는 네트워크의 가중치 대신에 원본 이미지를 수정해버린다. 이는 네트워크가 스스로에게 Adversarial attack을 가하는 셈인데 원본 이미지를 수정함으로써 입력 이미지 내에 찾고자 하는 대상이 없는 것처럼 결과를 만든다. 두 번째 단계에서는 네트워크가 이 수정된 이미지를 원래의 방법대로 찾는 방식으로 훈련이 수행된다. 
+
+CmBN은 CBN의 수정된 버전으로 아래 그림과 같다. 
+
+![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection6.png)
+
+이 방법을 적용하면 단일의 하나의 배치 안에서의 여러 미니 배치들 사이의 통계값만 모은다. 
+
+저자들은 SAM을 Spatial-wise attention에서 Point-wise attention으로 바꿈으로서 수정했고 PAN에서의 Shortcut connection을 모두 Concatenation으로 교체했다. 이는 아래의 Figure 5, 6와 같다. 
+
+![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection7.png)
+
+
+
+### YOLOv4
+
+종합적으로 YOLOv4라고 하는 것은 다음과 같다.
+
+![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection8.png)
+
+
