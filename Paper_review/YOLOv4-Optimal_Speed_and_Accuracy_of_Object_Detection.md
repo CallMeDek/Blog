@@ -165,3 +165,91 @@ CmBN은 CBN의 수정된 버전으로 아래 그림과 같다.
 ![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection8.png)
 
 
+
+## Experiments
+
+저자들은 훈련을 개선시키는 여러 기술들을 Classification은 ImageNet 데이터셋으로, Detection은 MS COCO 데이터 셋으로 (정확도 면에서) 검증했다.
+
+
+
+### Experimental setup
+
+Classification과 Detection에 관한 셋팅은 본문 참고.
+
+
+
+### Influence of different features on Classifier training
+
+먼저 저자들은 Classification 훈련에 적용되는 여러 기법들의 영향력을 알아봤다. 구첵적으로 Class label smoothing, 아래 그림과 같은 여러 Data augmentation 기법들 그리고 여러 Activation function들의 영향력을 알아봤다. 
+
+![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection9.png)
+
+실험 결과 아래 테이블과 같이 여러 기법들을 도입했을때 Classification 정확도가 증가했다. 
+
+![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection10.png)
+
+결과적으로 Classification을 위한 BoF Backbone에서는 다음과 같은 기법들을 포함한다. CutMix, Mosaic data augmentation, Class label smoothing. 여기에 Mish activation을 옵션으로 한다.
+
+
+
+### Influence of different features on Detector training
+
+Detection 훈련 정확도와 관련된 BoF 기법들에 대한 실험 결과는 Table 4와 같다. 저자들은 FPS에는 영향을 끼치지 않으면서 Detection 정확도를 개선시키는 여러 BoF 기법들을 적용해봤다. 
+
+![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection11.png)
+
+- S: Grid에 민감한 식인 bx = σ(tx)  + cx, by = σ(ty) + cy를 제거했다. 그렇기 때문에 극도로 높은 tx 절대값이 cx나 cx+1 값에 근접하는 bx 값을 위해 필요하게 되었다. 저자들은 이 문제를 해결하기 위해서 시그모이드 값이 1.0을 넘어서는 값을 곱했다. 그래서 객체가 탐지될수 없는 Grid의 영향을 제거했다. 
+- M: Mosaic data augmentation: 훈련 간에 하나의 이미지 보다는 4개의 이미지를 Mosaic 처리해서 사용했다. 
+- IT: 특정 GT와 IoU값이 Threshold보다 넘는 여러 Anchor들을 사용했다.
+- GA: 전체 시간의 첫 10% 정도를 최적의 네트워크 훈련 하이퍼파라미터를 유전 알고리즘을 적용하여 찾아냈다.
+- LS: Sigmmoid activation에 Class label smoothing을 적용했다. 
+- CBN: 하나의 단일한 미니 배치 단위의 통계값을 모으기 보다는 전체 배치의 통계값을 모으기 위해서 Cross mini-Batch Normalization을 사용했다.
+- DM: Random training shapes을 사용해서 작은 해상도의 이미지로 훈련 하는 중에 자동적으로 mini-batch 크기가 증가되도록 했다.
+- OA: 512x512짜리 해상도의 이미지로 훈련시키기 위해서 이에 최적화된 Anchor를 사용했다. 
+- GIoU, CIoU, DIoU, MSE: 바운딩 박스 회귀를 위해서 서로 다른 Loss 알고리즘을 적용했다. 
+
+BoS-Detector와 관련되 실험 결과는 Table 5와 같다. 저자들의 실험에서는 SPP, PAN, SAM을 적용했을때 성능이 제일 좋았다.
+
+![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection12.png)
+
+
+
+### Influence of different backbones and pre-trained weightings on Detector training
+
+Detection에서 여러 Backbone 모델에 대한 영향력을 실험한 결과는 Table 6와 같다. 저자들이 실험을 통해서 알아낸 것은 Classification의 최상 조건이 꼭 Detection에서 최상의 결과를 만들어 내지는 않는다는 점이다.
+
+![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection13.png)
+
+먼저 CSPResNeXt-50 모델이 CSPDarknet53 모델과 비교했을때 Classification에서는 더 나은 성능을 보였지만 반대로 Object detection에서는 성능이 상대적으로 안 좋았다. 
+
+다음으로 CSPResNeXt50 Classification 모델에 BoF와 Mish를 적용했을때 훈련 정확도가 개선되었지만 Classification으로 훈련시킨 가중치로 Detection에 적용했을때 정확도는 오히려 떨어졌다. 그러나 CSPDarknet53 모델은 두 Task에서 정확도가 올라갔다. 이 결과로 CSPDarknet53이 Detection에서는 더 안정적이라고 저자들은 결론지었다. 
+
+
+
+### Influence of different mini-batch size on Detector for training
+
+저자들은 마지막으로 Mini-batch 크기를 다르게 했을 결과를 비교했다. 
+
+![](./Figure/YOLOv4-Optimal_Speed_and_Accuracy_of_Object_Detection14.png)
+
+저자들이 알아낸 사실은 BoF와 BoS 훈련 기법들을 적용하고나서 Mini-batch 크기는 거의 Detector의 성능에는 영향을 끼치지 않는다는 사실이다. 저자들은 이 사실이 BoF, BoS를 도입하면 굳이 비싼 고가의 GPU를 훈련에 사용할 필요가 없다는 것을 보여준다고 주장한다. 다른 말로 보편적으로 사용하는 GPU로 누구나 좋은 성능을 가진 모델을 만들어 낼 수 있다고 한다. 
+
+
+
+## Results
+
+Figure 8은 여러 Object detection과의 성능 비교를 한 것이다. (본문 참고)
+
+
+
+## Conclusions
+
+저자들은 보편적으로 사용되는 GPU에서 충분히 빠르고 정확한 Object detection 모델을 만들어 낼 수 있음을 보여줬다고 주장한다. 
+
+
+
+
+
+
+
+
