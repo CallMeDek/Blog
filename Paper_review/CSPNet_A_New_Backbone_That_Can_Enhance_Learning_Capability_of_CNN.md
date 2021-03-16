@@ -1,4 +1,4 @@
-## CSPNET: A NEW BACKBONE THAT CAN ENHANCE LEARNING CAPABILITY OF CNN
+# CSPNET: A NEW BACKBONE THAT CAN ENHANCE LEARNING CAPABILITY OF CNN
 
 Chien-Yao Wang(Institute of Information Science Academia Sinica, Taiwan),
 
@@ -33,3 +33,21 @@ Jun-Wei Hsieh(College of Artificial Intelligence and Green Energy National Chiao
 CSPNet 기반의 Object detector들은 다음과 같은 세가지 문제를 다룬다. 
 
 - CNN의 학습 능력을 강화시킨다 - 보통 경량화 후에 CNN의 정확도가 낮아지는데 저자들은 CNN의 학습 능력을 강화시켜서 경량화 중에도 정확도를 유지할 수 있기를 원했다. CSPNet을 위에서 언급한 네트워크에 적용하고 나서 10~20퍼센트 연산량이 줄어들 수 있다. 그런데 저자들에 따르면 ImageNet 데이터셋에서 오히려 원본 네트워크의 성능보다 더 좋았다고 한다. 
+- 연산 과정에서의 Bottleneck부분을 제거한다 - 너무 높은 연산 과정 중의 Bottleneck은 추론 과정을 끝내기 위해서 더 많은 Cycle을 수행하게 한다던지 어떤 요소들을 Idle 상태에 놓이게 한다던지 하는 결과를 나타나게 한다. 그래서 저자들은 CNN의 각 계층의 연산량을 고르게 분배하고 각 연산 요소들의 활용도를 높여서 불필요한 연산을 줄이는데 관심을 뒀다. 저자들에 따르면 CSPNet으로 PeleeNet의 Bottleneck을 거의 반으로 줄였다고 한다. 그리고 MS COCO 데이터셋으로 수행한 Object detection 실험의 경웅는 YOLOv3 기반 모델에서 테스트 했을때 80% 정도의 연산 Bottleneck을 줄였다고 한다.
+- Memory 사용량을 줄인다 - 메모리 사용량을 줄이기 위해서 저자들은 Cross-channel pooling 연산을 도입해서 Feature pyramid 생성 과정 중에 Feature map을 압축했다. 이 방법으로 CSPNet Object detector는 PeleeNet Backbone 모델의 Feature pyramid 생성 중의 메모리 사용량의 75%를 줄였다. 
+
+저자들에 의하면 CSPNet이 CNN의 학습 능력을 증가시키기 때문에 정확도 높은 모델을 만드는 목적이 있음에도 불구하고 작은 모델을 사용했다고 한다. 그리고 CSPNet은 메모리 트래픽의 상당한 양을 절감했다. 또한 CSPNet은 연산과정 중에 Bottleneck을 상당히 줄이고 Exact Fusion Model(EFM)이 효율적으로 필요한 메모리 대역폭을 줄인다고 한다. 
+
+
+
+## Related work
+
+### CNN architectures design
+
+본문 참고.
+
+
+
+### Real-time object detector
+
+본문 참고.
