@@ -51,3 +51,74 @@ CSPNet 기반의 Object detector들은 다음과 같은 세가지 문제를 다�
 ### Real-time object detector
 
 본문 참고.
+
+
+
+## Method
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN3.png)
+
+### Cross Stage Partial Network
+
+#### DenseNet
+
+Figure 2(a)는 DenseNet의 구조를 보여준다. DenseNet의 각 Stage는 Denseblock과 Transition 계층을 포함하고 있다. 그리고 각 Denseblock은 k개의 Dense 계층들로 이루어져 있다. i번째 Dense 계층의 출력은 i번째 Dense 계층의 입력과 Concatenated되고 이 결과물은 i+1번째 Dense 계층의 입력이 된다. 이 매커니즘을 식으로 표현하면 아래와 같다. 
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN4.png)
+
+*는 컨볼루션 연산을 의미하고 [x0, x1, ...]는 x0, x1, ...의 Concatanation 연산을 의미하며 wi와 xi는 각각 i번째 Dense 계츠으이 가중치와 출력을 의미한다. 역전파 시에 가중치를 업데이트할 때의 식은 아래와 같다.
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN5.png)
+
+f는 가중치 업데이트 함수이고 gi는 i번째 Dense 계층으로 전파된 그래디언트를 의미한다. 저자들이 여기서 발견한 사실은 많은 양의 그래디언트 정보가 각기 다른 계층의 가중치를 업데이트를 위해서 사용되는데 재사용된다는 사실이다. 이로 인해서 서로 다른 Dense 계층들이 반복적으로 복사된 그래디언트 정보를 학습한다. 
+
+
+
+#### Cross Stage Partial DenseNet
+
+CSPDenseNet의 아키텍처는 Figure 2(b)에 나와 있다. CSPDenseNet의 각 Stage는 부분적인 Denseblock과 부분적인 Transition 계층으로 구성된다. 부분적인 Denseblock에서 Base 계층의 Feature map들은 두 부분으로 나눠져서 x0 = [x0', x0'']가 된다. x0''와 x0'에 관해서 전자는 곧바로 그 단계의 마지막 부분으로 연결되고 후자는 Denseblock을 거친다. 부분적인 Transition 계층의 단계는 다음과 같다. 
+
+1. Dense 계층의 출력인 [x0'', x1, ..., xk]은 Transition 계층을 거친다. 
+2. Transition 계층의 출력인 xT는 x0''와 Concatenated되고 다른 Transition 계층을 거친다. 그러면 xU가 생성된다. CSPDenseNet의 순전파와 가중치 업데이트 식은 아래와 같다. 
+
+| CSPDenseNet 순전파                                           | CSPDenseNet 가중치 업데이트                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN6.png) | ![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN7.png) |
+
+가중치 업데이트 식을 보면 Dense 계층에서 흘러들어온 그래디언트가 각각 합쳐지는 것을 볼 수 있다. 다른 한 편, Dense 계층들을 거치치지 않은 Feature map x0' 역시 따로 합쳐지는 것을 확인할 수 있다. 가중치를 업데이트 하기 위한 그래디언트 정보에 대해서 두 경로 모두 상대 경로에 속한, 중복된 그래디언트 정보는 포함하지 않는다. 
+
+결론적으로 CSPDenseNet은 DenseNet의 Feature를 재사용한다는 특징의 이점은 보존하면서 동시에, 그래디언트 흐름을 짤라내서 과도하게 그래디언트 정보가 중복되는 것을 방지한다. 
+
+
+
+#### Partial Dense Block
+
+부분적인 Denseblock을 디자인 한 목적은 다음과 같다.
+
+- 그래디언트 흐름 경로 증가: 나누고 합치는 접근 방식으로 그래디언트가 흐르는 경로는 두배가 된다. 이런 Crosos-stage 전략 덕분에 Concatenation을 위해서 Feature map을 복사하기 때문에 발생하는 단점을 경감한다.
+- 각 계층의 연산 부담의 균형: 보통 DenseNet에서는 Base 계층의 채널 수가 Growth rate보다 훨씬 크다. 부분적인 Dense block의 Dense 계층 연산에 포함되어 있는 Base 계층의 채널 수는 원본 DenseNet의 경우의 거의 절반밖에 되지 않기 때문에 원본에서의 연산 Bottleneck의 거의 절반 가량을 해결 할 수 있다. 
+- 메모리 트래픽 감소: Denseblock의 Base feature map 크기가 w x h x c, Growth rate가 d라고 가정하고 총 m개의 Dense 계층이 있다고 가정하면 Dense block의 CIO는 (c x m) + ((m^2 + m) x d) /2가 되고 부분적인 Dense block의 CIO는 ((c x m) + (m^2 + m) x d) / 2가 된다. m과 d가 보통 C보다 훨씬 작을때 부분적인 Dense block은 최대 절반에 가까운 네트워크의 메모리 트래픽을 줄일 수 있다. 
+
+
+
+#### Partial Transition Layer
+
+부분적인 Transition 계층을 디자인한 목적은 그래디언트 조합의 다양성을 극대화 하기 위해서이다. 부분적인 Transition 계층은 Hierarchical feature fusion 매커니즘인데 각 계층이 중복된 그래디언트 정보를 학습하는 것을 방지 하기 위해서 그래디언트 흐름을 짤라내는 전략을 사용한다. 여기서 저자들은 CSPDenseNet의 두 가지 변경체를 디자인해서 그래디언트 흐름을 짤라내는 것이 네트워크의 학습 능력에 어떤 영향을 끼치는지 알아봤다. 
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN8.png)
+
+Figure 3(c)와 3(d)는 두 가지 방식의 Fusion을 나타낸다. CSP-Fusion first는 두 가지 경로에 의해서 만들어진 Feature map들을 Concatenation하고 나서 Transition 연산을 수행한다. 이렇게 하면 많은 양의 그래디언트 정보가 다시 사용된다. CSP-Fusion last에서는 Dense block에서의 출력이 Transition 계층을 거치고 난 다음에 두 경로에서의 Feature map들이 합쳐진다. 이때는 그래디언트 흐름이 짤라지기 때문에 그래디언트 정보가 재사용되지 않는다. 아래 그림은 Figure 3의 구조를 적용한 각 아키텍처로 Image classification을 수행했을 때 결과를 나타낸다. 
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN9.png)
+
+Figure 4를 보면 CSP-Fusion last를 도입하여 Image classification을 수행하면 연산량은 상당히 줄어들고 Top-1 accuracy가 0.1% 떨어지는 것을 볼 수 있다. CSP Fusion first를 도입해도 연산량이 줄어드는데 Top-1 accuracy가 1.5% 줄어드는 것을 확인할 수 있다. 이런 방식의, 여러 Stage 걸친, 분할 및 병합 접근 방식을 사용해서 정보가 합쳐지는 과정 중에 정보의 중복이 발생할 가능성을 줄일 수 있다. Figure 4의 결과대로 반복되는 그래디언트 정보를 줄이면 네트워크의 학습 능력이 상당히 개선될 수 있다. 
+
+
+
+#### Apply CSPNet to Other Architectures
+
+CSPNet은 쉽게 ResNet과 ResNeXt에 적용될 수 있다. 아키텍처는 아래 Figure 5와 같다. 
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN10.png) 
+
+오직 Feature channel의 절반만이 Res(X)Block을 거치기 때문에 Bottleneck 계층을 도입할 이유가 없어진다. 이것은 FLOPs가 고정되어 있을 때 Memory Access Cost(MAC)의 이론적 하한선을 생기게 한다. 
