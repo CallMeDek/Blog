@@ -122,3 +122,81 @@ CSPNet은 쉽게 ResNet과 ResNeXt에 적용될 수 있다. 아키텍처는 아�
 ![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN10.png) 
 
 오직 Feature channel의 절반만이 Res(X)Block을 거치기 때문에 Bottleneck 계층을 도입할 이유가 없어진다. 이것은 FLOPs가 고정되어 있을 때 Memory Access Cost(MAC)의 이론적 하한선을 생기게 한다. 
+
+
+
+### Exact Fusion Model
+
+#### Looking Exactly to predict perfectly
+
+저자들은 각 Anchor에 관한 적절한 Field of View(FoV)를 캐치하는 EFM을 제안했는데 이는 One-stage object detector의 정확도를 강화할 수 있다고 한다. Segmentation에서는 픽셀 수준의 레이블은 보통 전역적인 정보를 포함하고 있지 않기 때문에 더 나은 정보 탐색을 위해서는 픽셀 수준보다 큰 패치를 고려하는 것이 선호된다. 그러나 Image classification과 Object detection의 경우는 이미지 수준이나 바운딩 박스 수준의 레이블을 관찰했을때 몇몇의 중요 정보를 탐지하는데 방해될 수도 있다. Li 등에 의하면 CNN은 자주 이미지 수준의 레이블로 학습시킬때 정보를 잘 못찾는 경향이 있고 이 때문에 Two-stage detector가 One-stage detector보다 정확도가 더 높다고 한다. 
+
+
+
+#### Aggregate Feature Pyramid
+
+여기서 제안한 EFM은 초기 Feature pyramid의 Feature들을 잘 집계할 수 있다고 한다. YOLOv3에 기반한 EFM은 각 GT에 정확히 한 개의 바운딩 박스 Prior를 할당한다. 각 GT 박스는 IoU 임계점을 넘은 하나의 Anchor 박스와 매칭된다. 만약에 Anchor 박스의 크기가 격자 Cell의 FoV와 같다면 S번째 크기의 격자 Cell들에 관해서는 매칭되는 바운딩 박스들의 크기가 최저 (S-1)번째 크기 최고 (S+1)번째 크기가 된다. 그러므로 EFM은 세 가지 Scale에서 Feature들을 모으게 된다. 
+
+
+
+#### Balance Computation
+
+Feature pyramid로부터 Cancatenated된 Feature map들은 매우 많기 때문에 어마한 양의 메모리 양과 연산량을 필요로 한다. 이 문제를 경감시키기 위해서 저자들은 Feature map들을 압축하기 위한 Maxout 기법을 적용했다. 
+
+
+
+## Experiments
+
+저자들은 CSPNet의 성능을 검증하기 위해서 ILSVRC 2012에서 사용된 ImageNet Image classification 데이터셋을 사용했고 EFM의 유용성을 확인하기 위해서 MS COCO object detection 데이터셋을 사용했다. 
+
+
+
+### Implementation Details
+
+실험에 관한 하이퍼파라미터 설정은 본문 참고.
+
+
+
+### Ablation Experiments
+
+#### Ablation study of CSPNet on ImageNet
+
+CSPNet과 관련된 Ablation study에서 저자들은 PeleeNet을 Baseline으로 하고 ImageNet이 성능을 측정하기 위해서 사용되었다. 저자들은 각기 다른 Partial ratio 값 γ과 각기 다른 Feature fusion 전략을 적용해서 실험했다. 밑에 Table 1은 그 결과를 보여준다. SPeleeNet과 PeleeNeXt는 PeleeNet에 각각 Sparse connection과 Group 컨볼루션을 적용한 아키텍처이다. CSP(Fusion first)와 CSP(Fusion last)가 부분 Transition의 이점을 검증하기 위해서 본문에서 제안된 전략이다. 
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN11.png)
+
+
+
+#### Ablation study of EFM on MS COCO
+
+다음으로 저자들은 MS COCO 데이터셋으로 EFM에 관한 Ablation study를 수행했다. 여기서 저자들은 아래 Figure 6에 나와 있는 세 가지 다른 Feature fusion 전략을 비교했다. 
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN12.png)
+
+저자들은 비교를 위해서 두 가지 경량적인 모델인 PRN과 ThunderNet을 선택했다. PRN은 비교를 위해서 사용된 Feature  pyramid 아키텍처이고 ThunderNet과 Context Enhancement Module(CEM) 그리고 Spatial Attention Module(SAM)은 비교를 위해서 선택된 전역 Fusion 아키텍처이다. 저자들은 Global Fusion Model(GFM)을 EFM과 비교하기 위해서 디자인했다. 여기다가 Ablation study를 위해서 GIoU, SPP 그리고 SAM이 EFM에 적용되었다. Table 2에 나와 있는 결과는 모두 CSPPeleeNet을 Backbone으로 사용했다.
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN13.png)
+
+
+
+### ImageNet Image Classification
+
+저자들은 CSPNet을 여러 아키텍처에 적용했고 그 실험 결과는 아래 Table 3에 나와 있다. 
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN14.png)
+
+
+
+#### MS COCO Object Detection
+
+Object detection과 관련해서 저자들은 세가지 시나리오를 세웠다. 
+
+- GPU에서의 실시간: PANet(SPP)를 적용한 CSPResNeXt50
+- 모바일 GPU에서의 실시간: EFM(SAM)을 적용한 CSPPeleeNet, CSPPeleeNet Reference, CSPDenseNet Reference 
+- CPU에서의 실시간: PRN을 적용한 CSPPeleeNet Reference, CSPDenseNet Reference
+
+결과는 Table 4에 나와 있다. 
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN15.png)
+
+
