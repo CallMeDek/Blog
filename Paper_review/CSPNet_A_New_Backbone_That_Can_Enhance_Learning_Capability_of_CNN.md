@@ -200,3 +200,33 @@ Object detection과 관련해서 저자들은 세가지 시나리오를 세웠�
 ![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN15.png)
 
 
+
+### Analysis
+
+#### Computational Bottleneck
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN16.png)
+
+Figure 7은 PeleeNet-YOLO, PeleeNet-RPN, CSPPeleeNet-EFM의 각 계층의 BLOPS를 보여준다. Figure 7을 보면 PeleeNet-YOLO의 연산 병목이 Head에서 Feature pyramid를 합칠때 발생하는 것을 확인 할 수 있다. PeleeNet-RPN의 병목은 PeleeNet Backbone의 Transition 계층에서 발생한다. CSPPeleeNet-EFM의 경우 전체적인 연산 상의 병목을 균형적으로 맞출 수 있다. 그래서 저자들이 주장하길 CSPNet으로 하드웨어를 더 많이 활용할 수 있다고 한다.
+
+
+
+#### Memory Traffic
+
+#### ![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN17.png) 
+
+Figure 8은 ResNeXt50과 CSPResNeXt50의 각 계층의 크기를 보여준다. CSPResNeXt의 CIO(32.6M)는 ResNeXt50(34.4M)보다 더 낮다. 게다가 CSP의 경우 원본의 Bottleneck 계층을 제거하고, 원본의 입력 출력 채널 수를 유지했다. 이것은 가장 낮은 MAC을 보이게 되고 FLOPs가 고정되어 있을때 가장 효율적인 연산이라고 한다. 낮은 CIO와 FLOPs는 CSPResNeXt50을 원본보다 연산 측면에서 22% 더 좋은 성능을 보이도록 한다고 한다. 
+
+
+
+#### Inference Rate
+
+저자들은 저자들의 모델을 모바일 GPU 혹은 CPU에서 실시간으로 배치할 수 있는지를 더 검증했다고 한다. 저자들은 Model compression 이나 Quantization을 적용하지 않았다. 
+
+![](./Figure/CSPNet_A_New_Backbone_That_Can_Enhance_Learning_Capability_of_CNN18.png)
+
+
+
+## Conclusion
+
+저자들은 CSPNet이라고 하는 개념을 제안해서 여러 아키텍처를 모바일 GPU나 CPU에서 경량화 할 수 있다는 것을 보여줬다. 저자들은 중복되는 그래디언트 정보 문제가 비효율적인 최적화와 추론 연산 과정에서 Cost를 발생시킨다는 것을 확인했다. 저자들은 Cross-stage feature fusion 전략과 그래디언트 흐름을 짤라내는 것을 제안해서 각기 다른 계층에 있는 학습되는 Feature들의 변동성을 강화할 수 있게 했다. 여기다 EFM을 제안했는데, 이는 Feature pyramid에서 생상되는 Feature map들을 압축하기 위한 Maxout 연산을 포함하고 있고, 필요한 Memory 대역폭을 크게 줄이므로 추론이 충분히 엣지 컴퓨팅 디바이스에서 가능하게 만든다. 
