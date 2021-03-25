@@ -38,3 +38,76 @@ Highway Network는 100개 이상의 계층을 가진 네트워크를 End-to-End�
 
  
 
+## DenseNet
+
+x0라는 하나의 이미지가 컨볼루션 계층을 통과한다고 가정해보자. 네트워크는 L개의 계층으로 이루어져 있고 각 계층은 H_l(.)이라는 비선형성 변환으로 구현되어 있다. 여기서 l은 각 계층의 인덱스를 의미한다. H_l(.)은 여러 연산들의 합성 함수인데 BN이나 ReLU, Pooling, 컨볼루션 등으로 구성되어 있다. 여기서 l번째 계층의 출력을 x_ㅣ이라고 하기로 한다. 
+
+
+
+### ResNets
+
+전통적인 컨볼루션 계층은 l번째 계층의 출력을 ㅣ+ 1번째 계층의 입력으로 연결한다. 이때 다음의 전환이 발생한다. 
+
+![](./Figure/Densely_Connected_Convolutional_Networks2.png)
+
+ResNet은 Skip-connection이라는 개념을 추가하는데 이 개념은 계층의 입력 시그널이 Identity function을 통해 비선형성 변환을 우회해 가는 것을 의미한다. 
+
+![](./Figure/Densely_Connected_Convolutional_Networks3.png)
+
+ResNet의 장점은 그래디언트가 역전파 시에 Identity function 경로를 통해서 후행 계층에서 선행 계층으로 곧바로 흘러갈 수 있다는 점이다. 그러나 Identity function과 H_l의 출력이 Summation으로 결합되기 때문에 네트워크 안에서 정보의 흐름에 방해가 될 수도 있다. 
+
+
+
+### Dense connectivity
+
+계층 간의 정보의 흐름을 개선하기 위해서 저자들은 다른 연결 패턴을 제안했다. 어떤 계층에서 그 계층의 모든 후행 계층에 직접적으로 경로를 만드는 방식이다. Figure 1에서 그 레이아웃을 확인할 수 있다. 결과적으로 l번째 계층은 모든 선행 계층의 Feature map인 x0, ..., x_l-1을 입력으로 받는다. 
+
+![](./Figure/Densely_Connected_Convolutional_Networks4.png)
+
+여기서 [x0, ..., x_l-1]은 0, ..., l-1번째 계층의 Feature map을 Concatenation한 것이다. 이 연결 패턴 때문에 저자들은 저자들의 아키텍처를 Dense Convolutional Network(DenseNet)이라고 부르기로 했다. 
+
+
+
+### Composite function
+
+저자들은 H_l(.)을 다음의 연속적인 세개의 연산으로 이루어진 합성 함수로 정의했다. BN, ReLU, 3x3 컨볼루션
+
+
+
+### Pooling layers
+
+식 2의 Concatenation 연산은 Feature map 들의 크기가 변하면 수행할 수 없는 연산이다. 그런데 컨볼루션 네트워크에서는 어쩔수 없이 다운 샘플링을 통해서 Feature map의 크기가 변하게 된다. 다운 샘플링을 고려해서 저자들은 네트워크를 아래와 같이 여러개의 Densely connected dense 블럭으로 나눴다. 
+
+![](./Figure/Densely_Connected_Convolutional_Networks5.png)
+
+여기서 저자들은 블럭들 사이에 있는 계층들을 Transition 계층이라고 했다. 이 계층에서는 컨볼루션과 풀링 연산을 수행한다. 저자들의 구현체에서 Trasition 계층은 BN, 1x1 컨볼루션 계층, 2x2 Average 풀링 계층으로 구성된다. 
+
+
+
+### Growth rate
+
+만약에 각 H_l 함수가 k개의 Feature map을 만들어낸다면 l번째 계층은 ko + k*(l-1) 입력 Feature map을 가질 것이다. 여기서 k0는 입력 계층의 채널 숫자이다. DenseNet이 여타 다른 아키텍처와 다른 점은 채널 숫자가 작다는 것이다(예를 들어서 k = 12). 저자들은 하이퍼 파라미터 k를 네트워크의 Growth rate라고 불렀다.  저자들이 주장하길 상대작은 작은 Growh rate만으로도 충분히 좋은 성능을 보일 수 있다고 하는데 이에 대한 이유로, 각 계층이 같은 블럭 안에 있는 모든 선행 계층의 Feature map에 접근이 가능하므로 네트워크가 Collective knowledge를 가질 수 있기 때문이라고 했다. Feature map을 네트워크의 전역적 상태라고 볼 수 있는데 각 계층은 그 계층들의 k 개의 Feature map을 이 상태에 더할 수 있다. Growth rate는 각 계층의 새로운 정보가 얼마나 전역 상태에 기여하는지를 규제한다. 전역 상태는 네트워크 안의 어디서든 접근이 가능하므로 전통적인 네트워크 아키텍처와는 다르게 계층 사이에 복제될 필요가 없다고 한다. 
+
+
+
+### Bottleneck layers
+
+각 계층이 k개의 Feature map만 만들어낸다고 할지라도 Bottleneck 계층에서는 보통 더 많은 입력을 받는다. 1x1 컨볼루션은 Bottleneck 계층으로서 3x3 컨볼루션 계층 전에, 입력 Feature map의 숫자를 줄여서 연산 효율성을 개선하기 위해서 쓰인다. 저자들은 이런 디자인이 특히 DenseNet에 효율적일 것이라고 보고 DenseNet에 Bottleneck 계층을 적용한 아키텍처를(예를 들어서 BN-ReLU-Conv(1x1)-BN-ReLU-Conv(3x3)) DenseNet-B라고 불렀다. 저자들의 구현체에서는 각 1x1 컨볼루션이 4k개의 Feature map을 만들어내도록 구현되었다. 
+
+
+
+### Compression
+
+모델의 간결함을 위해서 저자이 말하길 Transition 계층에 있는 Feature map의 숫자를 줄일 수 있다고 한다. 만약에 Dense block에 m개의 Feature map이 있다면 그 다음의 Transition 계층은 Floor of θm의 Feature map을 만들어 낼 수 있다고 한다(이때 0 < θ <= 1이며 θ를 Compression factor라고 부른다). θ=1일때 Transition 계층 간의 Feature map의 숫자는 변하지 않는다. 저자들은 θ < 1인 DenseNet을 DenseNet-C라고 불렀다. 저자들은 구현체에서는 θ=0.5로 정했다. 만약에 Bottleneck 계층이 쓰이고 Transition 계층의 θ < 1일때 저자들은 이 모델을 DenseNet-BC라고 불렀다. 
+
+
+
+### Implementation Details
+
+ImageNet을 제외한 모든 데이터셋에서 저자들의 구현체는 3개의 Dense 블럭을 가지고 각 블럭에는 동일한 숫자의 계층이 있다. 첫번째 블럭에 진입하기 전에 16개의 출력 채널을 가진 컨볼루션(혹은 DenseNet-BC의 Growth rate의 두배)을 입력 이미지들이 통과한다. 3x3 컨볼루션 계층의 경우 입력의 각 측면에는 1픽셀의 Zero 패딩이 추가되어 Feature map의 크기를 유지시킨다. 저자들은 1x1 컨볼루션 후에 2x2 average pooling을 두 개의 연속적인 Dense 블럭 사이의 Transition 계층으로서 사용한다. 마지막 Dense 블럭에서는 Global average 풀링이 수행되고 나서 Softmax classifier가 붙는다. 세 개의 Dense 블럭에서 Feature map의 크기는 32x32, 16x16 그리고 8x8이다. 저자들은 다음과 같은 셋팅으로 기본 DenseNet을 실험했다. {계층 숫자 L= 40, Growth rate k = 12}, {L=100, k=12}, {L=100, k=24}. DenseNet-BC의 경우 다음과 같은 셋팅으로 실험했다. {L=100, k=12}, {L=250, k=24}, {L=190, k=40}
+
+ImageNet 데이터셋의 실험에서는 DenseNet-BC, 4개의 Dense 블럭 구조의 네트워크로 실험했다. 블럭에 들어가기 전 초반의 컨볼루션의 출력은 2k개이고 7x7 커널의 Stride 2이다. 다른 모든 계층은 k개의 출력을 가진다. ImageNet과 관련된 설정은 Table 1에 나와 있다. 
+
+![](./Figure/Densely_Connected_Convolutional_Networks6.png) 
+
+ 
