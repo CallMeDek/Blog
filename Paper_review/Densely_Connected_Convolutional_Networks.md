@@ -111,3 +111,55 @@ ImageNet 데이터셋의 실험에서는 DenseNet-BC, 4개의 Dense 블럭 구�
 ![](./Figure/Densely_Connected_Convolutional_Networks6.png) 
 
  
+
+## Experiments
+
+### Datasets
+
+#### CIFAR
+
+CIFAR-10과 CIFAR-100은 32x32 픽셀 크기의 색이 있는 자연 이미지이다. CIFAR-10은 10개의 클래스로, CIFAR-100은 100개의 클래스로 이루어져 있다. 훈련셋과 테스트 셋은 각각 50,000과 10,000장이고 저자들은 5,000장의 훈련 셋을 검증셋으로 썼다. 저자들은 Data augementation(Mirroring, Shifting)을 데이터셋에 적용했다. 저자들은 Data augmentation을 적용한 데이터셋을 C10+이라고 했다. 전처리를 위해서 Channel means와 Standard deviations로 정규화했다. 마지막에는 검증 셋의 데이터를 모두 이용해서 모델을 훈련시키고 테스트 결과를 냈다. 
+
+
+
+#### SVHN
+
+Street View House Numbers(SVHN) 데이터셋은 32x32의 색이 있는 디지털 이미지이다. 73,257장의 훈련셋과 26,032장의 테스트 셋이 있고 531,131장의 이미지가 추가적인 훈련을 위해 있다. 저자들은 모든 훈련 데이터셋을 Data augmentation 없이 사용했고 6,000장의 이미지를 훈련 셋에서 분리해서 검증셋으로 사용했다. 저자들은 훈련 도중에 검증 에러가 가장 낮은 모델을 선택해서 테스트 셋으로 평가했다. 전처리로를 픽셀 값을 255로 나누어 [0, 1]의 값을 갖도록 했다. 
+
+
+
+#### ImageNet
+
+ILSVRC 2012 classification 데이터셋은 1.2 백만의 훈련 이미지, 50,000의 검증 이미지로 이루어져 있고 클래스가 1,000개이다. 저자들은 훈련셋에 Data augmentation을 적용했고 테스트 시에는 224 크기의 Single crop 혹은 10 crop을 적용했다. 검증셋으로 최종 에러를 나타냈다. 
+
+
+
+### Training
+
+훈련 과정과 관련한 여러 설정은 본문 참고.
+
+
+
+### Classification Results on CIFAR and SVHN
+
+CIFAR, SVHN으로 테스트 했을 때 결과는 아래 Table 2에 나와 있다. 저자들의 방법에서 좋은 성능을 낸 결과는 굵은체로 전체적으로 최상의 결과는 파란색으로 나타냈다. 
+
+![](./Figure/Densely_Connected_Convolutional_Networks7.png)
+
+
+
+![](./Figure/Densely_Connected_Convolutional_Networks8.png)
+
+
+
+### Classification Results on ImageNet
+
+아래 Table3는 ImageNet에서 Single crop과 10 crop을 적용한 DenseNet 모델들의 검증셋 에러를 보여준다.
+
+![](./Figure/Densely_Connected_Convolutional_Networks9.png)
+
+
+
+![](./Figure/Densely_Connected_Convolutional_Networks10.png)
+
+
