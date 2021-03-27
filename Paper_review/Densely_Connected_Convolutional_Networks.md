@@ -163,3 +163,54 @@ CIFAR, SVHN으로 테스트 했을 때 결과는 아래 Table 2에 나와 있다
 ![](./Figure/Densely_Connected_Convolutional_Networks10.png)
 
 
+
+## Discussion
+
+표면상으로는 DenseNet은 꽤 ResNet과 유사한것처럼 보인다. Eq 1은 Eq 2와 비교했을 때 H_l(.)으로 들어가는 입력이 Summation 대신 Concatenation 되었다는 점만 다르다. 그러나 이 작은 차이는 두 네트워크 아키텍처의 작동 방식을 완전하게 다르게 만든다. 
+
+
+
+### Model compactness
+
+입력의 Concatenation의 직접적인 결과로 DenseNet 계층들의 Feature map은 모든 후행 계층들에 의해서 접근이 가능하다. 이것은 네트워크 전체에서 Feature들을 재사용할 수 있게 만들고 좀 더 간결한 모델이 되게 한다. 
+
+Figure 4의 왼쪽 그림은 DenseNet 모든 변종들의 파라미터 효율성을 비교하는 것을 보여주고 가운데 그림은 ResNet 아키텍처와의 비교를 보여준다. 저자들은 여러 C10+ 데이터 셋에서 깊이를 다르게 한 여러 작은 네트워크를 훈련시키고 테스트 셋에서의 정확도를, 네트워크 파라미터를 입력으로 하는 함수의 결과로서 나타냈다. AlexNet, VGG-net과 같은 다른 네트워크 아키텍처와 비교했을때 ResNet with pre-activation은 보통 더 적은 파라미터를 쓰면서 더 좋은 결과를 보이곤 한다. 저자들은 DenseNet(k = 12)와 이 아키텍처를 비교했다고 한다. 이 DenseNet의 훈련 설정은 이전의 DenseNet에서와 동일하다. 
+
+그래프에서 확인 할 수 있는 것처럼 DenseNet-BC는 어떤 아키텍처와 비교해도 가장 파라미터 효율적인 DenseNet의 변종이다. 동일한 수준의 정확도를 달성하기 위해서 DenseNet-BC는 ResNet(Figure 4의 가운데 그림)과 비교해서 1/3 정도의 파라미터만 필요하다. 저자들이 말하길 이런 결과는 Figure 3에서 보여준 ImageNet에서의 결과와 비슷한 맥락이라고 한다. Figure 4의 오른쪽 그림을 보면 DenseNet-BC는 0.8M의 훈련 가능한 파라미터로도 1001개의 계층을 가진(Pre-activation) ResNet의 10.2M 파라미터와 유사한 정확도를 보인다고 한다. 
+
+
+
+### Implicit Deep Supervision
+
+DenseNet이 향상된 정확도를 보여주는 이유를 설명할 수 있는 한 가지 추정은 각 계층들이 Shortcut을 통해 Loss function으로 부터 추가적인 감시를 받는다는 것이다. DenseNet에서 Deep supervision을 수행한다고 해석할 수도 있다. 
+
+DenseNet에서 암시적인 양상으로 네트워크의 꼭대기에 있는 하나의 Classifier가, 많으면 두 개 혹은 세개의 Transition 계층을 통해서 모든 계층에 직접적인 감시를 한다고 추정할 수 있다. 
+
+
+
+### Stochastic vs. deterministic connection
+
+DenseNet과 ResNet의 Stochastic Depth regularization 사이에 흥미로운 연관성이 있다. Stochastic depth에서는 ResNet의 계층들이 랜덤으로 드롭되는데 이때 드롭 되는 계층 주변의 계층 사이에 직접적인 경로가 만들어진다. Pooling 계층은 드롭되지 않기 때문에 네트워크는 DenseNet에서의 연결 패턴과 유사하다. 만약에 중간 계층이 랜덤하게 드롭된다면 Pooling 계층 사이에 있는 어떤 두 계층끼리 직접적으로 연결될 작은 확률이 존재하게 된다. 
+
+
+
+### Feature Reuse
+
+디자인에 의해서 DenseNet의 모든 계층은 선행 계층들의 Feature map에 접근이 가능하다(같은 블럭 안에 있지 않으면 Transition 계층을 거치지긴 하지만). 저자들은 훈련된 네트워크가 이런 이점을 잘 활용하는지를 조사하기 위한 실험을 수행했다. 저자들은 우선 C10+으로 L=40, k=12의 DenseNet을 훈련시켰다. 한 블럭 안에 있는 각 컨볼루션 계층 l에 대해서 저자들은 계층 s와 경로가 설정되어 있는 계층들의 Average(absolute) weight를 계산했다. 다음의 Figure 5는 세 개의 Dense 블럭에 대한 Heat map을 보여준다. 
+
+![](./Figure/Densely_Connected_Convolutional_Networks11.png)
+
+Average absolute weight는 컨볼루션 계층의 선행 계층들에 대한 의존성을 나타내는 역할을 한다. (l, s) 자리의 빨간 점은 계층 l이 평균적으로 강하게, s 계층 이전에 만들어진 Feature map을 사용한다는 뜻이다. 
+
+- 모든 계층은 Weight를 같은 블럭 안에 있는 많은 입력에 대해서 펼쳐놨다. 이것은 초기 계층에서 추출된 특징들이 같은 블럭 안에서 더 깊은 계층들에 의해서 직접적으로 사용된다는 것을 의미한다.
+- Transition 계층의 Weight들은 선행하는 Dense 블럭 안에 있는 모든 계층에 걸쳐 펼쳐진다. 이는 몇가지 간접적인 방법으로 DenseNet의 각 첫 번째 계층에서 마지막 계층들로 정보가 흐름을 나타낸다.
+- 두 번째와 세 번째 블럭에 있는 계층들은 지속적으로 Transition 계층에 최소의 Weight를 할당하는데 이는 Transition 계층이 많은 중복된 Feature를 출력한다는 것을 나타낸다. 이런 결과는 DenseNet-BC의 결과와 동일하다.
+- 마지막 Classification 계층이 전체 Dense 블럭에 걸친 Weight를 사용하긴 하지만 마지막 Feature map으로 초점이 맞춰지는 것으로 보이면 이것은 네트워크 후반부에 더 상위 수준의 Feature가 있을 수 있음을 나타낸다. 
+
+
+
+## Conclusion
+
+저자들은 DenseNet이라는 아키텍처를 제안했는데 여기서는 Feature map의 사이즈가 같은 두 계층이 서로 연결 될 수 있다. 이런 방법으로 수백만의 계층으로 Scale이 조절될 수 있다. 저자들은 실험을 통해 DenseNet이 성능 하락이나 과적합 없이 파라미터의 수가 증가함에 따라 정확도가 지속적으로 개선되는 경향이 있음을 확인했다고 한다. 저자들이 말하는 DenseNet의 장점은 매우 적은 파라미터와 연산량으로도 SOTA의 정확도를 달성할 수 있다고 하는 점이다. 저자들은 ResNet에서의 최적화된 하이퍼파라미터 셋팅을 DenseNet에 적용했기 때문에 이를 DenseNet에 맞게 재조정하면 더 나은 결과가 있을 것이라고 주장한다.  
+
+Integration the properties of identity mappings, Deep supervision, Diversified depth, Feature reuse
