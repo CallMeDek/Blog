@@ -82,3 +82,65 @@ MobileNetV3에서 저자들은 Platform-aware NAS를 사용했다. 이는 네트
 ![](./Figure/Searching_for_MobileNetV3_7.png)
 
 
+
+## Network Improvements
+
+저자들은 Network Search 말고도 모델을 개선하는 여러 기법을 적용했다. 예를 들어서 네트워크의 시작과 끝에 있는 연산량이 많은 계층을 다시 디자인한다던가 새로운 비선형 함수(h-swish)를 도입한다던가 
+
+
+
+### Redesigning  Expensive Layers
+
+저자들은 아키텍처 탐색을 통해서 찾은 아키텍처의 첫부분과 끝부분의 계층들이 연산량이 많아서 이 부분에서 속도가 느려지는 것을 관찰했다. 그래서 정확도는 유지하면서 이 부분에서 지연율을 감소시키는 방법을 고안했다.
+
+첫번째로 저자들은 마지막 몇 개의 계층이 최종 Feature를 만들어 내기 위해서 상호작용 하는 방식을 고쳤다. MobileNetV2 기반의 현재 모델의 Inverted bottleneck 구조에서는 1x1 컨볼루션을 최종 계층으로 사용하여 고차원 Feature 공간으로 Feature의 차원을 확장한다. 이 계층은 최종 예측을 위해서 풍부한 표현력을 증가시킨다는 면에서 중요한데 이점 때문에 추가적인 Cost가 발생한다. 
+
+지연율을 줄이고 높은 차원의 특징을 보존하기 위해서 저자들은 이 계층을 최종 Average pooling 계층 뒤로 옮겼다. 그래서 이 최종 Feature들은 7x7 spatial 해상도로 대신에 1x1 spatial 해상도로 계산된다. 이런 디자인으로 촉발되는 결과는 Feature들의 연산량과 지연율이 거의 제로에 가깝다는 것이다. 
+
+이런 Feature 생성 계층의 Cost가 경감되고나면 전의 Bottleneck projection 계층이 연산량을 줄일 필요가 없어진다. 그래서 전 Bottleneck 구조에서 Projection과 Filtering 계층을 제거해서 더 연산적 복잡성을 줄일수 있게 된다. 원본과 마지막 단계를 최적화한 구조는 아래 Figure 5와 같다.
+
+![](./Figure/Searching_for_MobileNetV3_8.png)
+
+또다른 연산량이 많은 계층은 필터들의 초기 셋이다. 모바일 모델은 32개의 필터의 3x3 컨볼루션을 사용해서 Edge detection을 위한 초기 필터 셋을 구축하는 경향이 있다. 그런데 이런 필터들은 종종 거의 서로 거의 비슷한 경우가 많다. 젖자들은 실험을 통해서 필터의 숫자를 줄이고 다른 비선형 함수를 사용해서 이런 중복성을 줄이고자 했다. 저자들은 hard-swish 비선형 함수가 다른 비선형 함수와 같이 테스트 했을때 성능이 잘 나오는 것을 확인해서 이 계층들에는 hard-swish 비선형 함수를 사용하기로 했다. 저자들이 말하길 ReLU나 swish를 사용하고 32개의 필터를 사용했을때만큼의 정확도를 hard-swish를 사용해서 16개의 필터만 사용했을때 경우가 유지한다고 한다. 그러면서 2 밀리초의 시간과 10 백만의 mAdds를 줄인다고 한다. 
+
+
+
+### Nonlinearities
+
+ReLU의 대용으로 swish가 여러 연구에서 도입되었다. 이는 이 연구들에서 네트워크의 정확도를 개선하는 결과를 가져왔다. 이 비선형함수는 다음과 같이 정의한다. 
+
+![](./Figure/Searching_for_MobileNetV3_9.png)
+
+문제는 이 비선형함수가 정확도는 증가시키긴 하지만 동시에 모바일 환경 같은 임베디드 환경에서, Sigmoid 함수의 Cost가 크기 때문에 결과적으로 연산상의 Cost를 무시할 수 없는 수준이 된다. 저자들은 이를 두 가지 관점으로 다뤘다.
+
+- 저자들은 Sigmoid 함수를 다음과 같은 개념으로 대체했다. 
+
+  ![](./Figure/Searching_for_MobileNetV3_10.png)
+
+  약간의 차이는 저자들은 ReLU6를 사용했다는 것이다. 이를 통해서 hard swish는 다음과 같이 정의된다.
+
+  ![](./Figure/Searching_for_MobileNetV3_11.png)
+
+  아래 Figure 6는 Sigmoid와 swish 비선형함수의 Soft, Hard 버전을 비교한 것을 보여준다.
+
+  ![](./Figure/Searching_for_MobileNetV3_12.png)
+
+  저자들은 이 비교에서 상수는 최대한 결과가 단순하게 나올수 있도록 선택했고 원래의 Smooth 버전과 결과가 잘 매치되도록 선택했다. 이 실험에서 저자들은 Hard 버전들이 정확도면에서는 거의 차이가 없고 오히려 배치의 관점에서 여러 이점을 보임을 관측했다. 우선 ReLU6의 최적화된 구현체의 경우 사실상 거의 모든 Software와 Hardware 프레임워크에서 이용가능하다고 한다. 그리고 양자화된 모드에서는 근사화된 Sigmoid의 서로 다른 구현에 의해서 유발되는 잠재적인 Numerical precision 손실을 제거한다고 한다. 마지막으로 실제적으로 h-swish는 piece-wise 함수로서 구현되어 Memory에 접근하는 횟수를 줄이므로 지연율 Cost를 상당히 줄일 수 있다고 한다. 
+
+- 네트워크에 적용한 비선형함수의 Cost는 네트워크가 깊어질수록 감소하는데 그 이유는 각 계층의 Activation memory가 보통 해상도가 줄어들때마다 반이 되기 때문이다. 저자들은 우연히 swish의 대부분의 이점을 깊은 계층에서만 swish를 사용하는 경우를 통해 발견하게 되었다. 그러므로 저자들은 h-swish를 모델의 반쪽(깊은쪽)에만 적용했다고 한다. Table 1과 2에 정확한 레이아웃을 나타냈다. 
+
+  ![](./Figure/Searching_for_MobileNetV3_13.png)
+
+  ![](./Figure/Searching_for_MobileNetV3_14.png)
+
+
+
+### Large squeeze-and-excite
+
+Mnasnet에서 Squeeze-and-exicite bottleneck의 크기는 컨볼루션 Bottleneck의 크기에 상대적이다. 저자들은 이것들을 Expansion 계층의 채널 수의 1/4가 되도록 고정시켰다. 저자들은 이렇게 했을때 정확도가 올라가는 것을 확인했고 약간 파라미터 수가 증가하긴 하지만 Latency cost는 거의 차이가 없음을 확인했다.
+
+
+
+### MobileNetV3 Definitions
+
+MobileNetV3는 두 가지 모델로 정의된다. MobileNetV3-Large와 Small인데 이들은 각각 높은, 낮은 리소스 사용 환경을 대상으로 한다. 이 모델들은 Platform-aware NAS와 NetAdapt을 적용해서 만들어진다. Table 1과 Table 2가 이 모델들의 구체적인 구조를 나타낸다. 
