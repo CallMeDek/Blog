@@ -144,3 +144,113 @@ Mnasnet에서 Squeeze-and-exicite bottleneck의 크기는 컨볼루션 Bottlenec
 ### MobileNetV3 Definitions
 
 MobileNetV3는 두 가지 모델로 정의된다. MobileNetV3-Large와 Small인데 이들은 각각 높은, 낮은 리소스 사용 환경을 대상으로 한다. 이 모델들은 Platform-aware NAS와 NetAdapt을 적용해서 만들어진다. Table 1과 Table 2가 이 모델들의 구체적인 구조를 나타낸다. 
+
+
+
+## Experiments
+
+저자들은 저자들의 모델을 Classification, Detection, Segmentation에 대해서 실험을 했다. 그리고 여러 디자인 옵션의 효율성을 검토하기 위해서 Ablation study를 진행했다. 
+
+
+
+### Classification
+
+Classification을 할때는 ImageNet 데이터셋을 사용했고 정확도와 지연율 그리고 연산수(MAdds)와 같은 리소스 사용 척도를 비교했다. 
+
+
+
+#### Training  setup
+
+훈련 간의 설정은 본문 참고. 
+
+
+
+#### Measurement setup
+
+지연율을 측정하기 위해서 저자들은 Google Pixel 폰을 사용했고 모든 네트워크를 TFLite Benchmark Toold을 통해서 작동시켰다. 모든 측정에는 단일 스레드의 코어를 사용했고 멀티 코어의 추론 시간은 측정하지 않았다. 왜냐하면 저자들이 생각하기에 모바일 애플리케이션에 멀티 코어 환경은 그다지 실용적이지 않기 때문이다. Figure 9에 최적화된 h-swish의 영향에 대해 나타나 있다. 
+
+![](./Figure/Searching_for_MobileNetV3_15.png)
+
+
+
+### Results
+
+Table 3는 각기 다른 Pixel 폰에 대한 소수점 연산의 성능을 나타내고 Table 4는 최적화를 포함한 결과를 나타낸다. 
+
+![](./Figure/Searching_for_MobileNetV3_16.png)
+
+![](./Figure/Searching_for_MobileNetV3_17.png)
+
+Figure 7에는 MobileNetV3의 Multiplier와 Resolution의 Trade-off의 성능을 보여준다. 
+
+![](./Figure/Searching_for_MobileNetV3_18.png)
+
+
+
+#### Ablation study
+
+##### Impact of non-linearities
+
+Table 5에는 h-swish 비선형함수를 어디에 삽입할 것인가에 대한 연구와 최적화된 구현을 통해서 개선했을때의 성능에 대한 연구에 대한 결과를 보여준다. 
+
+![](./Figure/Searching_for_MobileNetV3_19.png)
+
+Figure 8은 가장 효율적인 비선형함수와 네트워크 너비와 관련된 성능을 보여준다. 
+
+![](./Figure/Searching_for_MobileNetV3_20.png)
+
+
+
+##### Imact of other components
+
+Figure 9는 그 밖의 다른 요소를 도입했을때 지연율/정확도의 곡선이 어떻게 이동하는지를 보여준다. 
+
+![](./Figure/Searching_for_MobileNetV3_21.png)
+
+
+
+### Detection
+
+저자들은 SSDLite에서 Backbone 네트워크를 MobileNetV3로 바꾸고 COCO 데이터셋으로 다른 네트워크와 성능을 비교했다. 
+
+MobileNetV2를 따라서 저자들은 SSDLite의 첫번째 계층을 Backbone의 마지막 계층에 연결했다(Stride 차이 16) 그리고 두번째 계층 또한 Backbone의 마지막 계층에 연결했다(Stride 차이 32). 저자들은 이 두 Feature extractor 계층을 각각 C4, C5라고 했다. MobileNetV3-Large에 대해서는 C4는 13번째 Bottleneck 블럭의 Expansion 계층이고 MobileNetV3-Small에 대해서는 9번째 Bottleneck 블럭의 Expansion 계층이다. 두 네트워크에 대해서 C5는 Pooling 바로 직전의 계층이다. 
+
+저자들은 추가적으로 C4, C5 사이의 Feature 계층들의 채널 수를 2배 정도 줄였다. 왜냐하면 MobileNetV3의 마지막 몇 개의 계층은 1000개의 출력에 대해 맞춰져 있기 때문에 이를 COCO의 90개의 클래스에 Trasfer하면 중복이 될 거시다. 
+
+COCO test 셋에 대한 실험 결과는 Table 6에 나와 있다. 
+
+![](./Figure/Searching_for_MobileNetV3_22.png)
+
+
+
+### Semantic Segmentation
+
+저자들은 MobileNetV2와 MobileNetV3를 모바일에서의 Semantic segmentation의 Backbone 네트워크로 사용했다. 추가적으로 저자들은 두 가지 Segmentation head의 성느응ㄹ 비교했다. 하나는 R-ASPP라고 하는 것인데(Reduced design of the Atrous Spatial Pyramid Pooling module) 1x1 컨볼루션 하나와 GAP 하나로 이루어진 두 가지 브랜치만 있는 모듈이다. 여기서는 저자들은 Lite R-ASPP(LR-ASPP)라고 하는 경량의 Segmentation을 제안했다 (Figure 10).
+
+![](./Figure/Searching_for_MobileNetV3_23.png) 
+
+Lite R-ASPP에서는 GAP를 Squeeze-and-Excitation 모듈과 비슷하게 배치했는데 연산량을 줄이기 위해서 큰 Stride로 설정한 큰 커널 크기를 가진 Pooling 계층과 오직 하나의 1x1 컨볼루션만 모듈에 있다. 저자들은 Dense한 Feature를 추출하기 위해서 MobileNetV3의 마지막 블럭에 Atrous 컨볼루션을 적용했고 낮은 단계 Feature에서부터 Skip connection을 추가해서 좀 더 자세한 정보를 얻고자 했다. 
+
+저자들은 Cityscapes 데이터셋에 mIOU 척도로 실험을 수행했다(이때 잘 Annotation된 데이터셋만 사용). 모든 모델은 ImageNet에 미리 훈련시키지 않고 처음부터 훈련되었으며 단일 스케일 입력 데이터에 대해서 평가되었다. Object detection에서와 유사하게 저자들이 관측하길 큰 성능 상의 하락 없이 네트워크의 Backbone에서 마지막 블럭의 채널 숫자를 2배 줄일 수 있었다. 저자들이 추측하길 이는 Backbone의 1000개의 클래스에 대해 맞춰져 있었고 Cityscapes에는 19개의 클래스만 있기 때문에 Backbone의 몇 채널에서 중복이 있었기 때문이라고 한다. 
+
+Table 7에 검증셋 결과가 나와 있다. 
+
+![](./Figure/Searching_for_MobileNetV3_24.png)
+
+Table 8은 테스트 셋 결과가 나와 있다. 
+
+![](./Figure/Searching_for_MobileNetV3_25.png)
+
+
+
+## Conclusions and future work
+
+이 논문에서 저자들은 MobileNetV3 Large와 Small이라는 네트워크를 제안했다. 저자들은 여러 NAS 알고리즘과 네트워크 디자인 기법들을 적용해 다음 세대의 모바일 모델을 만들어냈다고 자부한다. 또 swish 같은 비선형함수를 어떻게 저자들의 모델에 맞게 조정하는가 그리고 Squeeeze and excite 모듈을 어떻게 최적화 과정 중에 적용할 것인가를 보여줬다. 또 경량의 Segmetation decoder인 LR-ASPP를 제안했다. 
+
+
+
+## Appendix. Performance table for different resolutions and multipliers
+
+![](./Figure/Searching_for_MobileNetV3_26.png)
+
+
