@@ -53,3 +53,28 @@ Core unit은 두 개의 스칼라 값을 입력으로 받고 각 입력 값을 �
 한 번 탐색 알고리즘에 의해서 Activation 함수가 생성되면 Child network(후보 옵션을 고려한 상대적으로 작은 네트워크)가 이 함수를 적용해서 특정 Task에 맞게 훈련된다. 훈련 후에 Child network의 검증 정확도가 기록되고 탐색 알고리즘을 업데이트 하기위해서 사용된다. Exhaustive 탐색의 경우 검증 정확도 순으로 정렬했을때 최고의 성능을 보인 Activation 함수가 유지된다. RNN controller의 경우 Controller는 강화 학습으로, 검증 정확도를 최대화하는 방향으로 훈련된다. 이렇게 되면 Controller는 높은 검증 정확도를 보이는 Activation 함수를 만들어 내게 된다. 
 
 하나의 Activation 함수를 평가하는 것에는 Child network를 훈련시키는 것이 필요하기 때문에 탐색은 계산적으로 부담이 될 수밖에 없다. 탐색 과정을 구축하는데 필요한 Wall clock time을 줄이기 위해서 분산 훈련 환경이 각 Child network를 병렬적으로 훈련시키기 위해서 적용된다. 이 환경에서 탐색 알고리즘은 한 배치의 후보 Activation 함수를 제안한다(각 후보는 Queue에 삽입된다). 각 Machine은 Activation 함수를 Queue에서 꺼내서 Child network를 훈련시키고 해당 Activation 함수에 대한 검증 정확도를 계산한다. 검증 정확도가 모두 집계되고 탐색 알고리즘을 업데이트하는데 사용된다. 
+
+
+
+## SEARCH FINDINGS
+
+저자들은 모든 탐색에 대해서 ResNet-20을 Child network 아키텍처로 해서 CIFAR-10 데이터셋으로 10K 스텝동안 훈련시켰다. 이런 제한적인 실험 환경이 실제로는 잘 맞지 않을 수 있는데 왜냐하면 가장 성능이 좋게 나온 Activation 함수가 작은 네트워크에서만 성능이 좋을 수 있기 때문이다. 그러나 저자들은 후속 실험에서, 발견된 많은 Activation 함수들이 더 큰 모델에서도 성능이 나쁘지 않다는 것을 확인했다. RNN controller는 Policy Proximal Optimization으로 훈련시켰다. 이때 성능의 변동성을 줄이기 위한 Baseline으로 Reward의 지수 이동평균을 사용했다. Activation 함수를 만들때 고려한 Unary, Binary 함수는 다음과 같다. 
+
+![](./Figure/Searching_for_Activation_Functions5.png)
+
+β는 훈련 가능한 채널 당 부여하는 파라미터이고 σ는 Sigmoid 함수이다. 각 탐색 공간은 Activation 함수를 구축하기 위해 사용되는 Core unit의 갯수를 다르게 하고 탐색 알고리즘에서 가능한 Unary, Binary 함수를 다양하게 해서 만들어진다. 
+
+Figure 3는 탐색에 의해서 찾은 성능이 좋은 새로운 Activation 함수를 보여준다. 저자들은 탐색에서는 다뤄지지 않은 몇가지 주목할만한 경향을 표시해놨다. 
+
+![](./Figure/Searching_for_Activation_Functions6.png)
+
+- 복잡한 Activation 함수는 단순한 것보다 일관되게 성능이 안 놓은데 저자들이 추축하길 최적화 하기 어렵기 때문이라고 한다. 가장 성능이 좋은 함수는 1개 내지 2개의 Core unit으로 표현된다.
+- 성능이 좋은 함수들의 공통점은 계층에서의 출력인 Preactivation x를 최종 Binary 함수의 입력으로 넣는것이다(b(x, g(x))). ReLU도 이런 구조를 띄는데 b(x1, x2) = max(x1, x2), g(x) = 0인 구조이다. 
+- 탐색을 수행했더니 주기성을 가지는 함수를(Sin, Cos) 활용하는 Activation 함수를 찾아냈다. 가장 흔하게 주기성 함수를 사용하는 방식은 Preactivation x(혹은 선형적으로 Scaled된 x)를 더하거나 빼는 방식이었다. 
+- 나눗셈을 쓰는 함수는 성능이 안 좋은 경향이 있는데 그 이유는 분모가 거의 0일때 출력값이 폭발하기 때문이다. 나눗셈은 Cosh(x)와 같이 분모가 0에서 멀어지거나, 분자가 0으로 접근할때 분모도 0으로 접근해서 출력 값이 1로 다가가는 경우에만 성능이 좋았다. 
+
+Activation 함수는 작은 네트워크를 통해서 성능을 확인했기 때문에 큰 모델에서는 결과가 달라질수도 있다. 저자들은 각 아키텍처에서 Activation 함수를 사용했을때 성능이 좋은지를 확인하기 위해서 크기가 큰 3개의 모델에서 추가적인 실험을 수행했다. 이 3개의 모델에서 ReLU 함수를 각 Activation 함수로 바꿨다. 그 밖의 하이퍼파라미터는 동일하게 했고 5 번의 실험 결과의 Median을 계산했다. 
+
+![](./Figure/Searching_for_Activation_Functions7.png)
+
+위의 결과가 저자들이 의도한대로 유의미하다고 하더라도 저자들은 실제 데이터셋에서도 좋은 성능을 낼 수 있을지 의문이었다. 저자들은 그래서 Swish 함수로 실험을 수행했다. 
