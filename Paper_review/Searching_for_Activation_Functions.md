@@ -78,3 +78,37 @@ Activation 함수는 작은 네트워크를 통해서 성능을 확인했기 때
 ![](./Figure/Searching_for_Activation_Functions7.png)
 
 위의 결과가 저자들이 의도한대로 유의미하다고 하더라도 저자들은 실제 데이터셋에서도 좋은 성능을 낼 수 있을지 의문이었다. 저자들은 그래서 Swish 함수로 실험을 수행했다. 
+
+
+
+## SWISH
+
+아래 Figure 4는 β에 따른 Swish 그래프를 나타낸 것이다. 
+
+![](./Figure/Searching_for_Activation_Functions8.png)
+
+β = 1일때 Swish는 Sigmoid-weighted Linear Unit(SiL)이랑 동일해진다. β = 0일때는 다음과 같은 Scaled linear function이 된다. 
+
+![](./Figure/Searching_for_Activation_Functions9.png)
+
+β가 무한대로 갈수록 Sigmoid 값이 0에서 1로 가므로 Swish는 ReLU 함수가 된다. 저자들은 이를 두고 Swish가 선형 함수와 ReLU 함수 사이를 비선형적으로 보간하는 Smooth 함수로 볼 수 있다고 했다. 보간의 정도는 β로 조절 가능한데 이는 학습이 가능한 파라미터이다. ReLU와 같이 Swish는 양수일때는 한계선이 없고 음수일때는 한계선이 있다. 그러나 ReLU와는 다르게 Swish는 Smooth하고 단조롭지 않다. 이 비단조로움은 대부분의 Activation 함수와는 다른 성질이다. Swish의 도함수는 다음과 같다. 
+
+![](./Figure/Searching_for_Activation_Functions10.png)
+
+아래 그림은 β에 따른 Swish의 도함수를 그래프로 나타낸 것이다.
+
+![](./Figure/Searching_for_Activation_Functions11.png)
+
+β의 정도는 1차 도함수가 얼마나 빨리 0에서 1로 점근하는지를 조절한다. β = 1일때는 입력 값이 1.25보다 작은 값에 대해서는 1보다 작은 미분값을 갖는다. 저자들은 이를 두고 ReLU가 그래디언트를 보존하는 특성을 갖는 것(양수에 대해서 미분 값이 1)이 뚜렷한 이점이 될 수 없다고 말한다. 
+
+저자들이 말하는 Swish와 ReLU의 가장 큰 차이점은 x가 음수일때 Swish의 비단조적 튀어나옴이다(Figure 4를 보면 β = 1일때 음수 값이 볼록 튀어 나온 것을 볼 수 있다). Figure 6에서 확인할 수 있는 것처럼 많은 비율의 Preactivation 값들이 Bump의 정의역에 속하므로(-5 <= x <= 0) 저자들은 이 부분이 Swish의 중요한 측면이라고 한다(ReLU는 기울기 값이 아예 0이 되어서 정보가 손실된다). 
+
+![](./Figure/Searching_for_Activation_Functions12.png)
+
+β = 1로 고정시키는 것이 효율적이긴 하지만 저자들은 어떤 모델에서는 β 값을 모델을 훈련시켜서 찾아내는 것이 유효할 수 있다고 말한다. Figure 7은 Mobile NASNet-A 모델로부터 훈련되어나온 β 값들의 분포를 나타낸다. 
+
+![](./Figure/Searching_for_Activation_Functions13.png)
+
+β값들은 0과 1.5 사이에 퍼져 있고 β가 1에 가까울때가 Peak이다. 이는 β를 훈련 가능한 파라미터로 두었을때 모델의 추가적인 유연성을 부여하는 것이라고 한다. 
+
+Swish는 코드 한줄로 대부분의 딥러닝 라이브러리에서 구현 가능하다. 한 가지 주의해야할 점은 BatchNorm이 사용된 모델의 경우 Scale 파라미터가 셋팅되어야 한다는 것이다. 어떤 라이브러리는 Scale 파라미터를 기본값으로 두는 경우가 있다. 왜냐하면 ReLU 함수가 부분적으로 선형이기 때문이다. 그러나 이 셋팅법은 Swish와는 맞지 않는다. 저자들이 발견한건 ReLU 모델을 훈련시키기 위해서 LR을 살짝 낮추는 것이 마찬가지로 Swish 모델을 훈련시킬때도 잘 먹힌다는 것이다. 
