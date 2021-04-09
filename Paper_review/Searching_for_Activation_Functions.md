@@ -112,3 +112,33 @@ Activation 함수는 작은 네트워크를 통해서 성능을 확인했기 때
 β값들은 0과 1.5 사이에 퍼져 있고 β가 1에 가까울때가 Peak이다. 이는 β를 훈련 가능한 파라미터로 두었을때 모델의 추가적인 유연성을 부여하는 것이라고 한다. 
 
 Swish는 코드 한줄로 대부분의 딥러닝 라이브러리에서 구현 가능하다. 한 가지 주의해야할 점은 BatchNorm이 사용된 모델의 경우 Scale 파라미터가 셋팅되어야 한다는 것이다. 어떤 라이브러리는 Scale 파라미터를 기본값으로 두는 경우가 있다. 왜냐하면 ReLU 함수가 부분적으로 선형이기 때문이다. 그러나 이 셋팅법은 Swish와는 맞지 않는다. 저자들이 발견한건 ReLU 모델을 훈련시키기 위해서 LR을 살짝 낮추는 것이 마찬가지로 Swish 모델을 훈련시킬때도 잘 먹힌다는 것이다. 
+
+
+
+## EXPERIMENTS WITH SWISH
+
+아래 Table 3는 Swish와 여러 Activation 함수들의 성능을 비교한 표이다. 
+
+![](./Figure/Searching_for_Activation_Functions14.png)
+
+Table 3의 결과는 여러 데이터셋(CIFAR, ImageNet, English->German translation 등)에 대해서 여러 모델(Inception ResNet-v2, Transformer 등)에 각 Activation 함수를 적용하고 난 뒤에 성능을 집계하여 도출한 것이다. 
+
+
+
+### EXPERIMENTAL SET UP
+
+많은 Activation 함수들 중에 다음과 같이 대표적인 함수들을 뽑아서 Swish와 비교했다. 
+
+![](./Figure/Searching_for_Activation_Functions15.png)
+
+저자들은 학습이 가능한 β 모델과 β = 1이니 모델로 검증했다(편의상 Swish-1이라고 언급하지만 이때는 정확히 Sigmoid-weighted Linear Unit과 동일하다). 저자들이 말하길 저자들의 모델과 학습 설정에서 차이가 있을 수 있기 때문에 대조군과 직접적으로 결과를 비교하는게 어려울 수도 있다고 한다. 
+
+
+
+### CIFAR
+
+저자들은 먼저 CIFAR-10, 100 데이터셋으로 비교했다. 저자들은 Search 기법으로 Activation 함수를 찾고 나서 비교할때의 설정을 똑같이 따랐다고 한다. 그리고 나서 ResNet-164, Wide ResNet 28-10(WRN), DensNet 100-12 모델의 Preactivation으로 5번 돌린 Median 값을 비교했다. 
+
+![](./Figure/Searching_for_Activation_Functions16.png)
+
+
