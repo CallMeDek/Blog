@@ -142,3 +142,25 @@ Table 3의 결과는 여러 데이터셋(CIFAR, ImageNet, English->German transl
 ![](./Figure/Searching_for_Activation_Functions16.png)
 
 
+
+### IMAGENET
+
+저자들은 또 ImageNet으로 여러 Activation 함수들을 비교했다. 사용한 모델은 Inception-ResNet-v2, Inception-v4, Inception-v3, MobileNet, Mobile NASNet-A이다. 저자들은 ReLU 함수를 다른 Activation 함수들로 바꾸고 특정 Step만큼 훈련시켰다(ReLU의 성능이 수렴할때 기간만큼 똑같이). Optimizer로는 RMSProp를 썼다. 모든 네트워크 가중치는 He 가중치로 초기화시켰다. Figure 8에는 Mobile NASNet-A의 Learning curve가 나와 있다. 
+
+![](./Figure/Searching_for_Activation_Functions17.png)
+
+![](./Figure/Searching_for_Activation_Functions18.png)
+
+![](./Figure/Searching_for_Activation_Functions19.png)
+
+![](./Figure/Searching_for_Activation_Functions20.png)
+
+
+
+### MACHINE TRANSLATION
+
+저자들은 추가적으로 기계 번역에서 Swish 함수를 검증했다. 데이터셋은 WMT 2014 English->German 데이터셋을 사용했다. 이 데이터셋에는 4.5 백만의 훈련용 문장이 있고 4개의 각기 다른 테스트 셋으로 검증한다. 평가 척도로는 BLEU를 이용한다. 저자들은 Attention 기반의 Transformer 모델을 사용했다. 이 모델은 각 Attention 계층 사이에 있는 2 계층짜리 Feed-forward 네트워크 안에서 ReLU를 사용한다. 저자들은 12계층짜리 기본 Transformer 모델을 300K step만큼 훈련시켰고 나머지 다른 하이퍼파라미터 셋팅은 기존과 동일하게 했다. 
+
+![](./Figure/Searching_for_Activation_Functions21.png)
+
+
