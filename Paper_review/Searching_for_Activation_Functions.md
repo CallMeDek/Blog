@@ -164,3 +164,23 @@ Table 3의 결과는 여러 데이터셋(CIFAR, ImageNet, English->German transl
 ![](./Figure/Searching_for_Activation_Functions21.png)
 
 
+
+## RELATED WORK
+
+Swish는 다양한 자동 탐색 기법들을 사용해서 찾았다. 탐색 기법들은 새로운 컨볼루션, 순환 신경망 아키텍처와 Optimizer를 발견하기 위해 사용했다. 탐색 기법들을 사용하는 동향은 Meta-learning의 부흥과 관련이 있다. Meta-learning은 One-shot learning, Adaptable reinforcement learning을 위한 초기화 상태를 찾는데 사용되었고 모델 파라미터를 만들어내는데 사용되었다. Meta-learning이 효율적일수 있는 이유는 인코딩된 최소한의 추정에서 파생된 유연성이 그동안 경험적으로 효율적인 솔루션으로 이어졌기 때문이다. 저자들은 Swish 같은 함수를 찾기 위해서 이런 특징을 이용했다. 
+
+본 연구에서는 스칼라 값을 스칼라 값으로 변환시키는 Activation 함수를 찾는 것에 집중했지만 사실 다른 방식의 함수들도 있다. Max pooling, Maxout, Gating과 같이 Many-to-one 함수들은 비선형적인 방법으로 여러 소스들을 결합하여 결과를 만들어낸다. Concatenated ReLU와 같은 One-to-many 함수들은 여러 비선형 함수를 단 하나의 입력에 적용해서 성능을 개선한다. BatchNorm, LayerNorm과 같은 Many-to-many 함수들은 입력 간의 강한 비선형적 상관 관계를 추론한다. 
+
+대부분의 연구가 새로운 Activation 함수를 제안하는 것에 초점을 두는데 반해 몇몇 연구에서는 시스템적으로 여러 Activation 함수들을 비교하는데 초점을 둔다. 
+
+저자들은 Swish가 ReLU보다, 깊은 모델에서 일관적으로 성능이 좋다고 주장한다. Swish의 강력한 성능은 그동안 보편적으로 알려져 왔던 ReLU와 관련된 지식에 도전장을 내민다. ReLU의 그래디언트를 보존하는 특성의 중요성에 관련된 가정은 Residual connection이 아주 깊은 모델에서 최적화를 가능하게 했을때 불필요해보인다. 비슷한 예로 Fully attentional Transformer가 있다. 복잡하게 구축된 LSTM cell은, 고정된 길이의 Attentional connection이 사용될때 더이상 필요없어 보인다. 아키텍처 차원의 개선으로, 그래디언트를 보존하기 위한 개별 요쇼의 필요성을 줄인다. 
+
+
+
+## CONCLUSION
+
+본 연구에서 저자들은 자동화 탐색 기법을 이용해서 좋은 성능을 보이는 Activation 함수를 발견했다. 저자들은 다음과 같은 함수를 Swish라고 불렀다. 
+
+![](./Figure/Searching_for_Activation_Functions22.png)
+
+저자들은 기존의 모델에서 ReLU를 단순히 Swish로 바꾸는 실험에서도 Swish의 성능이 더 좋다는 것을 보여줬다. 저자들이 말하길 Swish를 위한 하이퍼파라미터 셋팅과 디자인을 한다면 더 성능이 좋아질 것이라고 한다. 
