@@ -62,3 +62,33 @@ Sara Beery(California Institute of Technology, Google), Guanhang Wu, Vivek Ratho
 Single frame object detection, video object detection, object-level attention-based temporal aggregation methods, camera traps and other visual monitoring systems와 관련된 여러 연구에 대한 내용은 본문 참고. 
 
 
+
+## Method
+
+Context R-CNN은 Contextual Frame에 근거한 Memory bank를 구축하고 Detection 모델이 이 Memory bank를 조건으로 해서 예측을 수행하도록 한다. 이 Section에서 저자들은 다음의 내용을 다룬다. 
+
+- 저자들의 Detection 아키텍처 선택의 이유, 근거
+- Contextual Frame을 어떻게 표현할 것인가
+- 현재 Frame에 대해서 모델이 예측을 수행할때 Contextual Frame들을 어떻게 이용할 것인가
+
+저자들이 목표로 하는 환경에서는 Frame이 불규칙적으로 찍히기 때문에 3D convnet이나 RNN과 같은 통상적인 Temporal 아키텍처는 잘 맞지 않는다. 왜냐하면 Frame 간의 시간적 일관성이 부족하기 때문이다(찍힌 두 Frame 사이에 상당히 많은 변화가 있을 수 있다). 대신에 저자들은 Context R-CNN을 Single Frame 탐지 모델 위에 구축하기로 했다. 추가적으로 저자들의 직감(움직이는 객체는 주기적으로 같은 장소에서 같은 행동 패턴을 보인다)에 더해 저자들은 Contextual Frame에서의 Instance tnwnsdml Feature들을 조건으로 해서 예측에 영향을 끼치고 싶었다. 이런 마지막 조건 때문에 저자들은 Faster R-CNN을 저자들의 기본 탐지 모델로 선택했다. Faster R-CNN은 경쟁력 있는 메타 아키텍처이며 어떻게 Instance 수준의 Feature을 추출하는지에 대한 명확한 선택 옵션을 제공하기 때문이다. 저자들이 말하길 저자들의 방법은 어떤 Two-stage 프레임워크에도 적용 가능하다고 한다. 
+
+Faster R-CNN은 두 단계로 구성되어 있다. 하나의 이미지가 RPN이라고 하는 첫 번째 단계를 통과하고 나서 NMS를 수행하면 클래스와 상관 없는 Proposal들이 생성된다. 이 Proposal들은 두 번째 단계를 통과하고 Instance 수준의 Feature들을 ROIAlign 연산을 통해 추출하게 된다. 그리고 이 Feature들로 분류와 박스 회귀를 수행한다. 
+
+Context R-CNN에서 첫번째 단계에서 Proposal들은 두 개의 Attention 기반의 모듈을 통해서 라우팅된다. 이 모듈들은 Memory bank에서 인뎅식을 하고 모델이 Contextual Frame에서의 Feature들을 포함하도록 한다. 이렇게 하는 이유는 Local, Global 시간적 Context를 모델에 제공하기 위해서이다. 이런 Attention 기반의 모듈들은 상황에 맞는 Feature vector를 리턴하고 이 Vector는 Faster R-CNN에서의 두번째 단계를 통과하게 된다. 
+
+![](./Figure/Context_R-CNN_Long_Term_Temporal_Context_for_Per-Camera_Object_Detection7.png)
+
+
+
+### Building a memory bank from context features 
+
+#### Long Term Memory Bank(M^long)
+
+주어진 핵심 Frame i_t에 대해서(탐지를 수행하고자 하는 대상 Frame) 저자들은 같은 카메라에서 미리 정의된 기간인 i_(t-k)부터 i\_(t+k)까지의 모든 Frame에 대해서 미리 학습된(더이상 학습하지 않는) Detector로 작업을 수행한다. 그리고 Detection 결과에 해당하는 Feature 벡터들로 Long term memory bank를 구축한다. 하드웨어 메모리의 제약사항 때문에 Memory bank에 어떤 것을 저장할 것인가를 선택하는 것은 중요한 문제이다. 저자들은 아래의 세 가지 전략을 Memory bank에 적용했다. 
+
+- 저자들은 RPN에서의 Proposal들을 Cropping 하고 나서 Instance level feature 벡터들을 얻은 후에 날짜 및 상자 위치에 근거해서 시공간적 Encoding으로 Concatenated된 각 텐서의 모아진 표현들만을 저장한다(박스 마다 임베딩 벡터들을 만들어낸다).
+- 저자들은 저장할 Feature들을 위한 Proposal을 수를 제한한다 - 저자들은 여러 전략을 적용해서 어떤 Feature들을 얼마나 Memory bank에 저장할 것인지를 결정했다. 
+- 저자들은 ResNet-101 Bacnkbone의 Faster R-CNN을 Single Frame Feature extractor로 사용했다(학습되지 않음). 저자들은 이때 COCO로만 훈련시킨 Extractor와 각 데이터셋의 훈련 셋으로 Fine-tuning 시킨 Extractor로 작업을 수행했을때 결과를 봤는데 COCO Extractor도 괜찮은 결과가 나왔다. 
+
+저자들은 이 전략으로 8,500의 Contextual feature들을 포함하는 Memory bank를 구축할 수 있다고 하는데 저자들이 관심 있는 데이터셋에서는 한 달 동안의 Feature들의 Context를 포함하기에 충분하다고 한다. 
