@@ -92,3 +92,41 @@ Context R-CNN에서 첫번째 단계에서 Proposal들은 두 개의 Attention �
 - 저자들은 ResNet-101 Bacnkbone의 Faster R-CNN을 Single Frame Feature extractor로 사용했다(학습되지 않음). 저자들은 이때 COCO로만 훈련시킨 Extractor와 각 데이터셋의 훈련 셋으로 Fine-tuning 시킨 Extractor로 작업을 수행했을때 결과를 봤는데 COCO Extractor도 괜찮은 결과가 나왔다. 
 
 저자들은 이 전략으로 8,500의 Contextual feature들을 포함하는 Memory bank를 구축할 수 있다고 하는데 저자들이 관심 있는 데이터셋에서는 한 달 동안의 Feature들의 Context를 포함하기에 충분하다고 한다. 
+
+
+
+#### Short Term Memory(M^short)
+
+저자들은 실험을 통해서 전체 네트워크의 예측 과정에서 대상 Frame의 바로 주변 Frame에서의 Short term context feature를 포함시키는 개별적인 매커니즘을 추가하는 것이 도움이 된다는 것을 알아냈다. 이때의 feature는 핵심 Frame에서 Feature을 추출할때 쓰는 (학습 하지 않는) 미리 학습된 Feature extractor를 사용해서 뽑아냈다. 이것은 위에서의 Long term memory 매커니즘과는 별개이다. Long term과는 다르게 Short term으로는, 만약에 Window 사이즈가 작을 경우 모든 Box proposal에 대한 Feature를 메모리에 잡는게 가능하기 때문에 Curate 시키지 않는다. 대상 Frame 주변에 모든 Frame에 대해서(주로 5개 이하의 Frame) 작은 크기의 Window로 Cropped된 Instance 레벨의 Feature tensor들을 획득한다. 그리고 공간적 차원(너비와 넓이)에 걸쳐서 전역적으로 풀링한다. 이 과정을 통해서 (#Proposals per frame * #frames) * (Feature depth) 형태의 매트릭스가 만들어진다. 이 매트릭스는 (저자들이 Short Term Memory, M^short이라고 부르는) Box proposal마다 하나의 임베딩 벡터를 포함하고 있다. 이 매트릭스는 만들어 진후에 Short term attention block으로 들어간다. 
+
+
+
+### Attention module architecture
+
+저자들은 Attention block을 정의했다. 이 블럭에서는 입력 Feature를 Key로 해서 Context feature를 집계한다(Figure 3). 예를 들어 A를 현재 Frame로부터의 입력 Feature의 Tensor라고 가정하자(저자들의 연구에서는 [n x 7 x 7 x 2048] 모양의 Tensor. 여기서 n은 Faster R-CNN의 첫 단계에서 나온 Proposal의 숫자). 저자들은 먼저 너비와 높이 차원에서의 A를 모은다. 만들어진 A^pool의 모양은 [n x 2048]이다. B를 Context feature의 행렬이라고 가정하자. 이때 모양은 [m x d_0]이다. B = M^short 혹은 M^long이다. 그리고 key 함수를 k(.;θ)로 정의하고 Query 함수를 q(.;θ)로 정의하고 Value 함수를 v(.;θ)로 정의한다. 그리고 f(.;θ)를, 입력 Feature에 다시 추가하기 위해서 올바른 출력 Feature length로 되돌리는 최종 Projection으로 정의한다. 저자들은 θ^long과 θ^short을 따로 사용한다. 저자들의 실험에서 k, q, v, f는 완전 연결 계층이고 차원은 2048이다. 저자들은 Attention 가중치 w를 Standard dot-product attention을 사용해서 계산한다. 
+
+![](./Figure/Context_R-CNN_Long_Term_Temporal_Context_for_Per-Camera_Object_Detection8.png)
+
+T > 0이고 Softmax temperature 파라미터이고 w는 [n x m] 모양의 Attention weight이고 d는 2048짜리 Feature depth이다. 그리고 저자들은 각 Box에 대해서 Context feature F^context를 구축한다. 이 연산은 다음과 같이 Projected된 Context feature의 가중치 합을 계산해서 얻는다. 
+
+![](./Figure/Context_R-CNN_Long_Term_Temporal_Context_for_Per-Camera_Object_Detection9.png)
+
+F^context의 모양은 여기서 [n x 2048]이다. 마지막으로 F^context를 원래 입력 Feature A에 Feature 채널당 Bias로서 추가한다. 
+
+
+
+## Data
+
+카메라의 위치가 고정되어 있기 때문에 저자들은 위치가 다른 카메라의 데이터셋을 훈련과 테스트 셋으로 나눴다. 그래서 모델이 검증 셋에 과적합 되어 있지 않다는 것을 확인했다. 
+
+### Camera Traps
+
+카메라 트랩의 경우 움직임이 포착되면 1~10장의 Frame을 연속으로 찍게 되어 있다(1 FPS 속도로). 그래서 데이터의 형태가 다양하고 Frame rate가 낮다. 이 연구에서 저자들은 Snapshot Serengeti와 Caltech Camera Traps 데이터셋을 사용했다. 이 데이터셋들은 사람이 직접 BB 레이블링을 했다. 저자들은 Microsoft AI for Earth MegaDetector에서의 클래스에 상관 없는 탐지된 박스들과 저자들의 Training 위치에서의 Image-level species label을 쌍으로 해서 훈련을 위한 BB labeled 이미지의 수를 늘렸다. SS는 공개적으로 사용 가능한 10개 시즌의 데이터가 있다. 저자들은 1-6시즌의, 225의 카메라, 3.2M 이미지, 48개의 클래스 데이터를 사용했다. CCT는 140개의 카메라, 243K 이미지, 18개의 클래스의 특성을 지닌 데이터셋이다. 두 데이터셋 모두 잘못된 움직임 포착에 의한 데이터를 많이 가지고 있다(75%의 SS, 50%의 CCT). 그러므로 많은 이미지에 사실상 동물이 찍혀 있지 않다. 저자들은 데이터를 나눌때 카메라의 위치로 데이터를 나눴다. 검증 데이터셋은 SS는 45개의 위치의 64K 이미지, CCT는 40개 위치의 62K의 이미지이다. 
+
+
+
+### Traffic Cameras
+
+CityCam 데이터셋은 10 종류의 차량 클래스를 포함하고 60K Frame과 900K의 Annotated된 객체가 있다. 이 데이터셋은 17대의 카메라로 교통량이 많은 도시의 교차로나 공원 도로를 모니터링해서 찍었고 데이터 클립은 몇 달, 몇 년을 걸쳐 하루에 여러번 샘플링된다. 데이터는 다양한데, 밤과 낮, 눈과 비, 높거나 낮은 교통량에서의 Frame을 포함한다. 저자들은 13개의 위치에서의 데이터를 훈련으로 4개의 위치에서의 데이터를 테스트로 사용했다. 
+
+
