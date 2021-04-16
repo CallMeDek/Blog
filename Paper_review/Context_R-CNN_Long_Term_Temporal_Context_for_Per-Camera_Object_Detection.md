@@ -130,3 +130,30 @@ F^context의 모양은 여기서 [n x 2048]이다. 마지막으로 F^context를 
 CityCam 데이터셋은 10 종류의 차량 클래스를 포함하고 60K Frame과 900K의 Annotated된 객체가 있다. 이 데이터셋은 17대의 카메라로 교통량이 많은 도시의 교차로나 공원 도로를 모니터링해서 찍었고 데이터 클립은 몇 달, 몇 년을 걸쳐 하루에 여러번 샘플링된다. 데이터는 다양한데, 밤과 낮, 눈과 비, 높거나 낮은 교통량에서의 Frame을 포함한다. 저자들은 13개의 위치에서의 데이터를 훈련으로 4개의 위치에서의 데이터를 테스트로 사용했다. 
 
 
+
+## Experiments
+
+저자들은 모든 모델을 위치가 고정된 카메라에 탑재하여 평가했다. 평가 척도로는 0.5 IoU에서의 mAP와 AR로 평가 했다. 저자들은 모른 데이터셋을 Single frame 모델과 비교했다. 저자들은 주요 실험 요소를 SS 데이터셋으로 실험했다. 알아보고자 하는 주요 실험 요소는 Short term과 Long term attention의 영향력, Feature extractor의 영향력, Long term time horizon의 영향력, M^long을 위한 Frame-wise sampling strategy의 영향력이다. Frame 별로 추가적인 여러 특징들의 영향에 대해 알아보고자 할 때는 CityCam 데이터셋을 사용했다. 
+
+
+
+### Main Results
+
+![](./Figure/Context_R-CNN_Long_Term_Temporal_Context_for_Per-Camera_Object_Detection10.JPG)
+
+저자들에 의하면 Context R-CNN은 ResNet-101 Backbone의 Faster R-CNN의 성능을 상회한다고 한다(SS, CCT 데이터셋). 그리고 CityCam 데이터 셋에서도 유의미한 성능 향상을 보여줬다고 한다(Table 1 (a)). 모든 실험에서 저자들이 특별히 언급하지 않는 이상 Memory bank를 위한 Feature extractor를 해당 Dataset으로 Fine-tuning시켰다고 한다. 
+
+SS셋으로 저자들은, Context R-CNN과 여러 Baseline을 비교했는데 이때 Baseline들은 Short term temporal information에 접근이 가능하게 했다(Table 1 (d)). 모든 Short term 실험은 3 Frame 길이 짜리 입력 Window를 사용했다. 
+
+- 저자들은 먼저 Window 안에서 가장 Confidence가 높은 Single frame detection에 결처 Majority vote를 하는 것을 고려했는데 이는 Single frame baseline의 성능을 개선하지 못했다(Maj. Vote). 
+- 저자들은 먼저 핵심 Frame으로부터의 RPN box classifier feature의 Temporal-distance-weighted average과 함께 그 주변 Frame의 같은 박스 위치의 Cropped된 RPN feature들을 이용하는 방식의 카메라의 Static-ness를 이용하는 방법을 시도했는데 Single-frame baseline의 성능이 약 1.9% mAP 정도 개선되었다. 
+- S3D는 유명한 Video object detection 모델 중의 하나로, 일정하게 높은 비율로 Frame이 샘플링되는 Video에 맞게 디자인 되었어도 Single frame 모델의 성능을 6.8% mAP 정도 더 상회한다. 
+- 보통 카메라 트랩에 잡히는 동물들은 그룹 단위로 출현하기 때문에 Cross-object intra-image context가 유용하다. 이와 관련된 직관적인 Baseline 중 하나는 Short term attention context window(M^short)를 현재 Frame에 제한 시키는 것이다(SF Attn). 이것은 Temporal context를 없애고 Non-local적인 바업ㅂ으로 Box proposal에 걸쳐 명시적으로 정보를 공유하는 것에서 얼마나 성능이 향상되었는 지를 보여준다. 
+- Short term context window의 크기를 3개 Frame까지 키웠을때(Kerframe에 두 개의 인접 Frame) 1.5 mAP의 성능이 향상되는 것을 관측했다(ST Attn).
+- 한달의 시간 주기의 Long term attention만 고려했을때(LT Attn), Short term attention보다 9.2% mAP가 향상된 것을 관측했다. 
+- 두 Attention 모듈을 하나의 단일 모델에서 혼합했을때 가장 높은 성능을 보였으며(ST + LT Attn) 아래 Figure 5와 같이 클래스간 불균형이 있는 데이터셋에서 모든 클래스에 대해 성능 향상이 일어났다. 
+
+![](./Figure/Context_R-CNN_Long_Term_Temporal_Context_for_Per-Camera_Object_Detection11.JPG)
+
+
+
