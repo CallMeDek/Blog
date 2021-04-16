@@ -157,3 +157,62 @@ SS셋으로 저자들은, Context R-CNN과 여러 Baseline을 비교했는데 �
 
 
 
+### Changing the Time Horizon (Table 1 (b))
+
+저자들은 M^long의 시간 범위를 점차 늘리면서 Long term attention에 대한 Ablation 실험을 수행했다. 그리고 이 시간 범위를 늘릴수록 성능이 더 좋아지는 것을 확인했다. 메모리에 분 단위의 정보만 저장해도 단일 Frame 모델에 비해 성능이 많이 오르는 것을 확인했다. 저자들에 의하면 이것은 샘플링 방식에 의한 것인데 상호 관련성이 높은 이미지들이 한꺼번에 캡처 되기 때문이다. Long term attention block은 어떻게 이 정보를 집계할 것인지를 결정하고, 하나의 Burst에는 여러 미이미지에 걸쳐서 유용한 Context가 있게 된다. 그런데 어떤 카메라는 트리거에 의해 영상을 찍을 때 한 장의 이미지만 찍는 경우가 있다. 저자들의 말에 의하면 이럴때는 Long term context가 더 중요해진다고 한다. 저자들은 Context R-CNN의 융통성(변동성이 큰 Frame rate 뿐만 아니라 다양한 샘플링 전략으로 훈련되는)은 저자들의 시스템의 중요한 특성이라고 한다. 
+
+![](./Figure/Context_R-CNN_Long_Term_Temporal_Context_for_Per-Camera_Object_Detection12.png)
+
+Figure 6에서 저자들은 시스템이 가장 밀접하게 관심을 갖는 특징들과 이미지들의 Top scoring 박스 사이의 시간 차이를 분석했다. 이때 Attention weight에 대해 Threshold를 0.01로 했다. 저자들은 주간과 월간 단위의 Plot에서 낮과 밤의 주기성을 발견했는데 이는 Attention이 같은 날에 찍힌 객체에 초점을 맞춘다는 뜻이라고 한다. 시간 범위가 늘어날수록 Attention 모듈의 시간적 다양성이 늘어난다. 그리고 Context R-CNN은 시간 범위에 걸쳐 접근이 가능한 것에 초점을 맞춘다(Frame이 시간상 가까이 있는 것들에 강하게 초점을 맞추며, Figure 4 참고). 
+
+![](./Figure/Context_R-CNN_Long_Term_Temporal_Context_for_Per-Camera_Object_Detection13.png)
+
+
+
+### Contextual features for constructing m^long
+
+#### Feature extractor (Table 1(c))
+
+SS에 대해서 저자들은 COCO로 훈련 시킨 Feature extractor와 COCO로 훈련시키고 SS 훈련 셋으로 Fine tuning시킨 Extractor를 고려했다. 후자를 적용했을때가 mAP가 5.3% 더 높긴 했으나 카메라 트랩 이미지를 전혀 보지 못한 Memory feature를 사용했다고 하더라도 Single-frame 모델보다는 12.4% 더 성능이 좋다고 한다. 
+
+
+
+#### Subsampling memory (Table 1(c))
+
+저자들은 Long term memory에 대한 Ablation 실험을 더 수행했다. Memory bank 안에서 정보를 저장하는 곳의 Stride는 줄이고 한 달이라는 시간 범위는 유지했다. Stride 2를 사용하여 Memory bank에서 반만 서브 샘플링 할때는 3.1% mAP가 하락했다. Stride를 4로 늘렸을때는 추가로 1.7%가 하락했다. Stride를 늘리는 것 대신에 Positive 샘플만 서브샘플링 할 경우, 저자들은 여전히 성능이 떨어지는 것을 확인했다. 
+
+
+
+#### Keeping representations from empty images
+
+저자들의 모델이 동작하는 카메라 환경에서는 Long term memory bank에 비거나 비지 않은 Frame들에서의 Feature들을 추가할것인지를 선택할 수 있다. 이런 결정을 고려하는 이유는 영상 안에 지속적으로 찍히면서 움직이지는 않는, 두드러진 배경 Object들이 Single frame 아키텍처에서 지속적으로 잘못 탐지 되기 때문이다. 저자들이 추측하길 Extractor에서 추출한 Feature들은 시각적으로 특징이 있기 때문에 Foreground, Background 정보에 충분히 활용가능했다. 그래서 눈에 띄는 Background object의 정보를 저장하면 모델이 특별한 감시 없이 이런 객체의 클래스와 위치를 파악하는 법을 학습하고 탐지 결과에서 제외할 수 있도록 할 수 있다고 생각했다. 
+
+![](./Figure/Context_R-CNN_Long_Term_Temporal_Context_for_Per-Camera_Object_Detection14.png)
+
+Figure 7에서 볼 수 있는 것처럼 모든 Confidence threshold에 걸쳐, Positive 정보만으로 훈련된 모델보다 Empty 정보를 추가한 경우가 False positive의 숫자가 더 적었다. 저자들은 Context R-CNN에서 100개의 가장 높은 Confidence를 가진 False positive를 조사했는데 거의 대부분(97/100)의 경우 모델이, 사람은 찾아내지 못한 경우를 올바르게 찾아냈다. SS 데이터셋에는 5%의 노이즈가 껴있는 것으로 나와있다. Context R-CNN으로, 원래 Empty라고 레이블링된 이미지 중에서 예측 결과 높은 Confidence를 가진 이미지를 다시 한번 보는 것은 이런 잘못 분류된 이미지를 캐치할 수 있는 방법이다. 몇 가지 케이스는 정말 어려운 경우인데 동물을 영상에서 알아차리기 힘든 경우나 Annotation을 하는 사람이 충분히 납득이 갈만한 정도로 잘못 분류하는 경우가 있다. 
+
+
+
+#### Keeping multiple representations per image(Table 1(e))
+
+SS 데이터셋에는 평균적으로 비어 있는 않는 이미지에 1.6마리의 객체와 1.01개의 클래스가 존재한다. 그런데 75%의 이미지가 Empty이다. 다수의 이미지는 하나의 객체를 포함하고 있고 몇몇 이미지에는 한 클래스의 여러 객체가 그룹으로 있다. 이런 경우 Top-scoring detection만 Memory에 추가하는 것은 괜찮은 방법인데 영상 내에서 그 객체가 다른 객체들의 대표성을 띄기 때문이다(얼룩말 무리에서 하나의 얼룩말의 탐지 결과만 남기는 것). 그러나 CityCam 데이터셋에서는 평균적으로 14개의 객체와 4개의 클래스가 존재하고 0.3%의 Frame만 Empty이다. 이런 경우 추가적으로 객체를 메모리에 저장하는 것은 유용하다. 이렇게 하면 그 Memory bank가 어떤 카메라 위치의 대표성을 띄게 된다. 저자들은 Top-scoreing 1과 8개의 탐지 결과에서의 Feature를 추가했을때 결과를 조사했고 Frame 당 8개의 객체를 선택하는 것이 가장 좋은 결과를 내는 것을 확인했다. 저자들이 이렇게 추가적인 Feature를 저장하는 것은 단순히 Confidence때문이 아니고 Diversity를 늘리기 위함도 있다. 
+
+
+
+#### Failure modes
+
+이런 (Frame 간의) 유사성 기반의 접근 방식의 한 가지 잠재적인 실패 유형은 환영의 위험이다. 만약에 테스트 환경에서의 한 이미지가 무언가 강하게 잘못 분류된 것을 포함하고 있다면 이 결과는 그 카메라의 다른 탐지 결과에도 악영향을 줄 것이다. 예를 들어서, Context R-CNN에서 SS 데이터셋에서 잘못 분류한 3/100 이미지의 경우 똑같은 위치의 나무를 모델이 기린으로 잘못 분류한 경우가 있다. 
+
+
+
+## Conclusion and Future Work
+
+본 연구에서 저자들은 최대 한 달까지의, 카메라의 Temporal context를 사용하는 모델을 개발했다. 그리고 위치가 고정적인 카메라 환경에서 이런 Attention 기반의 Temporal context가 유용하다는 것을 보여줬다. 저자들의 방법인 Context R-CNN은 일반화가 잘 되며 Single frame 기반의 모델보다 성능이 더 좋다는 것을 보여줬다(카메라 트랩, 교통 카메라 데이터 사용). 추가적으로 Context R-CNN은 어떤 모션 트리거에 의해서 영상이 찍히기 때문에 낮고 불규칙적으로 샘플링 되는 환경에 융통적이고 강인한 성능을 보여줬다. 
+
+저자들의 실험 결과에서 분명히 알 수 있는 점은 어떤 정보를 얼마나 메모리에 저장하는 것을 결정하는 것이 중요하다는 것이다. 
+
+
+
+## Supplementary Material
+
+본문 참고. 
