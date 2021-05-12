@@ -40,7 +40,49 @@ Transformer는 Figure 1과 같이 Encoder와 Decoder에 Stacked self-attention�
 
 ![](./Figure/Attention_Is_All_You_Need1.png)
 
+
+
 ### Encoder and Decoder Stacks
 
 - Encoder: Encoder는 위의 그림에서 N=6의 Stack으로 구성되어 있다. 각 계층은 두 가지 서브 계층들로 이루어져 있다. 첫 번째는 Multi-head self-attention 매커니즘을 따르고 두번째는 단순하게 Position-wise fully connected feed-forward 네트워크이다. 저자들은 Residual connection을 적용하고 Layer normalization을 적용했다. 그러므로 각 서브 계층의 출력은 LayerNorm(x + Sublayer(x))가 되고 여기서 Sublayer(x)는 각 서브 계층의 기능을 구현한 것이다. Residual connection을 용이하게 하기 위해서 모델에 있는 모든 서브 계층들과 임베딩 계층들은 출력 차원을 512로 고정했다. 
 - Decoder: Decoder도 마찬가지로 N=6의 Stack으로 구성되어 있다. Encoder에서의 두 서브 계층들에다 세 번째 서브 계층이 추가되었다. 여기서는 전 단계의 계층의 출력 뿐만 아니라 Encoder stack의 출력 또한 입력으로 받아서 Multi-head attention을 수행한다. Encoder와 유사하게 각 서브 계층들에는 Residual connection과 Layer normalization을 적용했다. 특별히 Decoder stack에서 Self-attention 서브 계층을 수정했는데 어떤 위치에서 다음 미래의 위치의 정보를 참고하는 것을 방지하게 했다. 이런 Masking 작업은 Position i에서의 예측값이 오직 i 이전의 위치에 있는 정보만 참고할 수 있도록 한다. 
+
+
+
+### Attention
+
+Attention function이란 하나의 Query와 여러 쌍의 Key-value의 한 집합을 출력에 매핑하는 것으로 설명할 수 있다. 여기서 Query, Keys, Values, 출력 모두 벡터이다. 출력은 Value들의 가중치 합으로 계산할 수 있다. 여기서 각 Value에 할당된 가중치는 Query와 이에 대응하는 Key의 Compatibility function으로 계산한다. 
+
+
+
+#### Scaled Dot-Product Attention
+
+![](./Figure/Attention_Is_All_You_Need2.png)
+
+저자들은 저자들이 사용한 Attention function을 Scaled Dot-Product Attention이라고 불렀다(Figure 2). 이 Attention의 입력은 dk 차원의 Key들과 Query들 그리고 dv차원의 Value들로 구성되어 있다. 저자들은 Query와 모든 Key들에 대해서 내적을 수행하고 루트dk 값으로 각 요소 값을 나누며 Softmax function을 통과시켜서 Value들에 할당될 가중치 값들을 얻어낸다. 
+
+실제 계산할 때는 저자들은 여러 Query들에 대해서 동시에 행렬 Q를 만들고 동시에 Attention function을 통과시킨다. Key들과 Value들도 각각 행렬 K, V로 묶는다. 저자들은 출력값의 행렬을 다음과 같이 계산한다. 
+
+![](./Figure/Attention_Is_All_You_Need3.png)
+
+가장 흔히 사용되는 두 가지 Attention function은 Additive attention과 Dot-product(Multiplicative) attention이다. Dot-product attention은 저자들과 한 가지 빼고 동일하다. 그것은 루트 dk로 행렬의 요소 값들을 나누는 것이다. Additive attention은 한 개의 Hidden 계층이 있는 Feed-forward 네트워크를 사용해서 Compatibility function의 연산을 수행한다. 이론적으로 위의 두 가지 방식의 복잡도는 유사하나 Dot-product attention은 고도로 최적화된 행렬 곱셉 코드 덕분에 좀 더 빠르고 공간복잡도를 줄일수 있다고 한다. 
+
+dk가 작은 값일 경우 두 Attention function은 유사한 성능으로 작동하나 큰 값의 dk로 Scaling하지 않는다면 Additive attention이 Dot product보다 성능이 좋다. 저자들이 이에 대해서 추측하길 큰 값의 dk의 경우 Dot product의 값들이 상당히 커지고, Softmax function에서 기울기 값이 극도로 작게 만들기 때문이라고 한다. 이런 효과를 상쇄하기 위해서 저자들은 루트dk로 Dot product 값을 Scaling 했다고 한다. 
+
+
+
+#### Multi-Head Attention
+
+d_model 차원의 Key, value, query로 Attention function을 하나 수행하는 것 대신에 저자들이 발견하기에 더 성능 상으로 유익한 방법이 있다. 그것은 Query, Key, Value들을 각각 dk, dk, dv 차원으로 (학습이 가능한)Linear projection 하는 것은 h번 하는 것이다. 이 각각의 Projected된 Q, K, V에 대해서 병렬적으로 Attention function을 통과 시키고 dv 차원의 출력 값을 만들어낸다. 이 값들은 Concatenated되고 나서 다시 한 번 Projected되고 최종 값을 만들어낸다(Figure 2).
+
+Multi-head attention은 모델이 각각 다른 데이터 위치에서 다른 Representation subspace에서의 정보를 참고하도록 한다. Attention head가 하나만 있을 경우 평균화가 이를 억제한다. 
+
+![](./Figure/Attention_Is_All_You_Need4.png)
+
+Projection은 다음과 같은 가중치 매트릭스로 수행한다. 
+
+![](./Figure/Attention_Is_All_You_Need5.png)
+
+![](./Figure/Attention_Is_All_You_Need6.png)
+
+여기서 저자들은 h = 8의 병렬적인 Attention 계층 혹은 Head를 사용했다. 각각에 대해서 dk = dv = d_model/h = 64를 적용했다. 각 Head의 차원이 줄어들기 때문에 총 연산량은 한 개의 Head의 Full dimensionality와 유사하다. 
