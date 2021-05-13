@@ -86,3 +86,43 @@ Projection은 다음과 같은 가중치 매트릭스로 수행한다.
 ![](./Figure/Attention_Is_All_You_Need6.png)
 
 여기서 저자들은 h = 8의 병렬적인 Attention 계층 혹은 Head를 사용했다. 각각에 대해서 dk = dv = d_model/h = 64를 적용했다. 각 Head의 차원이 줄어들기 때문에 총 연산량은 한 개의 Head의 Full dimensionality와 유사하다. 
+
+
+
+#### Applications of Attention in our Model
+
+Transformer에서는 세 가지 방식으로 Multi-head attention을 활용한다고 한다. 
+
+- Encoder-decoder attention 계층에서, Query는 Decoder에서 바로 전 계층에서 입력으로 들어온다. Memory key들과 Value들은 Encoder의 출력에서 나와 Decoder의 해당 계층의 입력으로 들어온다. 이런 방식으로 Decoder의 위치에서 입력 시퀀스 안의 모든 위치의 정보를 참고 하도록 한다. 이것은 Sequence-to-sequence 모델에서 흔히 쓰이는 Encoder-decoder attention 매커니즘을 모방한 것이다. 
+- Encoder는 Self-attention 계층을 포함한다. Self-attention 계층에서는 모든 Key들과 Value들 그리고 Query들이 바로 그 위치(Encoder)에서 나온다. 이 연구에서는 Encoder에서 바로 전 계층의 출력에 해당한다. Encoder 안의 각 위치에서는 Encoder에서 바로 전 계층의 모든 위치의 정보를 참고한다. 
+- 이와 유사하게 Decoder 안의 Self-attention 계층에서는 Decoder 안의 모든 위치가 해당 위치가 참고하는 위치까지의 모든 위치의 정보를 참고할 수 있게 한다. 저자들이 말하길 Auto-regressive적인 특성을 방지하기 위해서 Decoder에서 (오른쪽에서) 왼쪽으로 정보가 흘러가는 것을 방지했다고 한다. 이를 구현하기 위해서 Scaled dot-product attention 부분에서 Sotfmax의 입력으로 들어가는 데이터를 살펴보고 유효하지 않은 위치의 모든 값들을 마이너스 무한대로 마스킹한다. 
+
+
+
+### Position-wise Feed-Forward Networks
+
+Attention에서 서브 계층에 더해서, 본 연구의 Encoder와 Decoder에서의 각 계층은 Fully connected feed-forward 네트워크를 포함한다. 이 네트워크는 각 위치에 독립적으로 하나씩 존재하며 구조는 동일하다. 이 네트워크는 두 개의 선형 변환 사이에 ReLU activation이 껴 있는 구조로 구성되어 있다. 
+
+![](./Figure/Attention_Is_All_You_Need7.png)
+
+선형 변환이 각 위치에 상관 없이 동일한 연산을 수행하지만 계층마다의 파라미터는 다르다. 이를 이해하기 쉽게 설명하자면 커널 사이즈가 1인 두 개의 컨볼루션 계층이라고 생각하면 된다. 입력과 출력의 차원인 d_model = 512이고 그 중간 계층들의 차원은 d_ff = 2048이다. 
+
+
+
+### Embeddings and Softmax
+
+다른 Sequence transduction 모델과 유사하게, 저자들은 입력과 출력 토큰들을 d_model 차원의 벡터로 변경하기 위한 학습된 임베딩을 사용한다. 그리고 다른 연구에서와 흔히 하는 것과 같이 학습된 선형 변환과 Softmax 연산으로 Decoder의 출력을 다음 토큰 출력 예측 값으로 변경한다. 저자들의 모델에서는 두 개의 임베딩 계층과 Pre-softmax 선형 변환 사이에 같은 가중치 행렬을 공유한다. 임베딩 계층 안에서는 이 가중치들에 루트d_model 값을 곱한다. 
+
+
+
+### Positional Encoding
+
+저자들의 모델에는 Recurrence나 Convolution 연산이 없기 때문에 모델이 Sequence의 순서 정보를 활용하게 하기 위해서 Sequence 안의 토큰들의 상대적 혹은 절대적 위치 정보를 주입해야 한다. 그래서 저자들은 Encoder와 Decoder의 Bottom에서 입력 Embedding에 Positional encoding을 추가했다. Positional encoding은 Embedding과 같이 d_model 차원이다. 그래서 Embedding과 Sum할 수 있다. Positional encoding은 학습이 가능하게 할 수도 있고 고정시킬수도 있다. 
+
+본 연구에서 저자들은 다른 주기를 가진 Sine과 Cosine 함수를 사용했다. 
+
+![](./Figure/Attention_Is_All_You_Need8.png)
+
+pos는 위치이고 i는 차원이다. Positional encoding의 각 차원은 사인 함수에 대응되게 된다. 파장은 2π에서 10000 * 2π까지 파장을 형성한다. 저자들은 이 함수를 선택했다. 왜냐하면 저자들이 가정하길 이 함수가 모델이 쉽게 상대적인 위치로 정보를 참고하는 것을 학습할 수 있게끔 할 수 있다고 생각했기 때문이다. 왜냐하면 어떤 고정된 Offset k에 대해서, PE_pos+k는 PE_pos의 선형 함수로서 표현할 수 있기 때문이다. 
+
+저자들은 학습이 가능한 Positional embedding을 사용하는 실험을 수행하기도 했다. 그리고 두 가지 버전이 거의 동일한 결과를 도출하는 것을 발견했다(Table 3 E 참고). 그런데 사인함수를 사용하는 버전을 선택했다. 이유는 모델이 훈련 중에 마주하는 Sequence 길이보다 더 길게 외삽할 수 있기 때문이다. 
