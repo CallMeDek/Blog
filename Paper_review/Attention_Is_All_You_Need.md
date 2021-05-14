@@ -126,3 +126,29 @@ Attention에서 서브 계층에 더해서, 본 연구의 Encoder와 Decoder에�
 pos는 위치이고 i는 차원이다. Positional encoding의 각 차원은 사인 함수에 대응되게 된다. 파장은 2π에서 10000 * 2π까지 파장을 형성한다. 저자들은 이 함수를 선택했다. 왜냐하면 저자들이 가정하길 이 함수가 모델이 쉽게 상대적인 위치로 정보를 참고하는 것을 학습할 수 있게끔 할 수 있다고 생각했기 때문이다. 왜냐하면 어떤 고정된 Offset k에 대해서, PE_pos+k는 PE_pos의 선형 함수로서 표현할 수 있기 때문이다. 
 
 저자들은 학습이 가능한 Positional embedding을 사용하는 실험을 수행하기도 했다. 그리고 두 가지 버전이 거의 동일한 결과를 도출하는 것을 발견했다(Table 3 E 참고). 그런데 사인함수를 사용하는 버전을 선택했다. 이유는 모델이 훈련 중에 마주하는 Sequence 길이보다 더 길게 외삽할 수 있기 때문이다. 
+
+
+
+## Why Self-Attention
+
+저자들은 Self-attention 계층과 Recurrent, Convolution 계층을 여러 측면에서 비교했다. 여기서 이 계층들의 역할은 가변 길이의 Symbol representation 시퀀스를 다른 동일한 길이의 시퀀스로 매핑하는 것이다. 예를 들어서 Sequence transduction encodeer 혹은 Decoder에서의 Hidden layer가 있다. 저자들은 세 가지 측면을 고려했다. 
+
+- 하나는 계층 당 총 계산량의 복잡도이다. 
+- 다른 하나는 병렬화 될 수 있는 계산량의 양이다. 이때 이 계산량은 필요한 Sequential 연산의 최소 숫자로 측정된다.
+- 마지막은 네트워크에서 Long-range dependency에 관한 Path length이다. Long-range dependency는 많은 Sequence transduction Task에서 주요 도전 과제로 치부된다. 이런 Dependency를 학습시키는 능력에 영향을 주는 핵심 요소 중 하나는 네트워크에서 앞 뒤로 순회하는 Singal이 거치는 경로의 길이이다. 입력과 출력의 어떤 위치 조합 사이의 이런 경로의 길이가 짧을수혹 Long-range dependency를 학습하는 것이 쉬워진다. 그래서 저자들은 각기 다른 계층 타입으로 구성된 네트워크에서 어떤 입력과 출력 위치 사이의 최대 경로 길이를 비교해봤다. 
+
+![](./Figure/Attention_Is_All_You_Need9.png)
+
+Table 1에서 나온 것처럼 Self-attention 계층은 모든 위치를 연결할때, 상수 숫자로 연결한다(Sequential operations). 이에 반해 Recurrent 계층은 O(n) 만큼의 연산을 필요로 한다. 계층의 계산량 복잡도를 봤을때 Self-attention 계층은 Recurrent 계층보다 빠르다(Sequence의 길이 n이 Representation 차원 d보다 작을때, 이런 경우가 Machine translation 분야의 모델을 생성하는 과정에서는 흔하다고 한다). 아주 긴 시퀀스를 포함하는 작업의 계산상 성능을 개선하기 위해서 Self-attention은 입력 시퀀스에서 각 출력 위치를 중심으로 하고 r 크기의 이웃만을 고려하는 것으로 제한될 수 있다. 이때 최대 경로 길이는 O(n/r)로 증가할 것이다. 
+
+커널 사이즈가 k로 입력 시퀀스 n보다 작은 컨볼루션 계층은 모든 입력과 출력 쌍을 연결하지 않는다. 모두 연결하려면 보통의  컨볼루션으로는 O(n/k) 만큼의 컨볼루션 계층 스택이 필요하고 Dilated 컨볼루션의 경우 O(log_k(n))만큼의 스택이 필요하다. 이는 네트워크에서 가장 긴 경로의 길이를 증가시킨다. 컨볼루션 계층은 보통 Recurrent 계층보다 k배만큼 연산량이 많다. Separable 컨볼루션의 경우는 이런 복잡도를 현저하게 감소시킨다(O(k\*n*d+n\*d^2)). 그러나 k = n일때라도 Separable 컨볼루션의 복잡도는 Self-attention 계층과 Point-wise feed-forward 계층의 조합의 복잡도와 같으므로 저자들은 후자의 방식을 채택했다. 
+
+부가적인 이점으로 Self-attention은 좀 더 해석가능한 모델을 만들 수 있다. 저자들은 저자들의 모델에서 Attention의 분포를 조사했다(Appendix). 
+
+
+
+## Training
+
+훈련과 관련된 여러 설정들은 본문 참고. 
+
+
