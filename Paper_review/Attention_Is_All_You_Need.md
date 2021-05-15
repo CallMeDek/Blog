@@ -152,3 +152,27 @@ Table 1에서 나온 것처럼 Self-attention 계층은 모든 위치를 연결�
 훈련과 관련된 여러 설정들은 본문 참고. 
 
 
+
+## Results
+
+실험 결과에 대한 자세한 사항은 본문 참고.
+
+![](./Figure/Attention_Is_All_You_Need10.png)
+
+
+
+![](./Figure/Attention_Is_All_You_Need11.png)
+
+
+
+![](./Figure/Attention_Is_All_You_Need12.png)
+
+
+
+## Conclusion
+
+저자들은 Transformer라고 하는 아키텍처를 제안했다. Transformer는 Recurrent 계층없이 온전히 Attention 계층만 활용하는 Encoder-decoder 구조의 Transduction model을 생성한다. 또 다른 특징으로는 Multi-headed self-attention이다. 
+
+저자들에 따르면 Recurrent 혹은 Convolution 계층을 사용한 모델이나 앙상블 모델보다도 성능이 좋다고 한다. 
+
+
