@@ -35,3 +35,51 @@ CNN을 Self-attention과 결합하는 시도도 많았다. Classification을 위
 저자들이 말하길 저자들의 연구 이전에 Transformer를 원본 이미지 크기에서 Global self-attention을 적용한 연구 사례는 찾지 못했다고 한다. iGPT와 저자들의 모델이 유사하다고 한다. 여기서는 Transformer를 이미지 해상도와 Color space를 줄이고 난 이미지 픽셀들에 적용했다. 모델은 생성 모델 부분에서는 비지도적인 방식으로 학습했고 Classification 성능을 위해서 출력 Representation을 Fine-tuning하거나 선형적으로 탐사했다고 한다. 
 
 저자들은 표준 ImageNet 데이터셋보다 많은 양의 데이터셋에서 Image recognition을 수행하는 것에 관심이 있었다. 추가적으로 데이터를 사용하면 표준 Benchmark에서 SOTA의 성능을 보인다고 한다. 그밖에 저자들이 참고한 연구 논문으로는 다음과 같은 것들이 있다. Sun 등은 CNN 성능이 데이터셋의 크기에 따라 달라지는 지를 연구했고 Kolesnikov 등과 Djolonga 등은 큰 데이터 셋에서의 CNN 전이 학습과 관련된 연구를 수행했다. 저자들은 ImageNet-21k, JFT-300M 데이터셋으로 실험을 수행했다. 
+
+
+
+## METHOD
+
+저자들은 모델을 디자인할때 최대한 원본 Transformer를 따랐다. 이렇게 하는 이유는 확장 가능한 NLP Transformer 아키텍처를 거의 즉시 사용할 수 있다는 점이다. 
+
+![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale1.png)
+
+모델의 개요는 Figure 1과 같다. 표준 Transformer는 1D 토큰 임베딩의 시퀀스를 입력으로 받는다. 2D 이미지를 처리하기 위해서 저자들은 다음과 같은 차원의 이미지를 패치로 나눠서 Flatten 시킨뒤에 시퀀스로 만든다. 
+
+| 원본 이미지                                                  | Flatten된 2D 패치들                                          |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale2.png) | ![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale3.png) |
+
+(H, W)는 원본 이미지의 해상도이고 C는 채널 수이다. (P, P)는 각 이미지 패치의 해상도이고 N = HW/P^2은 패치의 숫자이며 Transformer의 입력 시퀀스의 길이이다. Transformer는 모든 계층에 대해서 고정된 Latent vector 크기 D를 사용한다. 그래서 저자들은 패치들을 Flatten시키고 나서 (학습이 가능한) 선형 Projecttion을 통해 D 차원으로 매핑한다. 
+
+![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale4.png)
+
+저자들은 이 Projection의 출력을 Patch embedding이라고 불렀다. 
+
+BERT의 [class] 토큰과 유사하게 저자들도 임베딩된 패치 시퀀스 앞에 학습가능한 임베딩을 추가한다(z0^0 = x_class). 이때 Transformer encoder(z_L^0)의 출력 부분에서의 State는 Image representation y의 역할을 한다. 
+
+![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale5.png)
+
+Pre-training이나 Fine-tuning 하는 동안, Classification head가 z_L^0에 붙는다. Classification head는 Pre-training 시에는 한 개의 Hidden 계층을 가지는 MLP로 구현되며, Fine-tuning 시에는 하나의 단일 Linear 계층으로 구현된다. 
+
+Positional embedding가 위치 정보를 유지하기 위해서 Patch embeddings에 추가된다. 저자들은 학습이 가능한 Standard 1D position embeddings을 사용했다. 왜냐하면 저자들이 실험한 결과 2D를 인식할 수 있는 Position embeddings를 사용해도, 1D와 비교했을때 성능 상의 큰 개선이 없었기 때문이다. 이 작업에서의 출력 Embedding vector들의 시퀀스는 Encoder의 입력으로 들어간다. 
+
+Transformer encoder는 Multihead self-attention과 MLP 블럭으로 구성된 요소의 스택으로 구성된다. Laynorm(LN)은 모든 블럭 전에 적용되고 Residual connection이 모든 블럭 뒤에 적용된다. MLP는 2개의 계층과 GELU 비선형으로 구성된다. 
+
+![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale6.png)
+
+ 
+
+![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale7.png)
+
+
+
+#### Hybrid Architecture
+
+원본 이미지 패치를 사용하는 것 대신에 입력 시퀀스를 CNN의 Feature map의 형태로 구성할 수 있다. 이런 하이브리드 모델에서 CNN feature map에서 얻은 패치들에 식1의 Patch embeddings prejection을 적용한다. 특수한 경우로, 패치의 Spatial size는 1x1이 될 수 있다. 이것이 의미하는 바는 입력 시퀀스가 Feature map의 Spatial 차원을 Flatten해서 얻을 수 있고(패치사이즈가 1x1이면 224x224의 Feature map에서 1x(224x224)로 Flatten시키면 됨) Transformer 차원으로 Projection 하기만 하면 된다는 것이다. Classification Input embeddings와 Position embeddings는 위에서 설명한 바와 같이 동일한 작업으로 추가된다. 
+
+
+
+### FINE-TUNING AND HIGHER RESOLUTION
+
+저자들은 ViT를 큰 데이터 셋에서 Pre-training시키고 나서 상대적으로 크기가 작은 도메인 데이터 셋에서 Fine-tuning 시켰다. 이를 위해서 Pre-training 했을때의 Prediction head를 제거하고 (0 값으로 초기화 된) D x K 크기의 Feedforward 계층을 붙였다. 여기서 K는 도메이 데이터셋의 클래스의 숫자이다. 그런데 종종 Pre-training 보다는 그냥 도메인 데이터셋의 더 높은 해상도로 Fine-tuning시키는게 더 좋을때도 있다. 높은 해상도의 이미지를 주입할 때 패치 크기는 유지하는데 이러면 유효한 시퀀스 길이가 더 커진다. ViT는 메모리의 제약까지 임의의 시퀀스 길이를 처리할수 있지만 이때 Pre-trained된 Position embedding은 필요 없어질 수 있다. 그래서 저자들은 원본 이미지의 위치에 따라서 Pre-train된 Position embeddings의 2D interpolation을 수행했다. 이런 해상도 조정이나 Patch extraction은 이미지들의 2D 구조에 대한 Inductive bias가 유일하게 수동적으로 ViT에 주입되는 지점이다. 
