@@ -83,3 +83,92 @@ Transformer encoder는 Multihead self-attention과 MLP 블럭으로 구성된 �
 ### FINE-TUNING AND HIGHER RESOLUTION
 
 저자들은 ViT를 큰 데이터 셋에서 Pre-training시키고 나서 상대적으로 크기가 작은 도메인 데이터 셋에서 Fine-tuning 시켰다. 이를 위해서 Pre-training 했을때의 Prediction head를 제거하고 (0 값으로 초기화 된) D x K 크기의 Feedforward 계층을 붙였다. 여기서 K는 도메이 데이터셋의 클래스의 숫자이다. 그런데 종종 Pre-training 보다는 그냥 도메인 데이터셋의 더 높은 해상도로 Fine-tuning시키는게 더 좋을때도 있다. 높은 해상도의 이미지를 주입할 때 패치 크기는 유지하는데 이러면 유효한 시퀀스 길이가 더 커진다. ViT는 메모리의 제약까지 임의의 시퀀스 길이를 처리할수 있지만 이때 Pre-trained된 Position embedding은 필요 없어질 수 있다. 그래서 저자들은 원본 이미지의 위치에 따라서 Pre-train된 Position embeddings의 2D interpolation을 수행했다. 이런 해상도 조정이나 Patch extraction은 이미지들의 2D 구조에 대한 Inductive bias가 유일하게 수동적으로 ViT에 주입되는 지점이다. 
+
+
+
+## EXPERIMENTS
+
+저자들은 각 모델이 이미지 특징을 학습하는 역량을 평가했다(ResNet, ViT, Hybrid). 각 모델에 대해서는 당야한 사이즈의 데이터셋으로 미리 훈련시키고 각 Benchmark Task에서 평가했다. 저자들에 따르면 모델을 미리 훈련시킬때 연산량을 고려하면 ViT가 타 모델에 비해 유리한 면이 있다고 한다(낮은 Pre-training cost로 대 부분의 Recognition benchmark에서 SOTA의 성능을 달성했다고 한다). 그리고 Self-supervision을 사용한 규모가 비교적 작은 간단한 실험을 했는데 Self-supervised ViT가 더 연구할 가치가 있음을 확인했다고 한다. 
+
+
+
+### SETUP
+
+#### Datasets
+
+실험에서 쓰인 데이터셋에 대해서는 본문 참고
+
+#### Model Variants
+
+저자들은 기본적으로 BERT에 쓰인 Configuration을 기본 ViT configuration으로 설정했다고 한다(Table 1 참고). 
+
+![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale8.png)
+
+Base와 Large 모델은 BERT에서 쓰인 모델을 거의 직접적으로 도입했고 Huge 라는 더 큰 모델을 실험에 추가했다. 저자들은 논문에서 모델의 크기와 입력 패치의 크기를 가리키기 위해서 다음과 같은 표현을 썼다. 예를 들어서 ViT-L/16은 Large 모델의 16x16 입력 패치 크기라는 의미다. Transformer의 시퀀스 길이는 패치 크기의 제곱에 반비례하기 때문에 패치 사이즈가 작은 모델일수록 계산량이 더 많아 진다. 
+
+Baseline CNN으로는 ResNet을 사용했지만 BN 계층을 Group Normalization으로 교체했고 Standardized convolution을 사용했다고 한다. 이런 변경이 Transfer 했을때 성능을 개선했다고 한다. 저자들은 이 변경된 모델을 ResNet(BiT)라고 표시했다. Hybrid 모델은 CNN에서의 Intermediate feature map을 ViT에 제공하는 방식으로 구현했다고 한다. 
+
+서로 다른 길이의 시퀀스를 적용한 실험을 하기 위하여 저자들은 
+
+1. 원래 ResNet50 모델의 Stage4의 출력을 얻는다.
+2. Stage4를 제거한 뒤에 Stage3에서의 계층 숫자와 똑같은 양의 계층을 위치시키고(총 계층 숫자를 유지하기 위해서) 이 확장된 Stage 3의 출력을 얻는다. 
+
+2번 옵션으로 4배 더 긴 시퀀스 길이를 얻었기 때문에 ViT 모델에서 Cost가 더 커진다. 
+
+
+
+#### Traning & Fine-tuning
+
+이와 관련된 설정은 본문 참고. 
+
+
+
+#### Metrics
+
+저자들은 Downstream 데이터셋의 결과를 Few-shot 혹은 Fine-tuning accuracy로 측정했다. Fine-tuning accuracy는 각 모델을 해당 데이터셋에서 Fine-tuning 하고 나서 성능을 측정하는 것이다. Few-shot accuarcy는 훈련 이미지의 부분집합의 (Frozen) representation을 {-1, 1}^K의 타겟 벡터로 매핑하는 Regularized linear regression 문제를 풀어서 얻는다. 저자들은 주로 Fine-tuning 성능에 초점을 맞추지만 가끔 Fine-tuning의 비용이 너무 비쌀때 빠른 평가를 위해서 Linear few-shot accuacy를 확인했다고 한다. 
+
+
+
+### COMPARISON TO STATE OF THE ART
+
+모델 성능 비교는 본문 참고.
+
+![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale9.png)
+
+
+
+Figure2는 VTAB task를 각 그룹으로 나눠서 이 Benchmark에 대한 SOTA 방법들과 비교한 것이다. BiT, VIVI는 ImageNet과 Youtube 데이터셋에서 공동으로 훈련된 ResNet이고 S4L은 ImageNet 데이터셋으로 Supervised, Semi-supervised 양상으로 훈련한 모델이다. 
+
+![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale10.png)
+
+
+
+### PRE_TRAINING DATA REQUIREMENTS
+
+ViT는 JFT-300M 데이터셋(아주 큰 데이터셋)에서 미리 훈련시켰을때 성능이 좋다. 저자들은 ResNet 계열의 모델보다 Vision에 관한 Inductive bias가 적을때 데이터셋의 크기가 얼마나 중요한지 궁금했다. 그래서 두 가지 방식의 실험을 수행했다. 
+
+첫번째로 ViT 모델을 미리 훈련시킬때 데이터셋의 크기를 점점 키워봤다(ImageNet, ImageNet-21k, JFT-300M). 작은 데이터셋에서 가능한 좋은 성능을 얻기 위해서 세 가지 규제 파라미터를 최적화했다(Weight decay, Dropout, Label smoothing). Figure 3는 ImageNet에서 Fine-tuning 후의 결과를 보여준다(다른 데이터셋에 대한 결과는 Table 5 참고). 
+
+![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale11.png)
+
+ImageNet과 같은 비교적 작은 데이터셋으로 미리 훈련시켰을때 ViT-Large 모델은 ViT-Base 모델과 성능을 비교했을때 더 안 좋은 것을 확인할 수 있다(강한 규제에도 불구하고). 그러나 ImageNet-21k 데이터셋만 해도 성능이 유사하고 JFT-300M 데이터셋에서는 큰 모델이 이점을 취하는 것을 확인할 수 있다. Figure 3는 각기 다른 크기의 BiT 모델에 걸쳐있는 성능 영역을 보여준다. BiT CNN들은 ImageNet에서 ViT를 상회하지만(규제 최적화에도 불구하고) 큰 데이터셋에서는 ViT가 성능을 압도한다. 
+
+두번째로 저자들은 JFT-300M 데이터셋에서 9M, 30M, 90M 그리고 전체 데이터셋으로 모델을 훈련시켜봤다. 저자들은 작은 크기의 서브 데이터셋에 추가적인 규제를 하지 않고 모두 동일한 하이퍼파라미터 셋팅을 적용했다. 이렇게 한 이유는 규제의 효과가 아니라 모델의 고유 속성을 측정하기 위해서다. Early-stopping을 적용하지 않았고 훈련 동안에 최고의 Validation accuracy를 기록했다. 시간을 줄이기 위해서 Fine-tuning accuracy 대신에 Few-shot linear accuracy를 측정했다. Figure 4는 그 결과를 나타낸다. ViT들은 작은 데이터셋에서는 비슷한 연산 Cost이지만 ResNet 모델보다 좀 더 과적합 하는 경향이 있었다. 예를 들어서 ViT-B/32는 ResNet50보다 약간 빠르지만 9M 서브셋에서는 성능이 훨씬 안 좋고 90M 서브셋 이상에서는 오히려 더 좋았다. ResNet152x2와 ViT-L/16의 경우도 마찬가지다. 이 결과를 통해 알 수 있는 점은 Convolution의 Inductive biase가 규모가 작은 데이터셋에서는 유용하지만 규모가 큰 데이터셋에서는 적절한 패턴을 학습하는 것만으로 충분하고 오히려 이점이 있을수도 있다는 것이다. 
+
+전체적으로 ImageNet에서의 Few-shot 결과(Figure 4)와 VTAB에서의 Low-data 결과(Table 2)은 Very low-data transfer에서는 유의미 해 보인다. 
+
+
+
+### SCALING STUDY
+
+여기서 저자들은 JFT-300M 데이터셋의 전이 학습 성능을 평가하여 각기 다른 모델의 Controlled scaling study를 수행했다. 이 셋팅에서 데이터 크기는 모델 성능의 Bottleneck이 아니고 각 모델의 사전 훈련 비용 대비 성능을 측정한다. 모델은 7개의 ResNet 모델의 경우 (R50x1, R50x2 R101x1, R152x1, R152x2)을 7 에폭동안 사전 훈련했고 R152x2와 R200x3는 14 에폭동안 사전 훈련시켰다. 6개의 ViT 모델은 (ViT-B/32, B/16, L/32, L/16)을 7 에폭동안 사전훈련 시켰고 L/16, H/14 모델을 14 에폭동안 사전 훈련시켰다. 5개의 Hybrid 모델은 (R50+ViT-B/32, B/16, L/32, L/16) 7 에폭동안 사전 훈련시켰고 R50+ViT-L/16 모델을 14 에폭동안 훈련 시켰다(Hybrid의 경우, 모델 이름 끝에 숫자는 패치 사이즈가 아니라 ResNet Backbone에서의 총 Downsampling ratio를 의미한다). 
+
+![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale12.png)
+
+Figure 5는 총 사전 훈련 연산량 대비 전이 학습 성능을 나타낸다. 각 모델 마다의 더 자세한 결과는 Appendix의 Table 6를 참고. 
+
+몇 가지 패턴을 관측할 수 있는데 
+
+- 첫째는 Performance/compute trade-off 면에서 ViT가 ResNet을 상회한다는 것이다. ViT는 거의 2-4배 더 적은 얀산을 ResNet과 비슷한 성능(5개의 데이터셋의 평균)을 달성하는데 필요했다. 
+- 둘째는 Hybrid 모델이 연산 부담량 측면에서 ViT를 상회하지만 용량이 큰 모델에서는 이 차이가 없어진다는 것이다. 이결과는 저자들의 결과의 예상 밖이었다. 왜냐하면 저자들이 생각했을때 Convolutional local feature precessing이 어떤 크기에서든 ViT의 성능을 더 개선하는데 도움이 될 것이라고 예상했기 때문이다. 
+- 세번째는 ViT의 실험 범위에서 성능의 포화 현상이 일어나지 않았기 때문에 향후 Scaling과 관련된 연구를 더 수행할 동기를 얻었다는 것이다. 
