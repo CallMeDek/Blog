@@ -172,3 +172,31 @@ Figure 5는 총 사전 훈련 연산량 대비 전이 학습 성능을 나타낸
 - 첫째는 Performance/compute trade-off 면에서 ViT가 ResNet을 상회한다는 것이다. ViT는 거의 2-4배 더 적은 얀산을 ResNet과 비슷한 성능(5개의 데이터셋의 평균)을 달성하는데 필요했다. 
 - 둘째는 Hybrid 모델이 연산 부담량 측면에서 ViT를 상회하지만 용량이 큰 모델에서는 이 차이가 없어진다는 것이다. 이결과는 저자들의 결과의 예상 밖이었다. 왜냐하면 저자들이 생각했을때 Convolutional local feature precessing이 어떤 크기에서든 ViT의 성능을 더 개선하는데 도움이 될 것이라고 예상했기 때문이다. 
 - 세번째는 ViT의 실험 범위에서 성능의 포화 현상이 일어나지 않았기 때문에 향후 Scaling과 관련된 연구를 더 수행할 동기를 얻었다는 것이다. 
+
+
+
+### INSPECTING VISION TRARNSFORMER
+
+![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale13.png)
+
+저자들은 ViT의 내부적으로 만들어지는 Representation을 분석했다. ViT의 첫 번째 계층은 선형적으로 Flattened 패치들을 저차원 공간으로 Projection 한다(식 1). Figure 7의 왼쪽 그림은 학습된 임베딩 필터의 주요 요소 중 몇 가지를 보여준다. 저자들에 의하면 이 그림의 각 요소들이, 각 패치 내의 Fine structure의 저차원 Representation을 위한 그럴듯한 기저 함수를 닮았다고 한다. 
+
+Projection 후에 학습된 위치 임베딩이 Patch representation에 더해진다. Figure 7의 중앙 그림은 모델이 위치 임베딩의 유사성, 즉, 이미지 내에서 거리를 인코딩 하는 방법을 학습 함을 보여준다. 더 가까운 패치는 더 유사한 위치 임베딩을 갖는 경향이 있다. 같은 열끼리 혹은 행끼리는 비슷한 임베딩을 갖는 것을 볼 수 있다. 저자들이 말하길 이보다 더 큰 그리드에서는 때때로 정현파의 구조가 나타날 수 있다고 한다(Appendix D 참고). 이렇게 위치 임베딩이 2D 이미지 토폴로지를 표현하는 법을 학습 한다는 사실은 수동적으로 2D를 인식하는 임베딩 변경체들을 만들 필요가 없음을 보여준다(Appendix D.3).
+
+Self-attention은 ViT가 전체 이미지에서 정보를 모을 수 있도록 한다(심지어 가장 낮은 레벨의 계층에서도). 저자들은 네트워크가 어느정도로 이런 능력을 활용하는지 궁금했다. 구체적으로 Attention weight에 근거해서 저자들은 어떤 정보가 합쳐지는지를 이미지 공간 상의 평균 거리를 계산해서 알아봤다(Figure 7 오른쪽). 저자들은 이 Attention distance가 CNN에서의 Receptive field 크기와 유사하다고 했다. 몇몇 Head들은 이미 가장 낮은 계층에 있는 대부분의 이미지의 정보를 참고 하고 있는 것을 확인하여 네트워크 전체적으로 정보를 모으는 능력이 사실 모델이 사용하고 있음을 확인했다고 한다. 다른 Attention head들은 지속적으로 낮은 계층에서는 작은 Attention distance를 참고한다. 이 극도로 지엽적인 Attention은, Transformer 전에 ResNet을 적용하는 하이브리드 모델에서는 덜 두드러진다고 한다. 그리고 이는 CNN에서의 저레벨의 컨볼루션 계층과 유사한 기능을 하는 것일수도 있음을 암시한다고 한다. Attention distance는 네트워크 깊이가 깊어질수록 늘어난다. 네트워크 전역적으로 모델이 Classification Task에서 의미상으로 관련 있는 이미지 내의 영역에 관심을 갖는다고 한다(Figure 6). 
+
+![](./Figure/An_Image_is_Worth_16x16_Words_Transformers_for_Image_Recognition_at_Scale14.png)
+
+
+
+### SELF-SUPERVISION
+
+Transformer는 NLP에서 인상적인 성능을 보였다. 그러나 저자들이 말하길 이런 성공은 비단 Scalability에서만 기반한 것이 아니고 큰 규모의 Self-supervised 사전 학습에서도 영향을 받았다고 한다. 저자들은 Self-supervision을 위한 Masked patch prediction에 대해서도 조사를 수행했다. 이는 BERT에서 쓰인 Masked language modeling task를 모방한 것이다. Self-supervised 사전 훈련으로 저자들의 ViT-B/16 모델은 ImageNet 데이터 셋에서 79.9%의 정확도를 보였고 이는 From scratch에서 보다 2% 더 성능이 개선된 것이라고 한다. 그러나 Supervised 사전 훈련에 비하면 4% 떨어진다고 한다. 
+
+
+
+## CONCLUSION
+
+이 연구에서 저자들은 Transformer를 Image recongnition Task에 적용하는 방법에 대해 탐구했다. 전 연구들과는 다르게 저자들은 네트워크 아키텍처에 그 어떤 Image-specific Inductive biase를 도입하지 않았다. 그 대신에 이미지를 패치들의 시퀀스로 보고 NLP에서 Transformer encoder가 데이터를 처리하는 방식대로 이미지를 처리했다. 이 방법은 대용량의 데이터셋에서 사전 훈련 했을때 성능이 좋았다. 저자들이 말하는 ViT의 장점은 SOTA의 다른 모델과 비교해서 성능은 유사하거나 더 좋은데 사전 훈련 하는 Cost가 상대적으로 더 낮다는 것이다. 
+
+그러나 여전히 해결해야할 여러 문제가 남아 있다. ViT를 다른 Vision Task에 적용하는 연구가 더 필요하다고 한다. 그리고 Self-supervised 사전 훈련 방법에 대해 더 많은 연구가 필요할 것으로 저자들은 보았다. 
