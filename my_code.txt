@@ -1,0 +1,92 @@
+from PIL import Image
+import PIL
+import re
+import numpy as np
+import os
+
+i=0
+path = r"./sub_samples/SAMPLES"
+
+def process_image(im):
+    imarray = np.array(im)
+    im_h, im_w = imarray.shape[:2]
+    block_h, block_w = 100, 100
+    for row in np.arange(im_h - block_h +1, step = block_h):
+        for col in np.arange(im_w - block_w +1, step = block_w):
+            im1 = imarray[row:row+block_h, col:col+block_w, :]
+            im1 = Image.fromarray(im1)
+            global i
+            global path
+            im1.save(path + "/" + f"{i}" + ".jpg")
+            i+=1
+    print("completed")
+
+
+def atof(text):
+    try:
+        retval = float(text)
+    except ValueError:
+        retval = text
+    return retval
+
+
+def natural_keys(text):
+    '''
+    alist.sort(key=natural_keys) sorts in human order
+    http://nedbatchelder.com/blog/200712/human_sorting.html
+    (See Toothy's implementation in the comments)
+    float regex comes from https://stackoverflow.com/a/12643073/190597
+    '''
+    return [ atof(c) for c in re.split(r'[+-]?([0-9]+(?:[.][0-9]*)?|[.][0-9]+)', text) ]
+
+
+def image_grid(imgs, rows, cols):
+    assert len(imgs) == rows*cols
+
+    w, h = imgs[0].size
+    grid = Image.new('RGB', size=(cols*w, rows*h))
+    grid_w, grid_h = grid.size
+    
+    for i, img in enumerate(imgs):
+        grid.paste(img, box=(i%cols*w, i//cols*h))
+    return grid
+
+
+filename = './mnt/MyDrive/images.jpg'
+im = Image.open(filename)
+process_image(im)
+folder_path = path + "/"
+alist=os.listdir(folder_path) 
+alist.sort(key=natural_keys)
+images = [PIL.Image.open(folder_path+file) for file in alist]
+imarray = np.array(im)
+im_h, im_w = imarray.shape[:2]
+block_h, block_w = 100, 100
+
+j, k = 0, 0
+for row in np.arange(im_h - block_h +1, step = block_h):
+      j += 1
+      for col in np.arange(im_w - block_w +1, step = block_w):
+        k += 1
+
+
+grid = image_grid(images, rows=j, cols=k//j)
+grid
+
+
+import tensorflow as tf
+
+data_gen = generator = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1.0/255.0)
+
+data_generator = data_gen.flow_from_directory(
+    "./sub_samples/",
+    target_size=(100, 100),
+    shuffle=False,
+    batch_size=1)
+
+
+for _ in range(5):
+    img, label = data_generator.next()
+    print(img.shape)   #  (1,256,256,3)
+    plt.imshow(img[0])
+    plt.show()
