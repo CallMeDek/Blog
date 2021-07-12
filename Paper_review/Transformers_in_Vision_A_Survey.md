@@ -130,3 +130,39 @@ Self-supervised 학습이 유망한 이뉴는 Annotated 되지 않은 많은 양
 - Masked Language Model(MLM) - 미리 설정해 논 비율의 단어를 문장에서 마스킹 해 놓고 모델은 Cross-entropy loss를 고려하여 이 마스킹된 단어를 예측하도록 훈련된다. 마스킹된 단어를 예측하면서 모델은 Bidirectional context를 포함하는 방법을 학습하낟.
 - Next Sentence Prediction(NSP) - 주어진 한 쌍의 문장에 대해서 모델은 Binary 레이블을 예측한다. 예를 들어서 그 쌍이 원래의 문서에서 유효한가 아닌가. 이를 위한 훈련 데이터는 그 어떤 Text corpus에서도 쉽게 만들어 낼 수 있다. A와 B라는 문장 쌍이 만들어져서 NSP는 문장 간의 관계를 잡아내는 모델을 생성하는 것을 가능하게 한다.  
 
+
+
+## Transformers & Self-attention in Vision
+
+![](./Figure/Transformers_in_Vision_A_Survey17.png)
+
+위의 그림 4는 Transformer가 비전 분야에 쓰인 연구들의 개요를 보여준다. 현존하는 프레임워크들은 Global 혹은 Local attention을 주로 적용하고 모델 디자인 효율성을 위해서 Matrix factorization을 이용하거나 CNN representation의 도움을 받는다. 그리고 Vectorized attention 모델을 사용한다. 
+
+
+
+### Transformers for Image Recognition
+
+컨볼루션 연산은 CNN의 원동력이다. 왜냐하면 ImageNet과 같은 고차원의 데이터셋에서 복잡한 Image recognition 작업 같은 것을 위한 해결책을 제시하는데 도움이 되기 때문이다. 그러나 이 연산도 단점이 있다. 고정된 크기의 윈도우로 연산을 수행하기 때문에, 예를 들어서 비디오에서 공간적, 시간적으로 멀리 떨어져 있는 임의의 두 픽셀 간의 연관성을 캡처할 수 없다. 게다가 훈련이 끝나면 필터의 가중치 값이 고정되기 때문에, 입력에 어떤 변형이 가해질때 이를 유동적으로 대처할 수 없다. 이와 같은 단점은 Self-attention 매커니즘과 Transformer 네트워크를 사용하여 완화 할 수 있다. 
+
+Self-attention은 두 개의 주요 접근 방식이 있다. 
+
+- Global self-attention은 입력 특징의 크기에 구애받지 않는다. 예를 들어서 전체 Feature map에 Attention을 적용하는 계층을 사용한다던지 Sparse attention map을 디자인해서 Non-local 연산의 연산적 복잡도를 줄이는 방법이 있다. 
+- Local self-attention은 어떤 주어진 가까운 영역에서의 관계성을 모델링 하려고 한다. 예를 들어서 연산적 Overhead를 줄이기 위해서 어떤 주어진 픽셀 주위의 정해진 Window 크기로 Attention을 제안한다던가 입력 데이터/특징의 변동에 Weight aggregation 정도를 동적으로 조정하는 방법이 있다. 
+
+NLP Transformer의 encoder를 직접적으로 이미지 패치에 적용하는 Global self-attention 방식이 성공하기도 했다. Transformer는 본질적으로 많은 데이터를 필요로 한다. ViT를 처음부터 훈련시키기에 ImageNet 같은 데이터 양으로는 부족하다. 그래서 어떤 연구에서는 CNN 모델과 ViT 모델을 Distill knowlege 기법을 적용해 훈련시켜서 Transformer 모델이 추가적인 데이터가 필요 없이 ImageNet 만으로 훈련이 가능하게 하기도 했다. 
+
+
+
+#### Non-Local Neural Networks
+
+이 방법은 Non-local means 연산에서 영감을 받았는데 Non-local means 연산은 원래 Image denoising을 위해 디자인되었다. 이 연산은 패치 안의 주어진 픽셀을, 이미지 안에 다른 픽셀 값들의 가중치 합으로 수정한다. 그러나 픽셀 주변의 고정된 크기의 Window의 픽셀들만을 고려하는 것 대신에, 패치 간의 유사성에 근거해서 Filter response에 기여하는 (거리가) 먼 픽셀들을 선택한다. 디자인에 의해서 Non-local 연산은 이미지 공간에서 거리가 먼 특징들의 의존성을 모델링 하게 된다. 이것에 영감을 받아 Wang 등은 DNN을 위한 미분 가능한 Non-local operation을 제안했다. 여기서는 순전파 시에 공간적, 시간적으로 거리가 먼 특징들의 의존성을 캡처한다. 주어진 Feature map에 대해서 이 연산에서는 어떤 위치에 대한 Response를 Feature map 상의 모든 위치에서의 특징들의 가중치 합으로 계산한다. 이 방법으로 Non-local operation은 Feature map 상에서 임의의 두 위치의 거리가 얼마나 먼지와 상관 없이 두 위치가 어떻게 연관되어 있는지를 잡아낼 수 있다. Video classification이 공간적, 시간적으로 떨어져 있는 픽셀들 간의 연관성을 확인할 필요가 있는 Task의 한 예이다.  Kinetics 데이터셋으로 이 방법의 유효성을 보여준 연구가 있다. 
+
+
+
+#### Criss-Cross Attention
+
+![](./Figure/Transformers_in_Vision_A_Survey18.png)
+
+Self-attention 매커니즘이 전체 이미지의 Contextual information을 모델링 할 수 있게 했다고 하더라도 이 방법은 필연적으로 메모리 사용량과 연산량이 많이 필요할 수 밖에 없다. 위 그림 a와 같이 주어진 픽셀 위치에 대한 Global context를 인코딩 하기 위해서는 Non-local 블럭은 Dense한 Attention map 연산을 수행해야 한다(그림 a의 초록색 부분). Non-local 블럭은 O(N^2)의 높은 복잡도를 보인다(N은 입력 Feature map의 크기). 이런 연산적 부담을 줄이기 위해서 Huang 등은 Criss-cross attention 모듈을 제안했다. 여기서 각 픽셀 위치는 Sparse attention map이라고 하는, 가로 세로의 십자가 모양의 위치만 계산한다(위 그림 b). 또한 Criss-cross attention을 재귀적으로 적용해서 각 픽셀 위치에서는 모든 다른 픽셀부터 Context를 캡처할 수 있다.  Non-local 블럭과 비교했을때 11배 적은 GPU 메모리를 사용하고 복잡도도 O(2루트N)을 보인다. 
+
+
