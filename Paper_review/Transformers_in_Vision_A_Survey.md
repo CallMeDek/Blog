@@ -166,3 +166,40 @@ NLP Transformer의 encoder를 직접적으로 이미지 패치에 적용하는 G
 Self-attention 매커니즘이 전체 이미지의 Contextual information을 모델링 할 수 있게 했다고 하더라도 이 방법은 필연적으로 메모리 사용량과 연산량이 많이 필요할 수 밖에 없다. 위 그림 a와 같이 주어진 픽셀 위치에 대한 Global context를 인코딩 하기 위해서는 Non-local 블럭은 Dense한 Attention map 연산을 수행해야 한다(그림 a의 초록색 부분). Non-local 블럭은 O(N^2)의 높은 복잡도를 보인다(N은 입력 Feature map의 크기). 이런 연산적 부담을 줄이기 위해서 Huang 등은 Criss-cross attention 모듈을 제안했다. 여기서 각 픽셀 위치는 Sparse attention map이라고 하는, 가로 세로의 십자가 모양의 위치만 계산한다(위 그림 b). 또한 Criss-cross attention을 재귀적으로 적용해서 각 픽셀 위치에서는 모든 다른 픽셀부터 Context를 캡처할 수 있다.  Non-local 블럭과 비교했을때 11배 적은 GPU 메모리를 사용하고 복잡도도 O(2루트N)을 보인다. 
 
 
+
+#### Stand-Alone Self-Attention
+
+컨볼루션 계층은 Translation equivariance의 특성을 보이지만 큰 Recptive field로 스케일을 키울 수 없으므로 멀리 떨어져 있는 위치 간의 관련성을 캡처하기 어렵다. 이에 반해 Global attention은 입력의 모든 위치의 연관성에 대해서 캡처 할 수 있지만 연산적으로 부담이 된다. 그래서 Global attention은 Down sampling한 작은 이미지나 이미지 패치들 그리고 Augmented된 컨볼루션 Feature space에 수행한다. Ramachandran 등은 DNN에서 컨볼루션을 계층을 Local self-attention 계층으로 대체하는 것을 제안했다. 이때 계산적 비용을 증가시키지 않고도 큰거나 작은 입력에 수행할 수 있다고 한다. 이 Self attention 계층에서는 주어진 픽셀 주위에 고정된 크기의 Window 만큼의 픽셀을 모두 고려해서 이 픽셀 들에 대한 Query, Key, Value 벡터들을 계산하고 Spatial information을 집계한다. Value 벡터는 Query와 Key의 Softmax score를 Projection 한 뒤 집계된다. 이런 과정이 주어진 모든 픽셀에 대해서 반복되고 그렇게 나온 Response가 Output 픽셀을 만들어 내기 위해서 Concatenated된다. ResNet + Self attention 계층이 컨볼루션 기반의 ResNet 모델과 비교했을 때 더 적은 파라미터로 ImageNet과 COCO Object Detection 문제를 풀 수 있다고 한다. 
+
+
+
+#### Local Relation Networks
+
+컨볼루션 연산의 다른 단점은 훈련 뒤에 고정된 가중치로 결과를 내기 때문에 입력에 어떤 변경이 가해져도 유동적으로 대처할 수 없다는 것이다. Hu 등은 Local window 안의 픽셀들을 유동적으로 구성하는 것을 제안했다. 이 저자들은 Local window 안에 있는 픽셀들/특징들 사이의 유사성 혹은 연관성에 근거하여 Weight aggregation을 조정하는 새로운 형태의 미분가능한 계층을 그들의 연구에 도입했다(아래 그림 Fig 6). 
+
+![](./Figure/Transformers_in_Vision_A_Survey19.png)
+
+이런 Adaptive weight aggregation은 네트워크에 Geometric priors를 도입하는데 이는 Recognition task에 매우 중요하다. 컨볼루션은 여러 위치에서 고정되어 있기 때문에 Top-down operator로 보는데 반해 Non-local 연산은 전체 이미지에 대해서 입력 Feature을 집계하기 때문에 Bottom-up 방법으로 본다. Local relation 계층은 Bottom-up 방법으로 분류되기는 하지만 고정된 Window 크기로 제한된다. 
+
+
+
+#### Attention Augmented Convolutional Networks
+
+Bello 등은 Self-attention을 컨볼루션 연산 대신으로 사용하는 것의 가능성을 연구했다. 저자들은 2차원에서 Relative position 인코딩을 사용하는 것을 제안했다. 이렇게 해서 Translation equivariance를 유지하는 새로운 Self-attention 매커니즘을 개발하는데 이는 이미지를 다루는데 바람직한 속성이다. 이런 Self-attention이 Stand-alone computational primitive로서 경쟁력 있는 결과를 제공하지만 가장 좋은 성능은 컨볼루션 연산과 같이 쓰일때 나온다. 많은 연구를 통해서 Attention augmentation이 현존하는 다양한 아키텍들에 대해서 Image classification과 Object detection에서 시스템적 성능 개선을 낸 것을 보여줬다. 
+
+
+
+#### Vectorized Self-Attention
+
+Zhao 등은 전통적인 컨볼루션 연산이 Feature aggregation과 Transformation을 동시에 수행한다는 것을 강조한다(Filter로 컨볼루션 연산 후에 비선형 연산을 수행). 이와 대조적으로 이 저자들은 Self-attention으로 Feature aggregation을 수행하고 Element-wise Perceptron 계층으로  Transformation을 수행하는 형태를 제안했다(아래 Fig 7).
+
+![](./Figure/Transformers_in_Vision_A_Survey20.png)
+
+이렇게 하기 위해서 저자들은 Feature aggregation을 위한 두 가지 전략을 제안했다. 
+
+- Pairwise self-attention - Permutation, Cardinality 불변 연산 
+- Patch-wise self-attention - 위와 같은 불변 속성이 없음(컨볼루션 연산과 유사)
+
+Pairwise와 Patch-wise self-attention 모두 Vector attention으로 구현되었다. Vector attention은 Spatial과 Channel 차원 모두를 위한 가중치를 학습한다. 이 연산은 기존에 수행하는 Scalar weights(내적 연산을 수행하는)을 이용하는 연산에 대한 대안을 제시한다. Pair-wise attention은 주어진 주위 픽셀들에 대해서 주위 픽셀들과 특정한 feature간의 관계성을 고려하면서 Vector attention을 계산하는 Set 연산이다. 반대로 Patch-wise self-attention은 컨볼루션 연산의 일반화된 버전(Set 연산이 아님)이다. 이 연산에서는 Attention 벡터들을 유도해낼때 주위의 모든 Feature 벡터들을 살펴본다. 저자들은 연구를 통해, 훨씬 더 적은 파라미터로 Self-attention 네트워크(SAN)이 ImageNet 데이터셋에서 ResNet 계열의 Baseline에 견줄만하다는 것을 보여줬다. 이 연구 방식의 중요 속성 중 하나는 Adversarial perturbation에 강인하다는 것과 데이터에 잘 모르는 변형이 가해진 것에 Generalization 하다는 것이다. 이는 Attention의 유동적인 특성이 Adversay가 유용한 속임수를 알아내지 못하게끔 하기 때문이다. 
+
+
