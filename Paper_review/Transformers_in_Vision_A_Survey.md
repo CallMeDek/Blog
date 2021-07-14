@@ -203,3 +203,20 @@ Zhao 등은 전통적인 컨볼루션 연산이 Feature aggregation과 Transform
 Pairwise와 Patch-wise self-attention 모두 Vector attention으로 구현되었다. Vector attention은 Spatial과 Channel 차원 모두를 위한 가중치를 학습한다. 이 연산은 기존에 수행하는 Scalar weights(내적 연산을 수행하는)을 이용하는 연산에 대한 대안을 제시한다. Pair-wise attention은 주어진 주위 픽셀들에 대해서 주위 픽셀들과 특정한 feature간의 관계성을 고려하면서 Vector attention을 계산하는 Set 연산이다. 반대로 Patch-wise self-attention은 컨볼루션 연산의 일반화된 버전(Set 연산이 아님)이다. 이 연산에서는 Attention 벡터들을 유도해낼때 주위의 모든 Feature 벡터들을 살펴본다. 저자들은 연구를 통해, 훨씬 더 적은 파라미터로 Self-attention 네트워크(SAN)이 ImageNet 데이터셋에서 ResNet 계열의 Baseline에 견줄만하다는 것을 보여줬다. 이 연구 방식의 중요 속성 중 하나는 Adversarial perturbation에 강인하다는 것과 데이터에 잘 모르는 변형이 가해진 것에 Generalization 하다는 것이다. 이는 Attention의 유동적인 특성이 Adversay가 유용한 속임수를 알아내지 못하게끔 하기 때문이다. 
 
 
+
+#### Vision Transformer
+
+ViT는 대용량 컴퓨터 비전 데이터셋 Task에서 Transformer가 컨볼루션을 대체한 첫 번째 케이스라고 한다. NLP에서 사용되었던 Transformer를 약간 변경해서 이미지 패치에 적용했다. Transformer 모델은 대용량 데이터셋으로 미리 훈련시키고 타겟 데이터셋으로 Fine-tuning 시켰다. Pre-training 단계가 매우 중요한데 왠만한 대용량 데이터셋이 아니고서야 SOTA의 성능을 내는게 어렵다고 한다. 컨볼루션은 이미지 도메인에 대한 사전 지식(Inductive biases - Translation equivariance)을 인코딩하기 때문에 어느정도 데이터의 필요성을 줄여주는데 반해 Transformer는 이런 지식을 대용량 데이터셋에서 스스로 발견해야 하기 때문이다. 이 연구에서는 300 백만의 JFT 이미지 데이터셋으로 Pre-training 했다고 한다. 
+
+![](./Figure/Transformers_in_Vision_A_Survey21.png)
+
+Figure 8은 ViT의 아키텍처를 보여준다. NLP에서 쓰인 Transformer와 매우 유사한데 차이는 2D짜리 이미지 패치를 벡터 형태로 Flattened시켜서 Transformer에 주입했다는 것이다. 이 벡터화된 패치들은 Linear 계층에서 Patch embedding으로 Projected되고 Position embedding이 위치 정보를 인코딩하기 위해서 추가된다. [cls]라는 토큰이 입력 데이터의 처음 부분에 더해진다. 첫번째 위치에 해당하는 출력 Representation이 Image classification에서 Global image representation으로서 사용된다. 
+
+
+
+#### Data-Efficient Image Transformers
+
+Data-efficient image Transformer(DeiT)는 JFT 같은 추가적인 대용량 데이터 없이 Large-scale image classification을 수행한 첫번째 연구 사례이다. 보통은 Transformer 모델은 CNN과 달리 이미지 도메인에 대한 사전 지식을 가정하지 않기 때문에 더 많은 데이터셋과 더 많은 훈련시간을 필요로 한다. 그러나 DeiT는 상대적으로 더 적은 양의 데이터셋(1.2 백만)으로 상대적으로 더 적은 훈련 시간에 Transformer 모델을 훈련시킬 수 있다는 것을 입증했다. DeiT의 주요 기여점은 Transformer 모델을 위한 Novel native disillation 접근법이다. 
+
+Distillation 과정에서 CNN 모델을 Teacher로서 사용하는데 CNN 모델의 출력을 Transformer 모델을 훈련시키는데 사용한다. CNN의 출력은 Transformer가 효율적으로, 입력 이미지의 유용한 Representation을 이해하는데 도움을 준다. Distillation 토큰이 입력 Patch embedding과 Class token 벡터에 추가된다. Self-attention 계층들이 이 토큰들에서 연산을 수행하여 토큰 사이의 관련성을 학습하고 학습된 Class, patch, distillation token들을 출력한다. 네트워크는 출력 Class token으로 정의된 Cross-entropy loss와, 출력된 Distillation token과 Teacher의 출력을 매칭시켜서 얻는 Distillation loss로 훈련된다. Soft와 Hard 레이블이 Distillation을 위한 옵션으로 연구되었는데 Hard distillation이 더 좋은 성능을 냈다. 흥미롭게도 학습된 Class와 Distillation 토큰들은 큰 연관성을 보이지는 않았는데 이는 이들간의 상호보완성을 나타낸다. 
+
