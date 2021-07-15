@@ -220,3 +220,31 @@ Data-efficient image Transformer(DeiT)는 JFT 같은 추가적인 대용량 데�
 
 Distillation 과정에서 CNN 모델을 Teacher로서 사용하는데 CNN 모델의 출력을 Transformer 모델을 훈련시키는데 사용한다. CNN의 출력은 Transformer가 효율적으로, 입력 이미지의 유용한 Representation을 이해하는데 도움을 준다. Distillation 토큰이 입력 Patch embedding과 Class token 벡터에 추가된다. Self-attention 계층들이 이 토큰들에서 연산을 수행하여 토큰 사이의 관련성을 학습하고 학습된 Class, patch, distillation token들을 출력한다. 네트워크는 출력 Class token으로 정의된 Cross-entropy loss와, 출력된 Distillation token과 Teacher의 출력을 매칭시켜서 얻는 Distillation loss로 훈련된다. Soft와 Hard 레이블이 Distillation을 위한 옵션으로 연구되었는데 Hard distillation이 더 좋은 성능을 냈다. 흥미롭게도 학습된 Class와 Distillation 토큰들은 큰 연관성을 보이지는 않았는데 이는 이들간의 상호보완성을 나타낸다. 
 
+
+
+#### CLIP: Contrastive Language-Image Pre-training
+
+CLIP은 텍스트로부터 Image representation을 학습하는 Contrastive 접근법이다. 큰 배치에서 정확한 텍스트-이미지 쌍의 임베딩 간의 유사성을 극대화 하는 것이 목적이다. 구체적으로 N개의 이미지-텍스트 쌍에 대해서 CLIP는 Multi-modal 임베딩 스페이스를 학습한다. 이때 Image-encoder와 Text-encoder를 같이 훈련시켜서 N개의 Image-text 쌍의 Cosine similarity는 극대화하고 남은 N^2 - N개의 남은 쌍의 Cosine similarity는 최소화 한다. 이 연구에서 저자들은 ResNet-50과 ViT를, 이미지를 인코딩 하기 위한 모델로 고려했다. CLIP는 400 백만의 이미지-텍스트 쌍의, 대용량 말뭉치로 훈련시켰고 훌륭한 Zero-shot transfer 역량을 입증했다. 추론 시에는 클래스 이름이 Text-encoder의 입력으로 사용되고 인코딩된 이미지의 유사성이, Image-text 쌍에서 가장 매치가 잘 되는 쌍을 찾기 위해서 모든 인코딩된 텍스트와 함께 계산된다. CLIP는 ImageNet 훈련 셋에서의 Supervision 없이 75%의 Zero-shot classification accuracy를 보여줬다.  알아둬야 할 점은 ResNet의 CLIP가 592개의 V100 GPU에서 훈련시키는데 18일이 걸리고 256 V100 GPU에서 ViT를 훈련시키는데 12일이 걸린다는 것이다. 
+
+
+
+### Transformers for Object Detection
+
+Image classification과 유사하게 Transformer 모델은 CNN Backbone에서 추출된 이미지 특징으로 Bounding box와 레이블을 예측할 수 있다. 
+
+
+
+#### Detection Transformer - DETR
+
+Transformer 모델을 적용하기 위해서 DETR은 Object detection을 Set prediction 문제로 보았고 Set loss function을 제안했다. 이것이 의미하는 바는 Image feature들의 셋에 대해서 Object bb의 셋을 예측한다는 것이다. Transformer 모델이 (Single shot)으로 객체 셋의 예측을 가능하게 하고 그들의 관계성을 모델링 할 수 있게 한다. Set loss로는 예측과 GT 박스 양자 간의 매칭을 가능하게 한다. DETR의 주요 장점은 RPN, NMS 같은 수작업의 모듈과 연산에 대한 의존을 없앤다는 것이다. 이런 방식으로 Prior knowledge나 Engineering 디자인에 대한 의존성을 줄인다. 
+
+![](./Figure/Transformers_in_Vision_A_Survey22.png)
+
+주어진 CNN backbone에서의 Spatial feature map에 대해서 Encoder는 먼저 Spatial 차원을 하나의 차원으로 Flatten시킨다. 이 과정을 통해서 d x n의 Feature sequence가 만들어진다(d는 Feature 차원이고 n = h x w. h, w는 Spatial feature map의 높이와 너비이다). 이 Feature들은 Multi-head self-attention을 사용해서 인코딩 후에 디코딩한다. 디코딩 단계에서 주요 차이는 모든 박스가 병렬적으로 예측된다는 것이다(RNN을 사용하면 하나씩 만들어짐). 인코더와 디코더가 Permutation invariant(토큰이나 패치의 순서가 바뀌어도 동일한 결과를 도출)이기 때문에 학습된 Positional 인코딩이 각기 다른 박스들을 만들어내기 위해 Decoder에 의해서 Object query로써 사용된다. CNN detector(예를 들어 Faster R-CNN)에서 Spatial structure가 자동으로 Positional information을 인코딩 한다. DETR은 여러 다른 도메인에 사용되었는데 예를 들어서 Cell-DETR은 Biological cell의 Instance segmentation을 위해 사용되었다. Dedicated attention branch가 Instance-wise segementation을 위해서 더해 졌다. 
+
+
+
+#### Deformable - DETR
+
+DETR에서는 CNN과 Transformer를 결합해서 RPN이나 NMS 같은 수작업으로 수행하는 디자인 요소를 제거하고 End-to-End로 훈련시킬 수 있는 Object detection 파이프라인을 구축했다. 그러나 크기가 작은 객체를 탐지하는데 어려움을 겪고 성능 수렴이 느리며 상대적으로 높은 연산 비용이 발생했다. DETR은 Relation modeling을 위해서 Transformer를 사용하기 전에 이미지를 Feature space로 매핑한다. 그러므로 Self-attention의 연산적 비용이 Feature map의 Spatial 크기가 커질때 네제곱으로 커진다(O(H^2W^2C)). 이때문에 Multi-scale hierarchical feature를 사용하는 것에 제약이 있다. 그런데 Multi-scale hierarchical feature는 크기가 작은 객체를 탐지하는데 매우 중요하다. 게다가 훈련 시작 부분에서 Attention 모듈은 단순히 Attention을 균등하게 Feature map의 모든 위치에 Projection 시키고 유의미한 위치로 Attention weights가 수렴하도록 Tuning시키려면 많은 기간의 Training 에포크를 필요로 한다. 이 때문에 DETR의 성능이 수렴하는데 시간이 오래 걸린다. 이런 문제점을 경감하기 위해서 Deformable attention 모듈이 제안되었다. Deformable 컨볼루션에 영감을 얻어서 Deformable attention 모듈은 Feature map의 크기와 관계 없이 전체 Feature map에서 Sparse set의 요소들에만 신경 쓴다. 그렇기 때문에 연산적 비용을 크게 증가시키지 않으면서 Multi-scale attention 모듈의 도움으로 Cross-scale의 Feature map aggregation이 가능하다. Deformable DETR은 정확도적인 성능이 더 좋을 뿐만 아니라 훈련 시간 또한 본래의 DETR 모델보다 10배 정도 적다.  
+
