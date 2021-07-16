@@ -43,8 +43,8 @@ Transformer 모델 계열이 발전 하는데 두 가지 개념이 핵심 역할
 
 예를 들어서 한 시퀀스의 n개의 Entity들이 있다고 가정하자((x1, x2, ..., xn), 이때 X ∈ R^(n x d)이고 d는 각 Entity를 표현하기 위한 임베딩 차원이다). 이때 Self-attention의 목적은 전역적 컨텍스트 정보 관점에서 모든 n개의 Entity에 대해서 각 Entity를 인코딩해서 상호 간의 어떤 작용을 하는지 캡처하는 것이다. 이때 이 작업은 다음의 세 개의 학습이 가능한 행렬로 Transformation을 수행하여 이뤄진다. 
 
-| Queries                                                      | Keys                                                         | Values                                                       |
-| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Queries                                            | Keys                                               | Values                                             |
+| -------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
 | ![](./Figure/Transformers_in_Vision_A_Survey2.png) | ![](./Figure/Transformers_in_Vision_A_Survey3.png) | ![](./Figure/Transformers_in_Vision_A_Survey4.png) |
 
 먼저 입력 시퀀스 X를 각 가중치 행렬에 투영시켜서 세 가지 행렬 결과 값을 얻는다. 
@@ -248,3 +248,30 @@ Transformer 모델을 적용하기 위해서 DETR은 Object detection을 Set pre
 
 DETR에서는 CNN과 Transformer를 결합해서 RPN이나 NMS 같은 수작업으로 수행하는 디자인 요소를 제거하고 End-to-End로 훈련시킬 수 있는 Object detection 파이프라인을 구축했다. 그러나 크기가 작은 객체를 탐지하는데 어려움을 겪고 성능 수렴이 느리며 상대적으로 높은 연산 비용이 발생했다. DETR은 Relation modeling을 위해서 Transformer를 사용하기 전에 이미지를 Feature space로 매핑한다. 그러므로 Self-attention의 연산적 비용이 Feature map의 Spatial 크기가 커질때 네제곱으로 커진다(O(H^2W^2C)). 이때문에 Multi-scale hierarchical feature를 사용하는 것에 제약이 있다. 그런데 Multi-scale hierarchical feature는 크기가 작은 객체를 탐지하는데 매우 중요하다. 게다가 훈련 시작 부분에서 Attention 모듈은 단순히 Attention을 균등하게 Feature map의 모든 위치에 Projection 시키고 유의미한 위치로 Attention weights가 수렴하도록 Tuning시키려면 많은 기간의 Training 에포크를 필요로 한다. 이 때문에 DETR의 성능이 수렴하는데 시간이 오래 걸린다. 이런 문제점을 경감하기 위해서 Deformable attention 모듈이 제안되었다. Deformable 컨볼루션에 영감을 얻어서 Deformable attention 모듈은 Feature map의 크기와 관계 없이 전체 Feature map에서 Sparse set의 요소들에만 신경 쓴다. 그렇기 때문에 연산적 비용을 크게 증가시키지 않으면서 Multi-scale attention 모듈의 도움으로 Cross-scale의 Feature map aggregation이 가능하다. Deformable DETR은 정확도적인 성능이 더 좋을 뿐만 아니라 훈련 시간 또한 본래의 DETR 모델보다 10배 정도 적다.  
 
+
+
+### Transformers for Segmentation
+
+Image segmentation 같은 Dense prediction task의 경우 픽셀 같의 관련성을 모델링 하는 필요로 한다. 
+
+
+
+#### Axial-Attention for Panoptic Segmentation
+
+Panoptic segmentation은 Semantic segmentation과 Instance segmentation과 같은 성격이 다른 작업들을, 이미지의 각 픽셀에 Semantic label과 Instance id를 부여해서 동시에 해결하는 것을 목표로 했다. Global context는 이런 복잡한 시각적 이해가 필요한 작업을 다루는데 유용한 단서를 제공한다. Self-attention은, Panoptic segmentation과 같은 Dense prediction을 위한 큰 입력 데이터에 적용하기에 부담스러운(연산적으로) 면이 있지만 Long-range contextual information을 모델링 하는데 효과적이다. 가장 직관적인 솔루션은 Self-attention을 Downsampled된 입력이나 각 픽셀의 제한된 부분에만 적용하는 것이다. 이런 제약사항을 걸어도 Self-attention은 네제곱의 복잡도를 가지면서 Global context를 희생하는 단점이 있다. 
+
+위에서 언급한 이슈들을 해결하기 위해서 Wang 등은 Position-sensitive axial-attention을 제안했다. 이는 2D의 Self-attention 매커니즘을 두 개의 1D axial-attention 계층으로 재구성한 것이다. 2개의 1D axial-attention이란 Height-axis와 Width-axis에 순서대로 적용하는 것이다(Fig 10). 
+
+![](./Figure/Transformers_in_Vision_A_Survey23.JPG)
+
+이런 Axial-attention은 연산적으로 효율적이고 모델이 전체 이미지의 Context를 캡처하는 것을 가능하게 한다. Axial-attention은 여러 Benchmark에서 SOTA의 성능을 보였다. 
+
+
+
+#### CMSA: Cross-Modal Self-Attention
+
+Cross-modal Self-attention(CMSA)는 Image segmentation task를 참조 하기 위해서 Linguistic, Visual 도메인 Feature 사이에 Long-range multi-modal 의존성을 인코딩한다.  Image segmentation 문제를 참조한다는 것은 Language expression에 의해서 참조된 이미지 내 Entity들을 Segment 한다는 뜻이다(Fig 11). 
+
+![](./Figure/Transformers_in_Vision_A_Survey24.JPG)
+
+이렇게 하기 위해서 Cross-modal feature들의 집합을, Word embedding이 달려 있는 Image feature들과 Spatial coordinate feature들을 Concatenate해서 얻는다. Self-attention은 이렇게 얻은 Feature에 수행하고 문장 안의 각 단어에 매칭되는 이미지 위의 Attention을 만들어낸다. Segmentation network는 Self-attention 연산을 여러 Spatial level에서 수행하고, 여러 Multi-resolution feature들에서 정보를 교환해서 Segmentation mask를 정제하기 위해서 Gated multi-level fusion module을 사용한다. 모델을 훈련 시키기 위해서 Binary CE loss를 사용했고 UNC, G-Ref, ReferIt 데이터셋에서 좋은 성능 상의 개선을 보여줬다. 
