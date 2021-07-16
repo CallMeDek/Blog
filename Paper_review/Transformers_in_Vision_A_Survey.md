@@ -43,8 +43,8 @@ Transformer 모델 계열이 발전 하는데 두 가지 개념이 핵심 역할
 
 예를 들어서 한 시퀀스의 n개의 Entity들이 있다고 가정하자((x1, x2, ..., xn), 이때 X ∈ R^(n x d)이고 d는 각 Entity를 표현하기 위한 임베딩 차원이다). 이때 Self-attention의 목적은 전역적 컨텍스트 정보 관점에서 모든 n개의 Entity에 대해서 각 Entity를 인코딩해서 상호 간의 어떤 작용을 하는지 캡처하는 것이다. 이때 이 작업은 다음의 세 개의 학습이 가능한 행렬로 Transformation을 수행하여 이뤄진다. 
 
-| Queries                                            | Keys                                               | Values                                             |
-| -------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
+| Queries                                                      | Keys                                                         | Values                                                       |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | ![](./Figure/Transformers_in_Vision_A_Survey2.png) | ![](./Figure/Transformers_in_Vision_A_Survey3.png) | ![](./Figure/Transformers_in_Vision_A_Survey4.png) |
 
 먼저 입력 시퀀스 X를 각 가중치 행렬에 투영시켜서 세 가지 행렬 결과 값을 얻는다. 
@@ -250,28 +250,20 @@ DETR에서는 CNN과 Transformer를 결합해서 RPN이나 NMS 같은 수작업�
 
 
 
-### Transformers for Segmentation
+## Open problems & Future directions
 
-Image segmentation 같은 Dense prediction task의 경우 픽셀 같의 관련성을 모델링 하는 필요로 한다. 
-
-
-
-#### Axial-Attention for Panoptic Segmentation
-
-Panoptic segmentation은 Semantic segmentation과 Instance segmentation과 같은 성격이 다른 작업들을, 이미지의 각 픽셀에 Semantic label과 Instance id를 부여해서 동시에 해결하는 것을 목표로 했다. Global context는 이런 복잡한 시각적 이해가 필요한 작업을 다루는데 유용한 단서를 제공한다. Self-attention은, Panoptic segmentation과 같은 Dense prediction을 위한 큰 입력 데이터에 적용하기에 부담스러운(연산적으로) 면이 있지만 Long-range contextual information을 모델링 하는데 효과적이다. 가장 직관적인 솔루션은 Self-attention을 Downsampled된 입력이나 각 픽셀의 제한된 부분에만 적용하는 것이다. 이런 제약사항을 걸어도 Self-attention은 네제곱의 복잡도를 가지면서 Global context를 희생하는 단점이 있다. 
-
-위에서 언급한 이슈들을 해결하기 위해서 Wang 등은 Position-sensitive axial-attention을 제안했다. 이는 2D의 Self-attention 매커니즘을 두 개의 1D axial-attention 계층으로 재구성한 것이다. 2개의 1D axial-attention이란 Height-axis와 Width-axis에 순서대로 적용하는 것이다(Fig 10). 
-
-![](./Figure/Transformers_in_Vision_A_Survey23.JPG)
-
-이런 Axial-attention은 연산적으로 효율적이고 모델이 전체 이미지의 Context를 캡처하는 것을 가능하게 한다. Axial-attention은 여러 Benchmark에서 SOTA의 성능을 보였다. 
+Transformer 모델이 각 도메인에서 준수한 성능을 보였지만(본문의 Table 1 참고) 여전히 한계는 존재한다(본문의 Table 2 참고). 가장 중요한 문제에는 훈련시 많은 양의 데이터가 필요하다는 것과 그만큼 많은 계산적 비용이 발생한다는 것이다. 또 Transformer 모델의 학습 상태를 시각화하고 해석화 하는 것에도 어려움이 있다. 
 
 
 
-#### CMSA: Cross-Modal Self-Attention
+### High Computational Cost
 
-Cross-modal Self-attention(CMSA)는 Image segmentation task를 참조 하기 위해서 Linguistic, Visual 도메인 Feature 사이에 Long-range multi-modal 의존성을 인코딩한다.  Image segmentation 문제를 참조한다는 것은 Language expression에 의해서 참조된 이미지 내 Entity들을 Segment 한다는 뜻이다(Fig 11). 
+Transformer 모델은 높은 Parametric complexity를 보인다. 그래서 작업을 하는데 필요한 Resource나 연산적 시간 측면에서 훈련시와 추론시에 높은 비용이 발생한다. 예를 들어서 BERT 기본 모델(109 백만의 모델 파라미터)은 1.89의 Peta-flop days만큼 훈련하는데 필요하고 GPT3 모델(175 백만의 모델 파라미터)는 3640의 Peta-flop만큼 훈련하는데 필요하다. 이런 큰 모델은 실제로 써먹으려면 Aggresive compressive technique이 필요하다. 
 
-![](./Figure/Transformers_in_Vision_A_Survey24.JPG)
+Language 도메인에서 최근 연구는 Transformer 모델의 높은 복잡도를 낮추는데 초점을 맞췄다(기본적으로 Self-attention 매커니즘에서 이런 복잡도가 발생하는데 Token의 Representation이 바로 전 계층에서의 모든 Token들을 고려하여 업데이트 된다). 예를 들어서 Linformer는 표준 Self-attention operation의 복잡도를 O(n^2)에서 O(n)로 줄인다(시간이나 메모리 요구랑 측면에서). 주요 아이디어는 Low-rank matrix가 Self-attention 매커니즘을 모델링 하는데 충분하다는 것을 보여주는 것이다. Reformer 모델은 Locally-sensitive hashing(LSH)를 도입해서 Self-attention의 복잡도를 O(n^2)에서 O(nlog(n))로 최소화 한다. 이와 유사하게 Lambda Networks는 Self-attention의 복잡도를 줄이는데 도움이 되는 Linear function을 Contex로 모델링하는 것을 제안한다. 
 
-이렇게 하기 위해서 Cross-modal feature들의 집합을, Word embedding이 달려 있는 Image feature들과 Spatial coordinate feature들을 Concatenate해서 얻는다. Self-attention은 이렇게 얻은 Feature에 수행하고 문장 안의 각 단어에 매칭되는 이미지 위의 Attention을 만들어낸다. Segmentation network는 Self-attention 연산을 여러 Spatial level에서 수행하고, 여러 Multi-resolution feature들에서 정보를 교환해서 Segmentation mask를 정제하기 위해서 Gated multi-level fusion module을 사용한다. 모델을 훈련 시키기 위해서 Binary CE loss를 사용했고 UNC, G-Ref, ReferIt 데이터셋에서 좋은 성능 상의 개선을 보여줬다. 
+Vyas 등은 거의 본래의 Self-attention에 근접하는 큰 입력 시퀀스를 다루기 위한 효율적인 Cluster attention을 개발했다. 저자들은 Cluster attention에서 쿼리를 클러스터로 묶고 클러스터의 중심 사이의 Attention을 계산한다(네제곱의 복잡도를 보이는 모든 쿼리 사이의 Attention을 계산하는 것 대신에). 주요 아이디어는 Euclidean space 상에서 가까운 쿼리들은 유사한 Attention distribution을 가질 수 밖에 없다는 것이다. 고정된 수의 Cluster로 이런 직관적인 아이디어는 네제곱의 복잡도를 선형의 복잡도로 줄이는데 도움이 될 수 있다(입력 시퀀스 길이 n에 대해서, c는 클러스터의 숫자). 
+
+NLP와 유사하게 Computer vision 모델은 Transformer 모델의 높은 연산 비용으로 고통 받는다. 예를 들어서 Sequence-based Transformer에 기반한 Image generator는(예를 들어서 iGPT) 높은 연산 비용 때문에, 높은 해상도의 입력에 적용하기가 힘들다. 이런 모델은 높은 차원의 입력으로 확장 될 수 있다. 예를 들어서 Multi-scale transformer 디자인과 Local context 모델링을 사용한다던가 하는 방법으로 가능하다.   
+
+
