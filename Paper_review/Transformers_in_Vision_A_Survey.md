@@ -267,3 +267,37 @@ Vyas 등은 거의 본래의 Self-attention에 근접하는 큰 입력 시퀀스
 NLP와 유사하게 Computer vision 모델은 Transformer 모델의 높은 연산 비용으로 고통 받는다. 예를 들어서 Sequence-based Transformer에 기반한 Image generator는(예를 들어서 iGPT) 높은 연산 비용 때문에, 높은 해상도의 입력에 적용하기가 힘들다. 이런 모델은 높은 차원의 입력으로 확장 될 수 있다. 예를 들어서 Multi-scale transformer 디자인과 Local context 모델링을 사용한다던가 하는 방법으로 가능하다.   
 
 
+
+### Large Data Requirements
+
+Transformer 아키텍처는 시각 데이터를 다루기 위해서 선천적으로 Inductive biases(Prior knowledge)를 인코딩하지 않기 때문에, 주어진 Task에 대한 Modality-specific rules을 Pre-training하면서 파악한다. 그래서 보통 많은 양의 훈련 데이터를 필요로 한다. 
+
+CNN은 Pooling 연산이나 Multi-scale processing 블럭 덕분에 Patial scale invariance, Weight sharing, Translation invariance 같은 특성이 내재되어 있다. 그러나 Transformer 네트워크는 이런 이미지적인 특성들을 스스로 많은 양의 샘플을 보고 알아내야 한다. 예를 들어서 Video 프레임 간의 관련성을 자동으로 발견하기 위해서 Self-attention 매커니즘은 비디오 시퀀스 데이터 베이스 자료를 아주 많이 본다. 결과적으로 CNN보다 더 긴 훈련시간을 필요로 하고 연산적 부담이 상당히 증가하며 필요로 하는 데이터의 양이 더 많아진다. 
+
+ViT 모델은 ImageNet 데이터셋으로 준수한 성능을 보이는 모델을 만들기 위해서 Pre-training 시에 수억의 이미지 데이터를 필요로 한다. 그래서 최근의 연구 중에는 Transformer 모델을 학습시키는데 데이터를 효율적으로 사용하는 방법이 없을까하는 질문으로 시작하는 연구가 많다. DeiT는 데이터 효율성을 위해서 Distillation 접근법을 사용했고 T2T(Tokens-to-Token) ViT에서는 Spatially 가까운 토큰들을 함께 결합하는 방식으로 Local structure를 모델링 하고 나서 Pre-training 없이 ImageNet 데이터셋으로 처음부터 훈련시켰더니 괄목할만한 성능을 보이는 모델을 만들게 되었다. 
+
+
+
+### Vision Tailored Transformer Designs
+
+저자들이 말하길 요즘 연구 추세가 Vision 분야에서는 연구에 Transformer를 적용하려는 경향이 있다고 한다. Image recognition, Video understanding, Multi-modal processing을 위한 아키텍처를 디자인하는데 Transformer 모델을 적용한다. 단순히 Transformer를 적용한 결과가 나쁘지 않고 그래서 연구자들이 좀 더 Self-attention이나 Self-supervised learning에 대해서 살펴보도록 하고 있지만 본질적으로 지금의 Transformer 아키텍처는 NLP에 더 맞게 디자인 되어 있고(시퀀스 구조) 이를 Visual 데이터에 효율적이도록 바꿀 여지가 남아 있다고 한다. 예를 들어서 Vector attention은 이런 아이디어면에서, Channel-wise attention을 통해 시각 데이터를 위한 Tailor self-attention 연산을 구현하려고 시도했다는 것에서 좋은 접근을 하고 있다고 할 수 있다. 유사한 방향성으로 Self-attention loss 기반의 Jigsaw puzzle을 Transformer에서 병렬 브랜치로 사용해서 Person re-identification을 개선하는 시도가 있다. 최근에 어떤 연구는 Spatially 가까운 토큰들을 재정렬해서 Spatially proxiaml location들을 더 좋게 모델링하는 시도를 했다. 
+
+
+
+### Interpretability of Transformers
+
+Transformer 모델에서 Classification decision과 관련성 있는 지역을 시각화해서 모델의 상태를 살펴보고 해석하는 것이 유의미할 때가 있다. 그런데 문제는 각 계층에서 계산된 Attention이 그 다음 계층들과 복잡한 방법으로 얽혀 있다는 것이다. 그래서 입력 토큰들이 최종 결정에 어떻게 기여했는가를 시각화 하는 것이 어렵다. 이에 대해 몇몇 연구들이 Transformer를 해석하는 것을 목적으로 해서 성과를 낸 바 있다. Attention roll-out이나 attention flow 방법들은 정확한 Attention을 측정하기 위한 기법이다. 그러나 이런 방법은 Ad-hoc 방식으로 기능하고 단순한 추측만 내릴 수 있다. 예를 들어서 입럭 토큰들이 모든 계층에 대해서 Attention weights를 사용해서 선형적으로 결합된다던지. Chefer 등이 말하길 Self-attention이나 Reassignment를 통해 직접적으로 얻은 Attention score는 최적의 솔루션이 될 수 없다고 한다. 이에 대한 대안으로 이들은 Transformer 네트워크에서 Relevancy score를 할당하고 전파해서 Relevancy의 합이 전체 네트워크에서 상수가 되는 것을 제안했다. 이들의 방법으로 Self-attention 계층에서 경험할 수 있는 Positive / Negative attribution들을 다룰수 있다. 여기서 제안된 프레임워크로 Class-specific 시각화를 할 수 있다는 추가적인 장점이 있다. 이런 연구에도 불구하고 Transformer를 시각화하고 해석하는 것은 풀 수 없는 문제이고 Spatially 정확한 Activation-specific 시각화를 할 수 있는 방법이 필요하다. 이런 방향에서의 추가적인 연구 성과가 있으면 Transformer 모델을 더 잘 이해할 수 있게 되고 모델이 결정을 내리는 과정 중에 Biases나 Erroneous behaviros에 대한 진단을 하는 것이 가능해 질 것이다. 그렇게 되면 이런 부정적인 요소를 배제하는 새로운 모델 아키텍처를 디자인 할 수 있게 된다. 
+
+
+
+### Hardware Efficient Designs
+
+큰 규모의 Transformer 네트워크는 강력한 성능의 장비와 많은 연산량을 필요로 하기 때문에 Edge device나 Resource가 제한된 환경에서 모델을 배치하는 것을 저해한다. 몇몇 연구에서는(FPGAs 같은) NLP 모델을 임베디드 환경에서 배치하기 위해서 모델을 압축하고 성능을 가속화 할 수 있도록 하는 노력을 했다. Li 등은 NLP 모델을 압축하기 위해서 Enhanced block-circulant matrix-based representation을 사용했고, 높은 처리량과 낮은 지연율을 위해 효율적으로 Resource를 관리하는 Field Programmable Gate Array(FPGA) 아키텍처 디자인을 제안했다. 이들은 CPU에서의 RoBERTa 모델과 비교했을때 27x, 3x 그리고 81x배 정도 성능 상의 향상(FPS를 통해 측정된 처리량), 완화된 전력 소비 그리고 효율적인 에너지 소비를 달성했다. 어떤 연구에서는 Hardware-Aware Transformer(HAT)를 디자인 하는 것을 제안했다. 여기서는 NAS 전략을 사용한다. 구체적으로 SuperTransformer 모델은, 먼저 모델을 완전하게 훈련하지 않고 성능을 집작하는 방식으로 먼저 훈련된다. 이 모델은 Search space에서 가장한 큰 모델로 구성되고 공통된 부분에서는 Weights를 공유한다. 그리고 최종적으로 Hardware latency 제약사항을 고려하여 Evolutionary search가 수행된다. 이것은 타겟 Hardware 플랫폼(IoT device, GPU, CPU와 같은)에서 돌아갈 수 있는 SubTransformer 모델을 찾기 위함이다. 그러나 이런 Hardware적으로 효율적인 디자인은 Resource적으로 제한이 있는 Device에서 성능 상의 결함 없이 Vision Transformer를 배치하는데  부족한 감이 있다. 
+
+
+
+### Leveraging Rich Multi-modeal Annotaions
+
+여러 도메인에서 훈련셋과 함께 Dense label을 사용할 수 있는 경우, 고려해볼 수 있는 질문은 작은 데이터셋에서의 Rich label에 의존하는 Pre-training 과정이 학습의 속도를 높일 수 있는 가이다. Virtex에서 이런 질문에 대한 탐구를 수행했다. 여기서 모델은 Image caption과 같은 Dense textual annotation을 사용해서 강한 Visual representaiton을 학습하는 것을 추구한다. 그래서 Caption은 이미지 내에 있는 객체에 대한 정보, 객체 간의 연관성, 행동이나 특성 정보를 인코딩해서, Generalizable하고 Transferable한 Representation을 학습할 수 있도록 더 나은 Supervision을 제공한다. 특히, Visual backbone과 Caption을 예측하기 위한 Bidirectional language model(Forward and backward transformer)로 훈련시킨 모델이 MS-COCO 데이터셋에서 비지도적인 양식으로 강한 Feature를 학습할 수 있다는 것을 보여줬다. 이렇게 학습된 Feature들이 ImageNet 모델로 Trasfer되었을때, ImageNet에서 직접적으로 학습된 Feature들과 견주어도 뒤지지 않거나 오히려 좋은 성능을 보였다. 그래서 Transformer 모델은 통합된 아키텍처에서 여러 Modality를 처리할 수 있다. 그리고 Densely annotated된 데이터셋이 Transformer 모델을 훈련시키는데 필요한 데이터 필요량을 줄이고 추론 시에 (입력 단에서) 보지 못한 조건에 Feature들이 Transfer가 잘 되는지 탐구 하는 것도 의미가 있다. 
+
+
